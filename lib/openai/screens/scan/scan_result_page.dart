@@ -12,8 +12,8 @@ import 'package:scanneranimal/theme.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 
 class ScanResultPage extends StatefulWidget {
-  const ScanResultPage({super.key, required this.payload});
-  final Object? payload;
+  const ScanResultPage({super.key, this.payload});
+  final dynamic payload;
 
   @override
   State<ScanResultPage> createState() => _ScanResultPageState();
@@ -60,28 +60,97 @@ class _ScanResultPageState extends State<ScanResultPage> {
 
     final photos = result.photosBase64.take(3).map((b64) => base64Decode(b64)).toList();
 
-    return FarmBackgroundScaffold(
-      title: 'Resultados • ${animal.name}',
-      child: ListView(
-        padding: AppSpacing.paddingLg,
-        children: [
-          SizedBox(
-            height: 180,
-            child: Row(
-              children: [
-                for (final bytes in photos)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        child: Image.memory(bytes, fit: BoxFit.cover),
-                      ),
+    if (payload == null) {
+      return FarmBackgroundScaffold(
+        title: 'Sin Resultados',
+        child: Center(
+          child: Padding(
+            padding: AppSpacing.paddingLg,
+            child: Card(
+              child: Padding(
+                padding: AppSpacing.paddingXl,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline_rounded, size: 64, color: t.colorScheme.error),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'No se recibieron datos',
+                      style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                  ),
-              ],
+                    const SizedBox(height: AppSpacing.md),
+                    const Text(
+                      'Hubo un problema al procesar el escaneo. Por favor intenta de nuevo.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    FilledButton(
+                      onPressed: () => context.go(AppRoutes.menu),
+                      child: const Text('Volver al Menú'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
+        ),
+      );
+    }
+
+    // 2. PANTALLA DE RESULTADOS (Cuando sí hay datos)
+    return FarmBackgroundScaffold(
+      title: 'Resultado del Análisis',
+      child: SingleChildScrollView(
+        padding: AppSpacing.paddingLg,
+        child: Column(
+          children: [
+            Card(
+              child: Padding(
+                padding: AppSpacing.paddingLg,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, color: t.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Diagnóstico de IA',
+                          style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 32),
+                    // Aquí se muestra la respuesta de la IA
+                    Text(
+                      payload.toString(),
+                      style: t.textTheme.bodyLarge?.copyWith(height: 1.5),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => context.go(AppRoutes.menu),
+                        icon: const Icon(Icons.home_rounded),
+                        label: const Text('Finalizar y Volver'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text(
+              'Nota: Este análisis es generado por IA y no sustituye la opinión de un veterinario.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
           const SizedBox(height: 14),
           Card(
             child: Padding(
