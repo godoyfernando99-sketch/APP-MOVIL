@@ -1,19 +1,28 @@
+// 1. Definición de las categorías (va al principio)
 class AnimalCategory {
   static const String home = 'home';
   static const String farm = 'farm';
 }
 
+// 2. Definición del modelo de datos
 class Animal {
-  const Animal({required this.id, required this.name, required this.category, required this.assetImage});
+  const Animal({
+    required this.id, 
+    required this.name, 
+    required this.category, 
+    required this.assetImage,
+  });
+
   final String id;
   final String name;
   final String category;
   final String assetImage;
 }
 
+// 3. El catálogo con todos tus animales
 class AnimalsCatalog {
   static const animals = <Animal>[
-    // Animales de Casa
+    // --- SECCIÓN CASA ---
     Animal(id: 'dog', name: 'Perro', category: AnimalCategory.home, assetImage: 'assets/images/Dog_null_1769386481579.jpg'),
     Animal(id: 'cat', name: 'Gato', category: AnimalCategory.home, assetImage: 'assets/images/Cat_null_1769386482564.jpg'),
     Animal(id: 'frog', name: 'Rana', category: AnimalCategory.home, assetImage: 'assets/images/Frog_null_1769386483382.jpg'),
@@ -24,7 +33,7 @@ class AnimalsCatalog {
     Animal(id: 'lizard', name: 'Lagartija', category: AnimalCategory.home, assetImage: 'assets/images/Lizard_null_1769386488785.jpg'),
     Animal(id: 'ferret', name: 'Hurón', category: AnimalCategory.home, assetImage: 'assets/images/Ferret_null_1769386489474.jpg'),
     
-    // Animales de Granja
+    // --- SECCIÓN GRANJA ---
     Animal(id: 'horse', name: 'Caballo', category: AnimalCategory.farm, assetImage: 'assets/images/Horse_null_1769386490441.jpg'),
     Animal(id: 'goat', name: 'Cabra', category: AnimalCategory.farm, assetImage: 'assets/images/Goat_null_1769386491813.jpg'),
     Animal(id: 'billy_goat', name: 'Chivo', category: AnimalCategory.farm, assetImage: 'assets/images/Billy_goat_null_1769386492855.jpg'),
@@ -41,7 +50,8 @@ class AnimalsCatalog {
     Animal(id: 'peacock', name: 'Pavo real', category: AnimalCategory.farm, assetImage: 'assets/images/Peacock_null_1769386504456.jpg'),
     Animal(id: 'burro', name: 'Burro', category: AnimalCategory.farm, assetImage: 'assets/images/female_mule_realistic_photo_brown_1769097010770.jpg'),
     Animal(id: 'cow', name: 'Vaca', category: AnimalCategory.farm, assetImage: 'assets/images/ai_generated_1769158692690.jpg'),
-  ];
+  ]; // <-- Aquí cierra la lista de animales
 
+  // Función de ayuda para buscar un animal por su ID
   static Animal byId(String id) => animals.firstWhere((a) => a.id == id);
-}
+} // <-- Aquí cierra la clase AnimalsCatalog
