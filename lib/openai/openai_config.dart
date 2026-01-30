@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:typed_data';
 
 class OpenAiConfig {
   // Tu llave de Google Gemini
@@ -13,8 +13,12 @@ class OpenAiConfig {
   // Modo Real activo
   static const bool useMock = false;
 
-  // Estas funciones se mantienen vacías o simples para no romper otros archivos si los llaman
+  // Estas funciones se mantienen como stubs para no romper llamadas de otros archivos
   static Map<String, String> headers() => {};
+  
+  static String dataUrlFromBytes(Uint8List bytes) {
+    return 'data:image/jpeg;base64,${base64Encode(bytes)}';
+  }
 }
 
   static String dataUrlFromBytes(Uint8List bytes) => 'data:image/jpeg;base64,${base64Encode(bytes)}';
