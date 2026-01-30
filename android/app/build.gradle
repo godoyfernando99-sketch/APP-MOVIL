@@ -43,7 +43,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.scannersnimal.app"
+        applicationId "com.scanneranimal.app"
         minSdk = 23
         targetSdk = 35
         versionCode = 1
