@@ -79,6 +79,8 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
         photos: _photos,
       );
       if (!mounted) return;
+
+      context.push(AppRoutes.scanResult, extra: result); // 'result' debe ser tipo ScanResult
       
       // Navegar directamente a resultados, go_router manejará la pila correctamente
       context.go(AppRoutes.scanResult, extra: result);
