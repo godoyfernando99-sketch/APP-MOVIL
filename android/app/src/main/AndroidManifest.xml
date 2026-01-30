@@ -2,7 +2,7 @@
     <application
         android:label="Scanner Animal"
         android:name="${applicationName}"
-        android:icon="@mipmap/logo_app">
+        android:icon="@drawable/logo_app">
         <activity
             android:name=".MainActivity"
             android:exported="true"
