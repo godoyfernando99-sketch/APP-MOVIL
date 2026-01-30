@@ -61,7 +61,7 @@ class AppRouter {
       GoRoute(path: AppRoutes.register, name: 'register', pageBuilder: (context, state) => const MaterialPage(child: RegisterPage())),
       GoRoute(path: AppRoutes.welcome, name: 'welcome', pageBuilder: (context, state) => const MaterialPage(child: WelcomePage())),
       GoRoute(path: AppRoutes.menu, name: 'menu', pageBuilder: (context, state) => const NoTransitionPage(child: MainMenuPage())),
-      GoRoute(path: AppRoutes.animals, name: 'animals', pageBuilder: (context, state) => const MaterialPage(child: AnimalsPage())),
+      
 
       GoRoute(
   path: '${AppRoutes.animals}/:category', 
