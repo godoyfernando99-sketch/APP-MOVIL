@@ -201,12 +201,14 @@ class _CategoryButton extends StatelessWidget {
             padding: AppSpacing.paddingLg,
             child: Column(
               children: [
-                Icon(icon, size: 36, color: t.colorScheme.primary),
-                const SizedBox(height: AppSpacing.sm),
-                Text(title,
-                    style: t.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                    textAlign: TextAlign.center),
+               Icon(icon, size: 36, color: Colors.white), 
+const SizedBox(height: AppSpacing.sm),
+Text(title,
+    style: t.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+    ),
+    textAlign: TextAlign.center),
               ],
             ),
           ),
