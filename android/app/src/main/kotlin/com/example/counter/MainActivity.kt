@@ -1,4 +1,4 @@
-package com.scanneranimal.CounterApp
+package com.scanneranimal.app
 
 import io.flutter.embedding.android.FlutterActivity
 
