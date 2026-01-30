@@ -1,175 +1,146 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-
-import 'package:scanneranimal/app/auth/auth_controller.dart';
-import 'package:scanneranimal/l10n/app_strings.dart';
 import 'package:scanneranimal/nav.dart';
 import 'package:scanneranimal/theme.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-class MainMenuPage extends StatefulWidget {
+class MainMenuPage extends StatelessWidget {
   const MainMenuPage({super.key});
 
   @override
-  State<MainMenuPage> createState() => _MainMenuPageState();
-}
-
-class _MainMenuPageState extends State<MainMenuPage> {
-  @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    final strings = (String key) => AppStrings.of(context, key);
-    final auth = context.watch<AuthController>();
 
     return FarmBackgroundScaffold(
-      title: strings('mainMenu'),
-      showBack: false,
-      showHome: false,
+      title: 'ScannerAnimal IA',
+      // Botón de perfil en la parte superior
       actions: [
-        PopupMenuButton<String>(
-          icon: Icon(Icons.settings, color: t.colorScheme.onSurface),
-          onSelected: (v) {
-            switch (v) {
-              case 'history':
-                context.push(AppRoutes.history);
-                break;
-              case 'subscriptions':
-                context.push(AppRoutes.subscriptions);
-                break;
-              case 'diseases':
-                context.push(AppRoutes.diseases);
-                break;
-              case 'medications':
-                context.push(AppRoutes.medications);
-                break;
-            }
-          },
-          itemBuilder: (context) => [
-            PopupMenuItem(value: 'history', child: Text(strings('history'))),
-            PopupMenuItem(
-                value: 'subscriptions', child: Text(strings('subscriptions'))),
-            PopupMenuItem(value: 'diseases', child: Text(strings('diseases'))),
-            PopupMenuItem(
-                value: 'medications', child: Text(strings('medications'))),
-          ],
+        IconButton(
+          onPressed: () => context.push(AppRoutes.profile),
+          icon: const Icon(Icons.account_circle_rounded, size: 30),
         ),
       ],
-      child: Center(
-        child: ListView(
-          padding: AppSpacing.paddingLg,
+      child: SingleChildScrollView(
+        padding: AppSpacing.paddingLg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
+            _buildWelcomeHeader(t),
+            const SizedBox(height: 24),
+            
+            // SECCIÓN: SELECCIÓN DE CATEGORÍA
+            Text(
+              '¿Qué vamos a analizar hoy?',
+              style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
+            // BOTÓN: ANIMALES DE CASA
+            _CategoryButton(
+              title: 'Animales de Casa',
+              subtitle: 'Perros, gatos, conejos...',
+              icon: Icons.pets_rounded,
+              color: Colors.orange.shade700,
+              onTap: () => context.push('${AppRoutes.animalSelector}/home'),
+            ),
+
+            const SizedBox(height: 16),
+
+            // BOTÓN: ANIMALES DE GRANJA
+            _CategoryButton(
+              title: 'Animales de Granja',
+              subtitle: 'Vacas, cerdos, caballos...',
+              icon: Icons.agriculture_rounded,
+              color: Colors.green.shade700,
+              onTap: () => context.push('${AppRoutes.animalSelector}/farm'),
+            ),
+
+            const Divider(height: 48),
+
+            // SECCIÓN: ACCESOS RÁPIDOS
+            Row(
+              children: [
+                Expanded(
+                  child: _QuickActionCard(
+                    title: 'Historial',
+                    icon: Icons.history_rounded,
+                    color: Colors.blueGrey,
+                    onTap: () => context.push(AppRoutes.history),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _QuickActionCard(
+                    title: 'Planes Pro',
+                    icon: Icons.star_rounded,
+                    color: Colors.amber.shade800,
+                    onTap: () => context.push(AppRoutes.subscriptions),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeHeader(ThemeData t) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('¡Bienvenido!', style: t.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
+        Text('Tu asistente veterinario con IA', style: t.textTheme.bodyLarge),
+      ],
+    );
+  }
+}
+
+// COMPONENTE: BOTÓN DE CATEGORÍA (ICONOS BLANCOS)
+class _CategoryButton extends StatelessWidget {
+  const _CategoryButton({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Icono forzado a blanco
+            Icon(icon, size: 40, color: Colors.white),
+            const SizedBox(width: 20),
+            Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Card(
-                    color: Color(0xFFE5F1F1),
-                    child: Padding(
-                      padding: AppSpacing.paddingLg,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: t.colorScheme.primaryContainer,
-                            child: Icon(Icons.person_rounded,
-                                color: t.colorScheme.onPrimaryContainer),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  auth.currentUser?.fullName.isNotEmpty == true
-                                      ? auth.currentUser!.fullName
-                                      : (auth.currentUser?.username ?? ''),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .displaySmall
-                                      ?.copyWith(
-                                          color: Color(0xFF0D0D0D),
-                                          fontFamily:
-                                              GoogleFonts.poppins().fontFamily),
-                                ),
-                                const SizedBox(height: 2),
-                                Text('Scanner Animal',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall
-                                        ?.copyWith(
-                                            color: Color(0xFF1D9705),
-                                            fontFamily: GoogleFonts.poppins()
-                                                .fontFamily)),
-                                const SizedBox(height: AppSpacing.md),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: FilledButton.tonalIcon(
-                                    onPressed: () async {
-                                      await context
-                                          .read<AuthController>()
-                                          .logout();
-                                      if (!context.mounted) return;
-                                      context.go(AppRoutes.login);
-                                    },
-                                    icon: Icon(Icons.logout_rounded,
-                                        color:
-                                            t.colorScheme.onSecondaryContainer),
-                                    label: Text(strings('logout'),
-                                        style: TextStyle(
-                                            color: t.colorScheme
-                                                .onSecondaryContainer)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 560),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Center(
-                              child: Align(
-                                alignment: Alignment.center,
-                                child: Flexible(
-                                  flex: 9,
-                                  child: _CategoryButton(
-                                    title: strings('homeAnimals'),
-                                    icon: Icons.home_rounded,
-                                    onPressed: () => context.push(
-                                        '${AppRoutes.animals}?category=home'),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: _CategoryButton(
-                              title: strings('farmAnimals'),
-                              icon: Icons.agriculture_rounded,
-                              onPressed: () => context
-                                  .push('${AppRoutes.animals}?category=farm'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
                 ],
               ),
             ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 18),
           ],
         ),
       ),
@@ -177,40 +148,32 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 }
 
-class _CategoryButton extends StatelessWidget {
-  const _CategoryButton(
-      {required this.title, required this.icon, required this.onPressed});
+// COMPONENTE: TARJETAS PEQUEÑAS
+class _QuickActionCard extends StatelessWidget {
+  const _QuickActionCard({required this.title, required this.icon, required this.color, required this.onTap});
+  
   final String title;
   final IconData icon;
-  final VoidCallback onPressed;
+  final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    final cs = t.colorScheme;
     return Card(
-      color: Color(0xFF23764D),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onPressed,
-          splashFactory: NoSplash.splashFactory,
-          highlightColor: cs.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Padding(
-            padding: AppSpacing.paddingLg,
-            child: Column(
-              children: [
-               Icon(icon, size: 36, color: Colors.white), 
-const SizedBox(height: AppSpacing.sm),
-Text(title,
-    style: t.textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w700,
-        color: Colors.white,
-    ),
-    textAlign: TextAlign.center),
-              ],
-            ),
+      elevation: 0,
+      color: color.withOpacity(0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: color.withOpacity(0.2))),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            children: [
+              Icon(icon, color: color),
+              const SizedBox(height: 8),
+              Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+            ],
           ),
         ),
       ),
