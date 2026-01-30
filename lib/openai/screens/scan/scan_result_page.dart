@@ -152,8 +152,12 @@ class _ScanResultPageState extends State<ScanResultPage> {
                       icon: Icons.medical_information,
                     ),
 
-                    if (result.fractureDescription != null)
-                      _InfoRow(label: 'Lesión/Fractura', value: result.fractureDescription!, icon: Icons.Personal_injury, color: Colors.red),
+                    _InfoRow(
+                    label: 'Lesión/Fractura', 
+                    value: result.fractureDescription!, 
+                    icon: Icons.personal_injury, // <-- Aquí el cambio
+                     color: Colors.red,
+                    ),
 
                     _InfoRow(
                       label: 'Gestación', 
