@@ -62,14 +62,13 @@ class AppRouter {
       GoRoute(path: AppRoutes.welcome, name: 'welcome', pageBuilder: (context, state) => const MaterialPage(child: WelcomePage())),
       GoRoute(path: AppRoutes.menu, name: 'menu', pageBuilder: (context, state) => const NoTransitionPage(child: MainMenuPage())),
       GoRoute(path: AppRoutes.animals, name: 'animals', pageBuilder: (context, state) => const MaterialPage(child: AnimalsPage())),
-GoRoute(
-  path: '${AppRoutes.animals}/:category', // El :category recibirá 'home' o 'farm'
+
+      GoRoute(
+  path: '${AppRoutes.animals}/:category', 
   name: 'animals', 
   pageBuilder: (context, state) {
-    // 1. Extraemos el valor de la URL (home o farm)
+    // Extraemos 'home' o 'farm'
     final category = state.pathParameters['category'] ?? 'home'; 
-    
-    // 2. Se lo pasamos a la pantalla de selección de animales
     return MaterialPage(
       child: AnimalsPage(category: category),
     ); 
