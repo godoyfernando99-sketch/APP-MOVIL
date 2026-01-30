@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "71382402825",
+    "project_id": "howudghzrpiiq92yrznw1kuorjca2t",
+    "storage_bucket": "howudghzrpiiq92yrznw1kuorjca2t.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:71382402825:android:780945820c0ffcfd79f5d8",
+        "android_client_info": {
+          "package_name": "com.scanneranimal.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "71382402825-9k0dc15cf0g2sl2lgja76savlnf6vkp7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.scanneranimal.app",
+            "certificate_hash": "0510150464664aaabdd9598fc5ce1578160e5317"
+          }
+        },
+        {
+          "client_id": "71382402825-pvrujm54nr5rsdm2drd3n83e1rt4j63u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPXtnD2li6aO_sl3H41Trc0tZZI4EJrgg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "71382402825-a4sqtfsj1jjq488jv40qj8bd971e4qdf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "71382402825-hpbe3da765mbqus9p3v5uaund13tutc3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.scanneranimal.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
