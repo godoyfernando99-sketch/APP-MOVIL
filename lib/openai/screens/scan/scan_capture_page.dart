@@ -56,7 +56,6 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   }
 
   Future<void> _analyze() async {
-    // 1. Validaciones iniciales
     if (_photos.length != 3) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes tomar 3 fotografías.')));
       return;
@@ -66,15 +65,12 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       return;
     }
 
-    // 2. ACTIVAR CARGA (TRUE)
     setState(() => _isLoading = true);
 
     try {
       final auth = context.read<AuthController>();
-      await auth.decrementScans();
-      
       final animal = AnimalsCatalog.byId(widget.animalId);
-      const service = AiDiagnosisService(); // Eliminado el 'const' si da error
+      const service = AiDiagnosisService(); 
       
       final result = await service.diagnose(
         animalId: animal.id,
@@ -84,24 +80,23 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
         photos: _photos,
       );
 
+      // Decrementamos el escaneo SOLO si el diagnóstico fue exitoso
+      await auth.decrementScans();
+
       if (!mounted) return;
 
-      // 3. DESACTIVAR CARGA (FALSE) - Antes de navegar
-      setState(() => _isLoading = false);
-
-      // 4. NAVEGAR (Solo una vez)
-      // Usamos push para que el resultado sea una pantalla nueva
-      context.push(AppRoutes.scanResult, extra: result);
+      // NAVEGACIÓN SEGURA:
+      // Primero navegamos, y luego apagamos el loading (para evitar el parpadeo blanco)
+      context.push(AppRoutes.scanResult, extra: result).then((_) {
+        if (mounted) setState(() => _isLoading = false);
+      });
 
     } catch (e) {
       debugPrint('AI diagnose failed: $e');
       if (!mounted) return;
-      
-      // 5. DESACTIVAR CARGA (FALSE) - Si hubo un error para poder reintentar
       setState(() => _isLoading = false);
-      
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo completar el escaneo. Inténtalo de nuevo.'))
+        const SnackBar(content: Text('Error de conexión con la IA. Revisa tu API Key.'))
       );
     }
   }
