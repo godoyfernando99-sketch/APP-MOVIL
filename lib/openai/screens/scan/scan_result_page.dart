@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -26,6 +25,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
   @override
   void initState() {
     super.initState();
+    // Guardado automático al cargar la página
     WidgetsBinding.instance.addPostFrameCallback((_) => _autoSave());
   }
 
@@ -51,45 +51,29 @@ class _ScanResultPageState extends State<ScanResultPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.payload is! ScanResult) {
-      return const FarmBackgroundScaffold(title: 'Resultado', child: Center(child: Text('Sin datos de resultado.')));
-    }
-    final result = widget.payload as ScanResult;
-    final animal = AnimalsCatalog.byId(result.animalId);
     final t = Theme.of(context);
 
-    final photos = result.photosBase64.take(3).map((b64) => base64Decode(b64)).toList();
-
-    if (payload == null) {
+    // 1. Validación de seguridad
+    if (widget.payload is! ScanResult) {
       return FarmBackgroundScaffold(
         title: 'Sin Resultados',
         child: Center(
-          child: Padding(
-            padding: AppSpacing.paddingLg,
-            child: Card(
-              child: Padding(
-                padding: AppSpacing.paddingXl,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.error_outline_rounded, size: 64, color: t.colorScheme.error),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'No se recibieron datos',
-                      style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    const Text(
-                      'Hubo un problema al procesar el escaneo. Por favor intenta de nuevo.',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    FilledButton(
-                      onPressed: () => context.go(AppRoutes.menu),
-                      child: const Text('Volver al Menú'),
-                    ),
-                  ],
-                ),
+          child: Card(
+            margin: const EdgeInsets.all(20),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  const Text('No se recibieron datos del escaneo.'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => context.go(AppRoutes.menu),
+                    child: const Text('Volver al Menú'),
+                  ),
+                ],
               ),
             ),
           ),
@@ -97,160 +81,99 @@ class _ScanResultPageState extends State<ScanResultPage> {
       );
     }
 
-    // 2. PANTALLA DE RESULTADOS (Cuando sí hay datos)
+    final result = widget.payload as ScanResult;
+    // Intentamos obtener el animal del catálogo, si falla usamos uno genérico
+    final animal = AnimalsCatalog.byId(result.animalId);
+
     return FarmBackgroundScaffold(
       title: 'Resultado del Análisis',
       child: SingleChildScrollView(
         padding: AppSpacing.paddingLg,
         child: Column(
           children: [
+            // SECCIÓN DE FOTOS
+            if (result.photosBase64.isNotEmpty)
+              SizedBox(
+                height: 120,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: result.photosBase64.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, i) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.memory(
+                        base64Decode(result.photosBase64[i]),
+                        width: 120,
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            
+            const SizedBox(height: 16),
+
+            // TARJETA DE DATOS
             Card(
               child: Padding(
                 padding: AppSpacing.paddingLg,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.auto_awesome_rounded, color: t.colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Diagnóstico de IA',
-                          style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
+                    Text('Datos del escaneo', 
+                      style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 12),
+                    _Line(label: 'Animal', value: animal.name),
+                    _Line(label: 'Estado de salud', value: result.healthStatus),
+                    if (result.microchipNumber != null) 
+                      _Line(label: 'Microchip', value: result.microchipNumber!),
+                    _Line(label: 'Enfermedad', 
+                      value: (result.diseaseName == null || result.diseaseName!.isEmpty) ? 'No detectada' : result.diseaseName!),
+                    _Line(label: 'Gestación', 
+                      value: result.isPregnant == true ? 'Sí' : 'No'),
+                    
                     const Divider(height: 32),
-                    // Aquí se muestra la respuesta de la IA
-                    Text(
-                      payload.toString(),
-                      style: t.textTheme.bodyLarge?.copyWith(height: 1.5),
-                    ),
-                    const SizedBox(height: 24),
+                    
+                    // ESTADO DE GUARDADO
+                    if (_isSaving)
+                      const Center(child: CircularProgressIndicator())
+                    else if (_isSaved)
+                      Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text('Guardado en historial', 
+                            style: TextStyle(color: Colors.green[800], fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // BOTONES DE ACCIÓN
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
                         onPressed: () => context.go(AppRoutes.menu),
                         icon: const Icon(Icons.home_rounded),
-                        label: const Text('Finalizar y Volver'),
+                        label: const Text('Volver al menú principal'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.go(AppRoutes.history),
+                        icon: const Icon(Icons.history_rounded),
+                        label: const Text('Ver historial'),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            const Text(
-              'Nota: Este análisis es generado por IA y no sustituye la opinión de un veterinario.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey),
-            ),
           ],
         ),
-      ),
-    );
-  }
-}
-          const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: AppSpacing.paddingLg,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Datos del escaneo', style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 12),
-                  _Line(label: 'Categoría', value: result.animalCategory == AnimalCategory.home ? 'Casa' : 'Granja'),
-                  if (result.microchipNumber != null) _Line(label: 'Microchip', value: result.microchipNumber!),
-                  _Line(label: 'Estado de salud', value: result.healthStatus),
-                  _Line(label: 'Enfermedad', value: (result.diseaseName == null || result.diseaseName!.isEmpty) ? 'No detectada' : result.diseaseName!),
-                  _Line(label: 'Fractura', value: (result.fractureDescription == null || result.fractureDescription!.isEmpty) ? 'No detectada' : result.fractureDescription!),
-                  _Line(label: 'Medicamento', value: (result.medicationName == null || result.medicationName!.isEmpty) ? 'N/A' : result.medicationName!),
-                  _Line(label: 'Dosis', value: (result.medicationDose == null || result.medicationDose!.isEmpty) ? 'N/A' : result.medicationDose!),
-                  _Line(
-                    label: 'Gestación',
-                    value: result.isPregnant == true
-                        ? 'Sí (${result.pregnancyWeeks ?? 0} semanas)'
-                        : (result.isPregnant == false ? 'No' : 'Desconocido'),
-                  ),
-                  if (result.foodRecommendation != null && result.foodRecommendation!.isNotEmpty)
-                    _Line(label: 'Alimento recomendado', value: result.foodRecommendation!),
-                  const SizedBox(height: 14),
-                  if (_isSaving)
-                    Center(
-                      child: Column(
-                        children: [
-                          CircularProgressIndicator(color: t.colorScheme.primary),
-                          const SizedBox(height: 8),
-                          Text('Guardando en historial...', style: t.textTheme.bodySmall),
-                        ],
-                      ),
-                    )
-                  else if (_isSaved)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '✓ Guardado automáticamente en historial',
-                              style: t.textTheme.bodyMedium?.copyWith(color: Colors.green[800], fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.warning_rounded, color: Colors.orange, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'No se pudo guardar automáticamente',
-                              style: t.textTheme.bodySmall?.copyWith(color: Colors.orange[800]),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => context.go(AppRoutes.menu),
-                      icon: Icon(Icons.home_rounded, color: t.colorScheme.onPrimary),
-                      label: Text('Volver al menú principal', style: TextStyle(color: t.colorScheme.onPrimary)),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.go(AppRoutes.history),
-                      icon: Icon(Icons.history_rounded, color: t.colorScheme.primary),
-                      label: Text('Ver historial', style: TextStyle(color: t.colorScheme.primary)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -269,7 +192,10 @@ class _Line extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 150, child: Text(label, style: t.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700))),
+          SizedBox(
+            width: 120, 
+            child: Text(label, style: t.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700))
+          ),
           const SizedBox(width: 10),
           Expanded(child: Text(value, style: t.textTheme.bodyMedium)),
         ],
