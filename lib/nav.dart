@@ -62,18 +62,17 @@ class AppRouter {
       GoRoute(path: AppRoutes.welcome, name: 'welcome', pageBuilder: (context, state) => const MaterialPage(child: WelcomePage())),
       GoRoute(path: AppRoutes.menu, name: 'menu', pageBuilder: (context, state) => const NoTransitionPage(child: MainMenuPage())),
       
-
       GoRoute(
-  path: '${AppRoutes.animals}/:category', 
-  name: 'animals', 
-  pageBuilder: (context, state) {
-    // Extraemos 'home' o 'farm'
-    final category = state.pathParameters['category'] ?? 'home'; 
-    return MaterialPage(
-      child: AnimalsPage(category: category),
-    ); 
-  },
-),
+        path: '${AppRoutes.animals}/:category', 
+        name: 'animals', 
+        pageBuilder: (context, state) {
+          final category = state.pathParameters['category'] ?? 'home'; 
+          return MaterialPage(
+            child: AnimalsPage(category: category),
+          ); 
+        },
+      ),
+
       GoRoute(
         path: '${AppRoutes.scanCapture}/:animalId/:mode',
         name: 'scanCapture',
@@ -83,25 +82,49 @@ class AppRouter {
           return MaterialPage(child: ScanCapturePage(animalId: animalId, mode: mode));
         },
       ),
-  GoRoute(
-  path: AppRoutes.scanResult,
-  name: 'scanResult',
-  pageBuilder: (context, state) {
-    // Si 'extra' es nulo, evitamos que la app se cierre
-    final extra = state.extra;
-    
-    if (extra == null) {
-      // Opción A: Redirigir al menú si no hay datos
-      return const MaterialPage(child: MainMenuPage());
-    }
-    
-    return MaterialPage(child: ScanResultPage(payload: extra));
-  },
-),
+
+      GoRoute(
+        path: AppRoutes.scanResult,
+        name: 'scanResult',
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          if (extra == null) {
+            return const MaterialPage(child: MainMenuPage());
+          }
+          return MaterialPage(child: ScanResultPage(payload: extra));
+        },
+      ),
+
       GoRoute(path: AppRoutes.history, name: 'history', pageBuilder: (context, state) => const MaterialPage(child: HistoryPage())),
       GoRoute(path: AppRoutes.subscriptions, name: 'subscriptions', pageBuilder: (context, state) => const MaterialPage(child: SubscriptionsPage())),
       GoRoute(path: AppRoutes.diseases, name: 'diseases', pageBuilder: (context, state) => const MaterialPage(child: DiseasesPage())),
       GoRoute(path: AppRoutes.medications, name: 'medications', pageBuilder: (context, state) => const MaterialPage(child: MedicationsPage())),
+      
+      // --- NUEVA RUTA DE PERFIL AÑADIDA ---
+      GoRoute(
+        path: AppRoutes.profile, 
+        name: 'profile', 
+        pageBuilder: (context, state) => MaterialPage(
+          child: Scaffold(
+            appBar: AppBar(title: const Text('Mi Perfil')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.account_circle, size: 80, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(FirebaseAuth.instance.currentUser?.email ?? 'Usuario'),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => FirebaseAuth.instance.signOut(),
+                    child: const Text('Cerrar Sesión'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     ],
   );
 }
@@ -119,4 +142,6 @@ class AppRoutes {
   static const String subscriptions = '/subscriptions';
   static const String diseases = '/diseases';
   static const String medications = '/medications';
+  // AÑADIDO:
+  static const String profile = '/profile';
 }
