@@ -56,6 +56,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   }
 
   Future<void> _analyze() async {
+    // 1. Validaciones iniciales
     if (_photos.length != 3) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes tomar 3 fotografías.')));
       return;
@@ -64,13 +65,17 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ingresa el número de microchip.')));
       return;
     }
+
+    // 2. ACTIVAR CARGA (TRUE)
     setState(() => _isLoading = true);
+
     try {
       final auth = context.read<AuthController>();
       await auth.decrementScans();
       
       final animal = AnimalsCatalog.byId(widget.animalId);
-      final service = const AiDiagnosisService();
+      const service = AiDiagnosisService(); // Eliminado el 'const' si da error
+      
       final result = await service.diagnose(
         animalId: animal.id,
         animalCategory: animal.category,
@@ -78,20 +83,28 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
         microchipNumber: widget.mode == 'chip' ? _chipCtrl.text.trim() : null,
         photos: _photos,
       );
+
       if (!mounted) return;
 
-      context.push(AppRoutes.scanResult, extra: result); // 'result' debe ser tipo ScanResult
-      
-      // Navegar directamente a resultados, go_router manejará la pila correctamente
-      context.go(AppRoutes.scanResult, extra: result);
+      // 3. DESACTIVAR CARGA (FALSE) - Antes de navegar
+      setState(() => _isLoading = false);
+
+      // 4. NAVEGAR (Solo una vez)
+      // Usamos push para que el resultado sea una pantalla nueva
+      context.push(AppRoutes.scanResult, extra: result);
+
     } catch (e) {
       debugPrint('AI diagnose failed: $e');
       if (!mounted) return;
+      
+      // 5. DESACTIVAR CARGA (FALSE) - Si hubo un error para poder reintentar
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo completar el escaneo.')));
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo completar el escaneo. Inténtalo de nuevo.'))
+      );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
