@@ -79,14 +79,21 @@ class AppRouter {
           return MaterialPage(child: ScanCapturePage(animalId: animalId, mode: mode));
         },
       ),
-      GoRoute(
-        path: AppRoutes.scanResult,
-        name: 'scanResult',
-        pageBuilder: (context, state) {
-          final extra = state.extra;
-          return MaterialPage(child: ScanResultPage(payload: extra));
-        },
-      ),
+  GoRoute(
+  path: AppRoutes.scanResult,
+  name: 'scanResult',
+  pageBuilder: (context, state) {
+    // Si 'extra' es nulo, evitamos que la app se cierre
+    final extra = state.extra;
+    
+    if (extra == null) {
+      // Opción A: Redirigir al menú si no hay datos
+      return const MaterialPage(child: MainMenuPage());
+    }
+    
+    return MaterialPage(child: ScanResultPage(payload: extra));
+  },
+),
       GoRoute(path: AppRoutes.history, name: 'history', pageBuilder: (context, state) => const MaterialPage(child: HistoryPage())),
       GoRoute(path: AppRoutes.subscriptions, name: 'subscriptions', pageBuilder: (context, state) => const MaterialPage(child: SubscriptionsPage())),
       GoRoute(path: AppRoutes.diseases, name: 'diseases', pageBuilder: (context, state) => const MaterialPage(child: DiseasesPage())),
