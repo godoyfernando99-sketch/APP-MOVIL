@@ -1,7 +1,7 @@
 import 'dart:convert';
-
-import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 class OpenAiConfig {
   // Tu llave de Google Gemini
@@ -13,24 +13,23 @@ class OpenAiConfig {
   // Modo Real activo
   static const bool useMock = false;
 
-  // Estas funciones se mantienen como stubs para no romper llamadas de otros archivos
-  static Map<String, String> headers() => {};
+  // Endpoint de Gemini (No se usa directamente aquí, pero evita errores de compilación)
+  static const String endpoint = 'https://generativelanguage.googleapis.com';
+  static Uri get uri => Uri.parse(endpoint);
+
+  // Funciones de utilidad para compatibilidad
+  static Map<String, String> headers() => {
+    'content-type': 'application/json; charset=utf-8',
+  };
   
   static String dataUrlFromBytes(Uint8List bytes) {
     return 'data:image/jpeg;base64,${base64Encode(bytes)}';
   }
-}
 
-  static String dataUrlFromBytes(Uint8List bytes) => 'data:image/jpeg;base64,${base64Encode(bytes)}';
-
+  // Mantenemos este método para que la app no explote si otros archivos lo llaman
   static Future<Map<String, dynamic>> postJson(Map<String, dynamic> body) async {
-    final res = await http.post(uri, headers: headers(), body: utf8.encode(jsonEncode(body)));
-    final decoded = jsonDecode(utf8.decode(res.bodyBytes));
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      debugPrint('OpenAI error (${res.statusCode}): ${res.body}');
-      throw Exception('OpenAI request failed');
-    }
-    if (decoded is Map<String, dynamic>) return decoded;
-    throw Exception('Unexpected OpenAI response');
+    // Nota: El análisis real ahora lo hace el AiDiagnosisService
+    // Este método queda aquí solo por seguridad estructural
+    return {};
   }
 }
