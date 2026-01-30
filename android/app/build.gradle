@@ -49,6 +49,11 @@ android {
         versionCode = 1
         versionName = "1.0"
         multiDexEnabled true
+
+        def process = "keytool -list -v -keystore ${System.getProperty('user.home')}/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android".execute()
+    println "--- MI CODIGO SHA-1 ES: ---"
+    println process.text
+    println "---------------------------"
     }
 
     buildTypes {
