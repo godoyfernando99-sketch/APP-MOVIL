@@ -4,17 +4,18 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class OpenAiConfig {
-  static const apiKey = String.fromEnvironment('AIzaSyConmf0PN79jBFkNkHZRKMym2KcTNPI4gI');
-  static const endpoint = String.fromEnvironment('OPENAI_PROXY_ENDPOINT');
+  // Tu llave de Google Gemini pegada directamente para que funcione siempre
+  static const String apiKey = 'AIzaSyConmf0PN79jBFkNkHZRKMym2KcTNPI4gI';
 
+  // Verifica que la llave esté puesta y sea de Google
   static bool get isConfigured => apiKey.isNotEmpty && apiKey.startsWith('AIza');
 
+  // Modo Real activo (useMock en false)
   static const bool useMock = false;
 
-  static Map<String, String> headers() => {
-    'content-type': 'application/json; charset=utf-8',
-    'authorization': 'Bearer $apiKey',
-  };
+  // Nota: Ya no necesitamos 'endpoint' ni 'headers' porque 
+  // Gemini se conecta de forma distinta en el DiagnosisService.
+}
 
   static String dataUrlFromBytes(Uint8List bytes) => 'data:image/jpeg;base64,${base64Encode(bytes)}';
 
