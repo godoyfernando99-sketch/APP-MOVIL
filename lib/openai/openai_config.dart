@@ -4,12 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class OpenAiConfig {
-  static const apiKey = String.fromEnvironment('OPENAI_PROXY_API_KEY');
+  static const apiKey = String.fromEnvironment('AIzaSyConmf0PN79jBFkNkHZRKMym2KcTNPI4gI');
   static const endpoint = String.fromEnvironment('OPENAI_PROXY_ENDPOINT');
 
-  static bool get isConfigured => apiKey.isNotEmpty && endpoint.isNotEmpty;
+  static bool get isConfigured => apiKey.isNotEmpty && apiKey.startsWith('AIza');
 
-  static Uri get uri => Uri.parse(endpoint);
+  static const bool useMock = false;
 
   static Map<String, String> headers() => {
     'content-type': 'application/json; charset=utf-8',
