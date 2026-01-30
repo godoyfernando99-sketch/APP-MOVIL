@@ -41,7 +41,7 @@ class MainMenuPage extends StatelessWidget {
               subtitle: 'Perros, gatos, conejos...',
               icon: Icons.pets_rounded,
               color: Colors.orange.shade700,
-              onTap: () => context.push('${AppRoutes.animalSelector}/home'),
+              onTap: () => context.push('${AppRoutes.animals}/home'),
             ),
 
             const SizedBox(height: 16),
@@ -52,7 +52,7 @@ class MainMenuPage extends StatelessWidget {
               subtitle: 'Vacas, cerdos, caballos...',
               icon: Icons.agriculture_rounded,
               color: Colors.green.shade700,
-              onTap: () => context.push('${AppRoutes.animalSelector}/farm'),
+              onTap: () => context.push('${AppRoutes.animals}/farm'),
             ),
 
             const Divider(height: 48),
