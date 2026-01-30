@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.ScannerAnimal.app"
+    namespace = "com.scanneranimal.app"
     compileSdk = 34
     ndkVersion = "27.0.12077973"
 
@@ -43,7 +43,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.ScannerAnimal.app"
+        applicationId "com.scannersnimal.app"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
