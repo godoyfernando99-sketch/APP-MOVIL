@@ -62,14 +62,14 @@ class AppRouter {
       GoRoute(path: AppRoutes.welcome, name: 'welcome', pageBuilder: (context, state) => const MaterialPage(child: WelcomePage())),
       GoRoute(path: AppRoutes.menu, name: 'menu', pageBuilder: (context, state) => const NoTransitionPage(child: MainMenuPage())),
       GoRoute(path: AppRoutes.animals, name: 'animals', pageBuilder: (context, state) => const MaterialPage(child: AnimalsPage())),
-      GoRoute(
-        path: '${AppRoutes.animal}/:id',
-        name: 'animal',
-        pageBuilder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return MaterialPage(child: AnimalDetailPage(animalId: id));
-        },
-      ),
+ GoRoute(
+  path: '${AppRoutes.animals}/:category', 
+  name: 'animals', 
+  pageBuilder: (context, state) {
+    final category = state.pathParameters['category']!; 
+    return MaterialPage(child: AnimalsPage(category: category)); 
+  }
+),
       GoRoute(
         path: '${AppRoutes.scanCapture}/:animalId/:mode',
         name: 'scanCapture',
