@@ -50,9 +50,10 @@ class _ScanResultPageState extends State<ScanResultPage> {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
 
+    // CASO 1: ERROR O SIN DATOS
     if (widget.payload is! ScanResult) {
       return FarmBackgroundScaffold(
-        title: 'Error',
+        title: 'ERROR',
         backgroundColor: Colors.transparent,
         child: Center(
           child: Container(
@@ -61,17 +62,19 @@ class _ScanResultPageState extends State<ScanResultPage> {
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.8),
               borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.white10),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
                 const SizedBox(height: 16),
-                const Text('Sin datos del escaneo', style: TextStyle(color: Colors.white, fontSize: 18)),
+                const Text('Sin datos del escaneo', 
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: () => context.go(AppRoutes.menu),
-                  child: const Text('Volver al Menú'),
+                  child: const Text('VOLVER AL MENÚ'),
                 ),
               ],
             ),
@@ -80,13 +83,51 @@ class _ScanResultPageState extends State<ScanResultPage> {
       );
     }
 
+    // CASO 2: RESULTADO EXITOSO
     final result = widget.payload as ScanResult;
     final animal = AnimalsCatalog.byId(result.animalId);
 
-    // Definición de colores premium para los estados
     final Color statusColor = result.healthStatus == 'buena' 
         ? Colors.greenAccent 
         : (result.healthStatus == 'regular' ? Colors.orangeAccent : Colors.redAccent);
 
     return FarmBackgroundScaffold(
-      title: 'Resultado
+      title: 'RESULTADO DEL EXAMEN',
+      backgroundColor: Colors.transparent,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.75),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 20)],
+              ),
+              child: Column(
+                children: [
+                  // Icono y Estado Principal
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.analytics_outlined, color: statusColor, size: 48),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'ANÁLISIS COMPLETADO',
+                    style: TextStyle(color: statusColor, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 12),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Información del Animal
+                  _buildResultRow('Especie:', animal.name, Icons.pets),
+                  _buildResultRow('Salud:', result.healthStatus.toUpperCase(), Icons.favorite, valueColor: statusColor),
+                  _buildResultRow('Fecha:', result.timestamp.toString().substring(0, 16), Icons.calendar_today),
+                  
+                  const
