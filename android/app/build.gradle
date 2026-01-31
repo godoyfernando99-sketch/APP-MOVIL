@@ -1,25 +1,13 @@
 plugins {
     id "com.android.application"
-    // START: FlutterFire Configuration
-  // Add the dependency for the Google services Gradle plugin
-   id "com.google.gms.google-services"
-    // END: FlutterFire Configuration
+    id "com.google.gms.google-services"
     id "kotlin-android"
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
-}
-
-
-
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file('key.properties')
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
 android {
     namespace = "com.scanneranimal.app"
-    compileSdk = 35
+    compileSdk = 36 // Correcto para las nuevas dependencias
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -28,34 +16,23 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11
-    }
-
-    // Configuración de firmas corregida
-    signingConfigs {
-        release {
-            // Usamos la firma de debug predeterminada para que funcione la construcción
-            storeFile file(System.getProperty('user.home') + '/.android/debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
+        jvmTarget = "11" // Simplificado para evitar errores de tipo
     }
 
     defaultConfig {
         applicationId "com.scanneranimal.app"
         minSdk = 21
-        targetSdk = 35
+        targetSdk = 36 // Sincronizado con compileSdk
         versionCode = 1
         versionName = "1.0"
         multiDexEnabled true
-
     }
 
     buildTypes {
         release {
-            // Aquí le decimos que use la configuración que definimos arriba
-            signingConfig signingConfigs.release
+            // En Codemagic, la firma se inyecta automáticamente. 
+            // Si no tienes configurado el Keystore en Codemagic, usará la de debug por defecto.
+            signingConfig signingConfigs.debug 
             minifyEnabled false
             shrinkResources false
         }
@@ -69,4 +46,6 @@ flutter {
 dependencies {
     implementation platform('com.google.firebase:firebase-bom:34.8.0')
     implementation 'com.google.firebase:firebase-analytics'
+    // Soporte para multidex necesario en SDKs antiguos con muchas librerías (Firebase)
+    implementation 'androidx.multidex:multidex:2.0.1' 
 }
