@@ -44,15 +44,14 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _forgotPassword() async {
     final emailCtrl = TextEditingController();
-    final result = await showDialog<String?>(
+    await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Restablecer Contraseña'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-                'Ingresa tu correo electrónico registrado para restablecer tu contraseña.'),
+            const Text('Ingresa tu correo electrónico registrado.'),
             const SizedBox(height: 16),
             TextFormField(
               controller: emailCtrl,
@@ -76,22 +75,6 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     );
-
-    if (result != null && result.isNotEmpty) {
-      final auth = context.read<AuthController>();
-      final err = await auth.resetPassword(email: result);
-      if (!mounted) return;
-      if (err != null) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(err)));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Se ha enviado un correo para restablecer tu contraseña.')),
-        );
-      }
-    }
   }
 
   @override
@@ -116,7 +99,10 @@ class _LoginPageState extends State<LoginPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Card(
-              color: Color(0xFF0D0D0D),
+              // Color sólido oscuro para que no se vea transparente
+              color: const Color(0xFF1A1A1A), 
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               child: Padding(
                 padding: AppSpacing.paddingLg,
                 child: Form(
@@ -126,51 +112,63 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const SizedBox(height: AppSpacing.md),
                       Image.asset(
-                        'assets/icons/logo_appp.png',
-                        height: 170,
-                        fit: BoxFit.cover,
-                        width: 170,
+                        'assets/icons/logos_app.png', // Corregido el nombre si era logo_app.png
+                        height: 150,
+                        width: 150,
                       ),
                       const SizedBox(height: AppSpacing.lg),
+                      
+                      // CAMPO USUARIO
                       TextFormField(
                         controller: _usernameCtrl,
+                        style: const TextStyle(color: Colors.white), // TEXTO BLANCO AL ESCRIBIR
                         decoration: InputDecoration(
                           labelText: strings('username'),
-                          prefixIcon: Icon(Icons.person_rounded,
-                              color: Color(0xFFFFFFFF)),
-                          focusedBorder: OutlineInputBorder(),
-                          fillColor: Color(0xFFFFFFFF),
+                          labelStyle: const TextStyle(color: Colors.white70),
+                          prefixIcon: const Icon(Icons.person_rounded, color: Colors.white),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.1), // Fondo sutil para el input
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: Colors.white, width: 2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Completa el usuario'
-                            : null,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Completa el usuario' : null,
                         textInputAction: TextInputAction.next,
-                        cursorColor: Color(0xFFFFFFFF),
+                        cursorColor: Colors.white,
                       ),
+                      
                       const SizedBox(height: AppSpacing.md),
+                      
+                      // CAMPO CONTRASEÑA
                       TextFormField(
                         controller: _passwordCtrl,
                         obscureText: _obscurePassword,
+                        style: const TextStyle(color: Colors.white), // TEXTO BLANCO AL ESCRIBIR
                         decoration: InputDecoration(
                           labelText: strings('password'),
-                          prefixIcon: Icon(Icons.lock_rounded,
-                              color: Color(0xFFFFFFFF)),
+                          labelStyle: const TextStyle(color: Colors.white70),
+                          prefixIcon: const Icon(Icons.lock_rounded, color: Colors.white),
                           suffixIcon: IconButton(
-                              icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_rounded
-                                      : Icons.visibility_off_rounded,
-                                  color: Color(0xFFFFFFFF)),
-                              onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword)),
-                          focusedBorder: InputBorder.none,
+                            icon: Icon(
+                                _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                                color: Colors.white),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.1),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: Colors.white, width: 2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        validator: (v) => (v == null || v.isEmpty)
-                            ? 'Completa la contraseña'
-                            : null,
+                        validator: (v) => (v == null || v.isEmpty) ? 'Completa la contraseña' : null,
                         onFieldSubmitted: (_) => _submit(),
-                        cursorColor: Color(0xFFFFFFFF),
+                        cursorColor: Colors.white,
                       ),
+                      
                       const SizedBox(height: 8),
                       Align(
                         alignment: Alignment.centerRight,
@@ -183,29 +181,28 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.md),
+                      
+                      // BOTÓN LOGIN
                       SizedBox(
                         width: double.infinity,
+                        height: 50,
                         child: FilledButton.icon(
                           onPressed: auth.isLoading ? null : _submit,
-                          icon: Icon(Icons.login_rounded,
-                              color: t.colorScheme.onPrimary),
-                          label: Text(
-                            strings('login'),
-                            style: TextStyle(color: t.colorScheme.onPrimary),
-                          ),
+                          icon: const Icon(Icons.login_rounded),
+                          label: Text(strings('login').toUpperCase(), 
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
+                      
                       const SizedBox(height: AppSpacing.md),
+                      
+                      // BOTÓN REGISTRO
                       SizedBox(
                         width: double.infinity,
-                        child: OutlinedButton.icon(
+                        child: OutlinedButton(
                           onPressed: () => context.push(AppRoutes.register),
-                          icon: Icon(Icons.person_add_alt_rounded,
-                              color: t.colorScheme.primary),
-                          label: Text(
-                            strings('register'),
-                            style: TextStyle(color: t.colorScheme.primary),
-                          ),
+                          style: OutlinedButton.styleFrom(side: BorderSide(color: t.colorScheme.primary)),
+                          child: Text(strings('register')),
                         ),
                       ),
                     ],
@@ -229,28 +226,23 @@ class _LanguagePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: cs.outline.withValues(alpha: 0.18)),
+        color: cs.surface.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: current,
           icon: Icon(Icons.translate_rounded, color: cs.onSurface),
           items: AppStrings.supportedLocales
-              .map(
-                (l) => DropdownMenuItem(
-                  value: l.languageCode,
-                  child: Text(AppStrings.languageLabel(l.languageCode)),
-                ),
-              )
+              .map((l) => DropdownMenuItem(
+                    value: l.languageCode,
+                    child: Text(AppStrings.languageLabel(l.languageCode)),
+                  ))
               .toList(),
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
+          onChanged: (v) { if (v != null) onChanged(v); },
         ),
       ),
     );
