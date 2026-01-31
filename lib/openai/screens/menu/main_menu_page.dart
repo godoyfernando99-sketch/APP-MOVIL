@@ -13,7 +13,6 @@ class MainMenuPage extends StatelessWidget {
 
     return FarmBackgroundScaffold(
       title: 'ScannerAnimal IA',
-      // Botón de perfil en la parte superior
       actions: [
         IconButton(
           onPressed: () => context.push(AppRoutes.profile),
@@ -28,14 +27,12 @@ class MainMenuPage extends StatelessWidget {
             _buildWelcomeHeader(t),
             const SizedBox(height: 24),
             
-            // SECCIÓN: SELECCIÓN DE CATEGORÍA
             Text(
               '¿Qué vamos a analizar hoy?',
               style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
-            // BOTÓN: ANIMALES DE CASA
             _CategoryButton(
               title: 'Animales de Casa',
               subtitle: 'Perros, gatos, conejos...',
@@ -46,7 +43,6 @@ class MainMenuPage extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // BOTÓN: ANIMALES DE GRANJA
             _CategoryButton(
               title: 'Animales de Granja',
               subtitle: 'Vacas, cerdos, caballos...',
@@ -57,7 +53,43 @@ class MainMenuPage extends StatelessWidget {
 
             const Divider(height: 48),
 
-            // SECCIÓN: ACCESOS RÁPIDOS
+            // NUEVA SECCIÓN: BIBLIOTECA VETERINARIA
+            Text(
+              'Biblioteca Veterinaria',
+              style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: _QuickActionCard(
+                    title: 'Enfermedades',
+                    icon: Icons.Sick_rounded,
+                    color: Colors.red.shade700,
+                    onTap: () => context.push(AppRoutes.diseases),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _QuickActionCard(
+                    title: 'Medicamentos',
+                    icon: Icons.medication_rounded,
+                    color: Colors.purple.shade700,
+                    onTap: () => context.push(AppRoutes.medications),
+                  ),
+                ),
+              ],
+            ),
+
+            const Divider(height: 48),
+
+            Text(
+              'Mi Actividad',
+              style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
             Row(
               children: [
                 Expanded(
@@ -96,7 +128,7 @@ class MainMenuPage extends StatelessWidget {
   }
 }
 
-// COMPONENTE: BOTÓN DE CATEGORÍA (ICONOS BLANCOS)
+// COMPONENTE: BOTÓN DE CATEGORÍA
 class _CategoryButton extends StatelessWidget {
   const _CategoryButton({
     required this.title,
@@ -128,7 +160,6 @@ class _CategoryButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Icono forzado a blanco
             Icon(icon, size: 40, color: Colors.white),
             const SizedBox(width: 20),
             Expanded(
@@ -148,7 +179,7 @@ class _CategoryButton extends StatelessWidget {
   }
 }
 
-// COMPONENTE: TARJETAS PEQUEÑAS
+// COMPONENTE: TARJETAS PEQUEÑAS (REUTILIZADO PARA ENFERMEDADES Y MEDICINAS)
 class _QuickActionCard extends StatelessWidget {
   const _QuickActionCard({required this.title, required this.icon, required this.color, required this.onTap});
   
@@ -162,7 +193,10 @@ class _QuickActionCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: color.withOpacity(0.1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: color.withOpacity(0.2))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12), 
+        side: BorderSide(color: color.withOpacity(0.2))
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -170,7 +204,7 @@ class _QuickActionCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Column(
             children: [
-              Icon(icon, color: color),
+              Icon(icon, color: color, size: 28),
               const SizedBox(height: 8),
               Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
             ],
