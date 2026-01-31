@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http; // Asegúrate de tener 'http' en pubspec.yaml
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 import 'package:scanneranimal/openai/openai_config.dart';
 
