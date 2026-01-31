@@ -39,79 +39,71 @@ class ScanResult {
   final int? pregnancyWeeks;
   final String? foodRecommendation;
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'ownerId': ownerId,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-    'animalId': animalId,
-    'animalCategory': animalCategory,
-    'mode': mode,
-    'microchipNumber': microchipNumber,
-    'photosBase64': photosBase64,
-    'healthStatus': healthStatus,
-    'diseaseName': diseaseName,
-    'fractureDescription': fractureDescription,
-    'medicationName': medicationName,
-    'medicationDose': medicationDose,
-    'isPregnant': isPregnant,
-    'pregnancyWeeks': pregnancyWeeks,
-    'foodRecommendation': foodRecommendation,
-  };
+  // Cambiado de toJson a toMap para consistencia con el Controller
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'ownerId': ownerId,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'animalId': animalId,
+        'animalCategory': animalCategory,
+        'mode': mode,
+        'microchipNumber': microchipNumber,
+        'photosBase64': photosBase64,
+        'healthStatus': healthStatus,
+        'diseaseName': diseaseName,
+        'fractureDescription': fractureDescription,
+        'medicationName': medicationName,
+        'medicationDose': medicationDose,
+        'isPregnant': isPregnant,
+        'pregnancyWeeks': pregnancyWeeks,
+        'foodRecommendation': foodRecommendation,
+      };
 
-  Map<String, dynamic> toFirestoreJson() => {
-    'id': id,
-    'ownerId': ownerId,
-    'createdAt': Timestamp.fromDate(createdAt),
-    'updatedAt': Timestamp.fromDate(updatedAt),
-    'animalId': animalId,
-    'animalCategory': animalCategory,
-    'mode': mode,
-    'microchipNumber': microchipNumber,
-    'photosBase64': photosBase64,
-    'healthStatus': healthStatus,
-    'diseaseName': diseaseName,
-    'fractureDescription': fractureDescription,
-    'medicationName': medicationName,
-    'medicationDose': medicationDose,
-    'isPregnant': isPregnant,
-    'pregnancyWeeks': pregnancyWeeks,
-    'foodRecommendation': foodRecommendation,
-  };
+  // Método específico para Firestore que maneja los Timestamps nativos
+  Map<String, dynamic> toFirestoreMap() {
+    final map = toMap();
+    map['createdAt'] = Timestamp.fromDate(createdAt);
+    map['updatedAt'] = Timestamp.fromDate(updatedAt);
+    return map;
+  }
 
-  static ScanResult fromJson(Map<String, dynamic> json) {
-    // Manejo seguro de la lista de fotos
-    final photos = (json['photosBase64'] is List) 
-        ? List<String>.from(json['photosBase64']) 
+  // Cambiado de fromJson a fromMap
+  static ScanResult fromMap(Map<String, dynamic> map) {
+    final photos = (map['photosBase64'] is List)
+        ? List<String>.from(map['photosBase64'])
         : <String>[];
-    
-    // Función interna para parsear fechas de Firestore o String
+
     DateTime parseDate(dynamic raw) {
       if (raw is Timestamp) return raw.toDate();
       if (raw is String) return DateTime.tryParse(raw) ?? DateTime.now();
       return DateTime.now();
     }
-    
+
     return ScanResult(
-      id: json['id']?.toString() ?? '',
-      ownerId: json['ownerId']?.toString() ?? '',
-      createdAt: parseDate(json['createdAt']),
-      updatedAt: parseDate(json['updatedAt']),
-      animalId: json['animalId']?.toString() ?? '',
-      animalCategory: json['animalCategory']?.toString() ?? '',
-      mode: json['mode']?.toString() ?? 'nochip',
-      microchipNumber: json['microchipNumber']?.toString(),
+      id: map['id']?.toString() ?? '',
+      ownerId: map['ownerId']?.toString() ?? '',
+      createdAt: parseDate(map['createdAt']),
+      updatedAt: parseDate(map['updatedAt']),
+      animalId: map['animalId']?.toString() ?? '',
+      animalCategory: map['animalCategory']?.toString() ?? '',
+      mode: map['mode']?.toString() ?? 'nochip',
+      microchipNumber: map['microchipNumber']?.toString(),
       photosBase64: photos,
-      healthStatus: json['healthStatus']?.toString() ?? 'desconocida',
-      diseaseName: json['diseaseName']?.toString(),
-      fractureDescription: json['fractureDescription']?.toString(),
-      medicationName: json['medicationName']?.toString(),
-      medicationDose: json['medicationDose']?.toString(),
-      isPregnant: json['isPregnant'] as bool?,
-      pregnancyWeeks: (json['pregnancyWeeks'] as num?)?.toInt(),
-      foodRecommendation: json['foodRecommendation']?.toString(),
+      healthStatus: map['healthStatus']?.toString() ?? 'desconocida',
+      diseaseName: map['diseaseName']?.toString(),
+      fractureDescription: map['fractureDescription']?.toString(),
+      medicationName: map['medicationName']?.toString(),
+      medicationDose: map['medicationDose']?.toString(),
+      isPregnant: map['isPregnant'] as bool?,
+      pregnancyWeeks: (map['pregnancyWeeks'] as num?)?.toInt(),
+      foodRecommendation: map['foodRecommendation']?.toString(),
     );
   }
+
+  // Mantenemos los alias para evitar errores si otras partes del código los usan
+  Map<String, dynamic> toJson() => toMap();
+  static ScanResult fromJson(Map<String, dynamic> json) => fromMap(json);
 
   ScanResult copyWith({
     String? id,
