@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:scanneranimal/app/auth/auth_controller.dart';
-import 'package:scanneranimal/data/medications.dart';
+import 'package:scanneranimal/data/medications.dart'; // Asegúrate de que la ruta sea correcta
 import 'package:scanneranimal/l10n/app_strings.dart';
 import 'package:scanneranimal/nav.dart';
 import 'package:scanneranimal/theme.dart';
@@ -19,6 +19,7 @@ class MedicationsPage extends StatelessWidget {
     final auth = context.watch<AuthController>();
     final isPro = auth.currentUser?.isPro ?? false;
 
+    // --- VISTA PARA USUARIOS NO PRO ---
     if (!isPro) {
       return FarmBackgroundScaffold(
         title: strings('medications'),
@@ -26,6 +27,7 @@ class MedicationsPage extends StatelessWidget {
           child: Padding(
             padding: AppSpacing.paddingLg,
             child: Card(
+              color: const Color(0xFF1A1A1A),
               child: Padding(
                 padding: AppSpacing.paddingXl,
                 child: Column(
@@ -33,22 +35,22 @@ class MedicationsPage extends StatelessWidget {
                   children: [
                     Icon(Icons.lock_rounded, size: 64, color: t.colorScheme.primary),
                     const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Contenido Exclusivo PRO',
-                      style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                    const Text(
+                      'Catálogo Farmacéutico PRO',
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'La lista completa de medicamentos está disponible solo para usuarios del Plan PRO.',
-                      style: t.textTheme.bodyLarge,
+                    const Text(
+                      'La guía completa de medicamentos está reservada para usuarios PRO.',
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     FilledButton.icon(
                       onPressed: () => context.push(AppRoutes.subscriptions),
-                      icon: Icon(Icons.star_rounded, color: t.colorScheme.onPrimary),
-                      label: Text('Ver Planes', style: TextStyle(color: t.colorScheme.onPrimary)),
+                      icon: const Icon(Icons.star_rounded),
+                      label: const Text('Ver Planes'),
                     ),
                   ],
                 ),
@@ -59,6 +61,7 @@ class MedicationsPage extends StatelessWidget {
       );
     }
 
+    // --- VISTA PRINCIPAL DEL CATÁLOGO ---
     return FarmBackgroundScaffold(
       title: strings('medications'),
       child: ListView.separated(
@@ -68,45 +71,46 @@ class MedicationsPage extends StatelessWidget {
         itemBuilder: (context, i) {
           final m = MedicationsCatalog.medications[i];
           return Card(
+            color: const Color(0xFF121212),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
             child: InkWell(
               onTap: () => _showMedicationDetail(context, m),
-              borderRadius: BorderRadius.circular(AppRadius.md),
+              borderRadius: BorderRadius.circular(16),
               child: Padding(
-                padding: AppSpacing.paddingMd,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                 child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                      child: Image.asset(
-                        m.imagePath,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 80,
-                          height: 80,
-                          color: t.colorScheme.surfaceContainerHighest,
-                          child: Icon(Icons.medication_rounded, color: t.colorScheme.onSurfaceVariant),
-                        ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: const Icon(Icons.medication_rounded, color: Colors.purpleAccent, size: 30),
                     ),
-                    const SizedBox(width: AppSpacing.md),
+                    const SizedBox(width: 20),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(m.name, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                          Text(
+                            m.name,
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             m.forWhat,
-                            style: t.textTheme.bodySmall,
-                            maxLines: 2,
+                            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: t.colorScheme.onSurfaceVariant),
+                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 16),
                   ],
                 ),
               ),
@@ -117,57 +121,50 @@ class MedicationsPage extends StatelessWidget {
     );
   }
 
-  void _showMedicationDetail(BuildContext context, Medication medication) {
-    final t = Theme.of(context);
+  // --- VENTANA EMERGENTE (POP-UP) DETALLADA ---
+  void _showMedicationDetail(BuildContext context, Medication med) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: SingleChildScrollView(
           child: Padding(
-            padding: AppSpacing.paddingLg,
+            padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: Image.asset(
-                    medication.imagePath,
-                    width: double.infinity,
-                    height: 200,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: double.infinity,
-                      height: 200,
-                      color: t.colorScheme.surfaceContainerHighest,
-                      child: Icon(Icons.medication_rounded, size: 64, color: t.colorScheme.onSurfaceVariant),
-                    ),
-                  ),
+                Text(
+                  med.name,
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                Text(medication.name, style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
-                const SizedBox(height: AppSpacing.md),
-                Text('Indicaciones', style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: t.colorScheme.primary)),
-                const SizedBox(height: 4),
-                Text(medication.forWhat, style: t.textTheme.bodyMedium),
-                const SizedBox(height: AppSpacing.md),
-                Text('Principio Activo', style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: t.colorScheme.primary)),
-                const SizedBox(height: 4),
-                Text(medication.activeIngredient, style: t.textTheme.bodyMedium),
-                const SizedBox(height: AppSpacing.md),
-                Text('Dosificación', style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: t.colorScheme.primary)),
-                const SizedBox(height: 4),
-                Text(medication.doseHint, style: t.textTheme.bodyMedium),
-                const SizedBox(height: AppSpacing.md),
-                Text('Efectos Secundarios', style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: t.colorScheme.primary)),
-                const SizedBox(height: 4),
-                Text(medication.sideEffects, style: t.textTheme.bodyMedium),
-                const SizedBox(height: AppSpacing.lg),
+                const Divider(color: Colors.white12, height: 32),
+                
+                _buildDetailSection('¿Para qué sirve?', med.forWhat, Colors.purpleAccent),
+                const SizedBox(height: 20),
+                
+                _buildDetailSection('Principio Activo', med.activeIngredient, Colors.blueAccent),
+                const SizedBox(height: 20),
+                
+                _buildDetailSection('Dosis / Administración', med.doseHint, Colors.orangeAccent),
+                const SizedBox(height: 20),
+                
+                _buildDetailSection('Efectos Secundarios', med.sideEffects, Colors.redAccent),
+                
+                const SizedBox(height: 32),
+                
                 SizedBox(
                   width: double.infinity,
+                  height: 50,
                   child: FilledButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text('Cerrar', style: TextStyle(color: t.colorScheme.onPrimary)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -175,6 +172,29 @@ class MedicationsPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDetailSection(String title, String content, Color accentColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(width: 4, height: 16, color: accentColor),
+            const SizedBox(width: 8),
+            Text(
+              title.toUpperCase(),
+              style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.5),
+        ),
+      ],
     );
   }
 }
