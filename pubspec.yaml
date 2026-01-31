@@ -60,7 +60,9 @@ flutter:
     - assets/icons/
 
 flutter_launcher_icons:
-  android: true
+  android: "logo_app" # Esto genera el archivo con el nombre que pusiste en el Manifest
   ios: true
-  image_path: assets/icons/logo_app.png
+  image_path: "assets/icons/logo_app.png"
   remove_alpha_ios: true
+  adaptive_icon_background: "#121212" # Recomendado: evita bordes blancos en Android
+  adaptive_icon_foreground: "assets/icons/logo_app.png"
