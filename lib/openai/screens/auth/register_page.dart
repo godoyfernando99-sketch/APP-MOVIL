@@ -1,12 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart'; // Asegúrate de agregar esta dependencia
 
 import 'package:scanneranimal/app/auth/auth_controller.dart';
 import 'package:scanneranimal/nav.dart';
-import 'package:scanneranimal/theme.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
+
+// --- TEXTOS LEGALES PARA EVITAR RECHAZOS ---
+class LegalTexts {
+  static const String privacyPolicy = '''
+POLÍTICA DE PRIVACIDAD - SCANNERANIMAL
+Versión 1.0 (2026)
+
+1. RECOLECCIÓN DE DATOS: Recopilamos su nombre, correo y fecha de nacimiento únicamente para gestionar su perfil de usuario.
+2. USO DE LA CÁMARA: Esta App requiere acceso a la cámara exclusivamente para el escaneo e identificación de animales. Las imágenes se procesan en tiempo real para análisis de salud y no se almacenan ni comparten sin su permiso explícito.
+3. SEGURIDAD: Sus datos están cifrados. Usted puede solicitar la eliminación de su cuenta en cualquier momento.
+4. NO CEDEMOS DATOS: No vendemos su información a terceros para fines publicitarios.
+''';
+
+  static const String termsConditions = '''
+TÉRMINOS Y CONDICIONES
+1. SERVICIO: ScannerAnimal es una herramienta de apoyo basada en IA. 
+2. EXONERACIÓN: Los resultados de salud son referenciales y NO sustituyen la consulta con un veterinario certificado.
+3. RESPONSABILIDAD: El usuario es responsable de la veracidad de los datos registrados.
+4. PROPIEDAD: El software y los algoritmos son propiedad de ScannerAnimal.
+''';
+}
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -25,7 +44,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordCtrl = TextEditingController();
 
   DateTime? _birthDate;
-  bool _acceptTerms = false; // Estado para el checkbox legal
+  bool _acceptTerms = false;
 
   @override
   void dispose() {
@@ -37,16 +56,30 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  // Función para abrir los documentos legales
-  Future<void> _openLegalUrl(String urlString) async {
-    final Uri url = Uri.parse(urlString);
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir el enlace.')),
-        );
-      }
-    }
+  // --- FUNCIÓN PARA MOSTRAR DIÁLOGO EMERGENTE SIN SALIR DE LA APP ---
+  void _showLegalDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Colors.white10),
+        ),
+        title: Text(title, 
+          style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 18)),
+        content: SingleChildScrollView(
+          child: Text(content, 
+            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ENTENDIDO', style: TextStyle(color: Colors.blueAccent)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickBirthDate() async {
@@ -84,7 +117,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (!_acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Debes aceptar los términos y condiciones.')));
+          const SnackBar(content: Text('Debes aceptar los términos y la política de privacidad.')));
       return;
     }
 
@@ -183,29 +216,29 @@ class _RegisterPageState extends State<RegisterPage> {
                     _buildField(_passwordCtrl, 'Contraseña', Icons.lock_outline, obscure: true),
                     const SizedBox(height: 20),
 
-                    // SECCIÓN LEGAL (TÉRMINOS Y PRIVACIDAD)
+                    // --- SECCIÓN LEGAL CORREGIDA CON DIÁLOGOS ---
                     Row(
                       children: [
                         Checkbox(
                           value: _acceptTerms,
                           onChanged: (v) => setState(() => _acceptTerms = v ?? false),
                           activeColor: Colors.blueAccent,
-                          side: const BorderSide(color: Colors.white38),
+                          side: const BorderSide(color: Colors.white38, width: 2),
                         ),
                         Expanded(
                           child: Wrap(
                             children: [
                               const Text('Acepto los ', style: TextStyle(color: Colors.white70, fontSize: 12)),
                               GestureDetector(
-                                onTap: () => _openLegalUrl('https://tuweb.com/terminos'),
+                                onTap: () => _showLegalDialog('Términos y Condiciones', LegalTexts.termsConditions),
                                 child: const Text('Términos y Condiciones', 
-                                  style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
                               ),
                               const Text(' y la ', style: TextStyle(color: Colors.white70, fontSize: 12)),
                               GestureDetector(
-                                onTap: () => _openLegalUrl('https://tuweb.com/privacidad'),
+                                onTap: () => _showLegalDialog('Política de Privacidad', LegalTexts.privacyPolicy),
                                 child: const Text('Política de Privacidad', 
-                                  style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
                               ),
                             ],
                           ),
