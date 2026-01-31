@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart'; // Asegúrate de agregar esta dependencia
 
 import 'package:scanneranimal/app/auth/auth_controller.dart';
 import 'package:scanneranimal/nav.dart';
@@ -24,6 +25,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordCtrl = TextEditingController();
 
   DateTime? _birthDate;
+  bool _acceptTerms = false; // Estado para el checkbox legal
 
   @override
   void dispose() {
@@ -35,6 +37,18 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
+  // Función para abrir los documentos legales
+  Future<void> _openLegalUrl(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el enlace.')),
+        );
+      }
+    }
+  }
+
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
     final selected = await showDatePicker(
@@ -42,7 +56,6 @@ class _RegisterPageState extends State<RegisterPage> {
       firstDate: DateTime(1900),
       lastDate: now,
       initialDate: _birthDate ?? DateTime(now.year - 18),
-      // Estilo oscuro para el DatePicker
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -62,11 +75,19 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    
     if (_birthDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Selecciona fecha de nacimiento.')));
       return;
     }
+
+    if (!_acceptTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debes aceptar los términos y condiciones.')));
+      return;
+    }
+
     final auth = context.read<AuthController>();
     final err = await auth.register(
       username: _usernameCtrl.text.trim(),
@@ -106,7 +127,7 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7), // Efecto cristal
+                color: Colors.black.withOpacity(0.7),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
                 boxShadow: [
@@ -123,7 +144,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     const Text('REGISTRO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 2)),
                     const SizedBox(height: 24),
                     
-                    // NOMBRES Y APELLIDOS EN FILA (Si hay espacio)
                     Row(
                       children: [
                         Expanded(child: _buildField(_firstNameCtrl, 'Nombre', Icons.person_outline)),
@@ -139,7 +159,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     _buildField(_usernameCtrl, 'Usuario', Icons.account_circle_outlined),
                     const SizedBox(height: 16),
 
-                    // BOTÓN DE FECHA ESTILIZADO COMO INPUT
                     InkWell(
                       onTap: _pickBirthDate,
                       borderRadius: BorderRadius.circular(16),
@@ -162,9 +181,89 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 16),
                     
                     _buildField(_passwordCtrl, 'Contraseña', Icons.lock_outline, obscure: true),
+                    const SizedBox(height: 20),
+
+                    // SECCIÓN LEGAL (TÉRMINOS Y PRIVACIDAD)
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _acceptTerms,
+                          onChanged: (v) => setState(() => _acceptTerms = v ?? false),
+                          activeColor: Colors.blueAccent,
+                          side: const BorderSide(color: Colors.white38),
+                        ),
+                        Expanded(
+                          child: Wrap(
+                            children: [
+                              const Text('Acepto los ', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                              GestureDetector(
+                                onTap: () => _openLegalUrl('https://tuweb.com/terminos'),
+                                child: const Text('Términos y Condiciones', 
+                                  style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                              ),
+                              const Text(' y la ', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                              GestureDetector(
+                                onTap: () => _openLegalUrl('https://tuweb.com/privacidad'),
+                                child: const Text('Política de Privacidad', 
+                                  style: TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 24),
 
                     SizedBox(
                       width: double.infinity,
                       height: 56,
-                      child
+                      child: FilledButton(
+                        onPressed: auth.isLoading ? null : _submit,
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: auth.isLoading 
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('REGISTRARSE', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    TextButton(
+                        onPressed: () => context.go(AppRoutes.login),
+                        child: const Text('¿Ya tienes cuenta? Inicia sesión', style: TextStyle(color: Colors.white70))),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildField(TextEditingController ctrl, String label, IconData icon, {bool obscure = false, TextInputType? type}) {
+    return TextFormField(
+      controller: ctrl,
+      obscureText: obscure,
+      keyboardType: type,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+        prefixIcon: Icon(icon, color: Colors.white38, size: 20),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.blueAccent),
+        ),
+      ),
+      validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+    );
+  }
+}
