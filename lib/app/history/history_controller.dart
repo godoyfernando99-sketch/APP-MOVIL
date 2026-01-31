@@ -10,7 +10,7 @@ class HistoryController extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final LocalDb _localDb = LocalDb();
 
-  List<ScanResult> _items = const [];
+  List<ScanResult> _items = []; // Eliminado 'const' para permitir actualizaciones
   List<ScanResult> get items => _items;
 
   bool _isLoading = false;
@@ -20,24 +20,19 @@ class HistoryController extends ChangeNotifier {
 
   Future<void> init() async {
     try {
-      // Escuchar cambios de autenticación
       _auth.authStateChanges().listen((user) {
         if (user == null) {
-          // Usuario cerró sesión - limpiar historial local
           debugPrint('[HistoryController] Usuario cerró sesión, limpiando historial local...');
           _clearLocalOnLogout();
         } else if (_currentUserId != user.uid) {
-          // Usuario cambió o inició sesión - recargar historial
           debugPrint('[HistoryController] Nuevo usuario detectado: ${user.uid}');
           _currentUserId = user.uid;
           refresh();
         }
       });
-      
       await refresh();
     } catch (e) {
       debugPrint('[HistoryController] init() failed: $e');
-      // No bloquear la app si falla la inicialización del historial
     }
   }
   
@@ -47,7 +42,6 @@ class HistoryController extends ChangeNotifier {
       _items = [];
       _currentUserId = null;
       notifyListeners();
-      debugPrint('[HistoryController] ✓ Historial limpiado tras cerrar sesión');
     } catch (e) {
       debugPrint('[HistoryController] Error limpiando historial: $e');
     }
@@ -59,15 +53,9 @@ class HistoryController extends ChangeNotifier {
       notifyListeners();
 
       final user = _auth.currentUser;
-      
       if (user != null) {
-        // Si hay usuario autenticado, cargar SIEMPRE desde Firebase primero
-        debugPrint('[HistoryController] Usuario autenticado: ${user.uid}');
-        debugPrint('[HistoryController] Cargando historial desde Firebase...');
         await _loadFromFirebase();
       } else {
-        // Si no hay usuario, cargar desde almacenamiento local
-        debugPrint('[HistoryController] Sin usuario autenticado, cargando desde local storage...');
         await _loadFromLocalStorage();
       }
     } catch (e) {
@@ -81,12 +69,9 @@ class HistoryController extends ChangeNotifier {
   Future<void> _loadFromFirebase() async {
     try {
       final user = _auth.currentUser;
-      if (user == null) {
-        debugPrint('[HistoryController] No hay usuario autenticado');
-        return;
-      }
+      if (user == null) return;
 
-      debugPrint('[HistoryController] Consultando Firebase para usuario: ${user.uid}');
+      // Consultar Firebase
       final query = await _firestore
           .collection('scanResults')
           .where('ownerId', isEqualTo: user.uid)
@@ -94,16 +79,13 @@ class HistoryController extends ChangeNotifier {
           .limit(100)
           .get();
 
-      debugPrint('[HistoryController] Firebase retornó ${query.docs.length} documentos');
-      
-      // Cargar local storage para obtener las imágenes
+      // Mapear imágenes locales para recombinarlas
       final localHistory = await _localDb.getHistory();
       final localMap = <String, Map<String, dynamic>>{};
       for (final json in localHistory) {
         final id = json['id']?.toString();
         if (id != null) localMap[id] = json;
       }
-      debugPrint('[HistoryController] Local storage tiene ${localMap.length} items con imágenes');
       
       final firebaseItems = <ScanResult>[];
       for (final doc in query.docs) {
@@ -111,28 +93,25 @@ class HistoryController extends ChangeNotifier {
           final data = doc.data();
           data['id'] = doc.id;
           
-          // Combinar metadatos de Firebase con imágenes de local storage
+          // Recombinar con imágenes locales si existen
           final localData = localMap[doc.id];
-          if (localData != null && localData['photosBase64'] is List) {
+          if (localData != null && localData['photosBase64'] != null) {
             data['photosBase64'] = localData['photosBase64'];
           }
           
-          firebaseItems.add(ScanResult.fromJson(data));
+          firebaseItems.add(ScanResult.fromMap(data)); // Usamos fromMap
         } catch (e) {
-          debugPrint('Failed to parse Firebase scan result: $e');
+          debugPrint('Error parseando escaneo de Firebase: $e');
         }
       }
 
-      debugPrint('[HistoryController] Parseados exitosamente ${firebaseItems.length} escaneos desde Firebase');
       _items = firebaseItems;
       notifyListeners();
 
-      // Guardar combinación en local storage (metadatos + imágenes)
-      await _localDb.setHistory(_items.map((e) => e.toJson()).toList());
-      debugPrint('[HistoryController] ✓ Historial sincronizado con local storage');
+      // Sincronizar localmente
+      await _localDb.setHistory(_items.map((e) => e.toMap()).toList());
     } catch (e) {
-      debugPrint('[HistoryController] Error cargando desde Firebase: $e');
-      // Si falla Firebase, intentar cargar desde local storage como respaldo
+      debugPrint('[HistoryController] Error Firebase: $e');
       await _loadFromLocalStorage();
     }
   }
@@ -140,25 +119,20 @@ class HistoryController extends ChangeNotifier {
   Future<void> _loadFromLocalStorage() async {
     try {
       final localHistory = await _localDb.getHistory();
-      debugPrint('[HistoryController] Found ${localHistory.length} items in local storage');
-      
       final parsed = <ScanResult>[];
       for (final json in localHistory) {
         try {
-          parsed.add(ScanResult.fromJson(json));
+          parsed.add(ScanResult.fromMap(json));
         } catch (e) {
-          debugPrint('Failed to parse local scan result: $e');
+          debugPrint('Error parseando local: $e');
         }
       }
 
       parsed.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       _items = parsed;
       notifyListeners();
-      debugPrint('[HistoryController] Successfully loaded ${parsed.length} scan results from local');
     } catch (e) {
-      debugPrint('[HistoryController] Error loading from local storage: $e');
-      _items = [];
-      notifyListeners();
+      debugPrint('[HistoryController] Error local storage: $e');
     }
   }
 
@@ -167,33 +141,27 @@ class HistoryController extends ChangeNotifier {
       final user = _auth.currentUser;
       final now = DateTime.now();
       
-      debugPrint('[HistoryController] Adding new scan result to history...');
-      
       final itemWithOwner = item.copyWith(
         ownerId: user?.uid ?? 'local',
-        createdAt: now,
-        updatedAt: now,
+        createdAt: item.createdAt, // Mantener la fecha original si ya existe
       );
 
-      // Guardar en almacenamiento local SIEMPRE
+      // 1. Guardar en local storage (CON imágenes)
       final currentHistory = await _localDb.getHistory();
-      debugPrint('[HistoryController] Current history has ${currentHistory.length} items');
-      
-      final updatedHistory = [itemWithOwner.toJson(), ...currentHistory];
+      final updatedHistory = [itemWithOwner.toMap(), ...currentHistory];
       await _localDb.setHistory(updatedHistory);
       
-      debugPrint('[HistoryController] ✓ Scan result saved to local storage (total: ${updatedHistory.length})');
-
-      // Intentar guardar en Firebase (sin bloquear si falla)
+      // 2. Intentar guardar en Firebase (SIN imágenes para ahorrar espacio)
       if (user != null) {
         _saveToFirebase(itemWithOwner).catchError((e) {
           debugPrint('Firebase save failed (non-critical): $e');
         });
       }
 
-      // Actualizar UI inmediatamente con datos locales
-      debugPrint('[HistoryController] Refreshing UI with updated history...');
-      await refresh();
+      // 3. Actualizar lista en memoria y notificar UI
+      _items = [itemWithOwner, ..._items];
+      notifyListeners();
+      
     } catch (e) {
       debugPrint('[HistoryController] add() failed: $e');
       rethrow;
@@ -202,26 +170,16 @@ class HistoryController extends ChangeNotifier {
 
   Future<void> _saveToFirebase(ScanResult item) async {
     try {
-      // Guardar SIN imágenes en Firebase (solo metadatos) para evitar límite de 1MB
-      // Las imágenes se mantienen en local storage
-      final itemWithoutPhotos = item.copyWith(photosBase64: []);
-      await _firestore.collection('scanResults').doc(item.id).set(itemWithoutPhotos.toFirestoreJson());
-      debugPrint('[HistoryController] ✓ Escaneo guardado en Firebase con ID: ${item.id} (sin imágenes)');
+      // Usamos el método toMap() que ya configuramos en scan_models.dart
+      // Eliminamos las fotos para no exceder el límite de documento de Firestore (1MB)
+      final mapData = item.toMap();
+      mapData.remove('photosBase64'); 
+      
+      await _firestore.collection('scanResults').doc(item.id).set(mapData);
+      debugPrint('[HistoryController] ✓ Guardado en Firebase exitoso');
     } catch (e) {
       debugPrint('[HistoryController] Error guardando en Firebase: $e');
       rethrow;
-    }
-  }
-
-  /// Limpiar historial local (útil al cerrar sesión)
-  Future<void> clearLocalHistory() async {
-    try {
-      await _localDb.setHistory([]);
-      _items = [];
-      notifyListeners();
-      debugPrint('[HistoryController] ✓ Historial local limpiado');
-    } catch (e) {
-      debugPrint('[HistoryController] Error limpiando historial local: $e');
     }
   }
 }
