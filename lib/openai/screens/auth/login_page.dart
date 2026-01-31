@@ -47,17 +47,24 @@ class _LoginPageState extends State<LoginPage> {
     await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Restablecer Contraseña'),
+        backgroundColor: const Color(0xFF121212),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28), side: const BorderSide(color: Colors.white10)),
+        title: const Text('Restablecer Contraseña', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Ingresa tu correo electrónico registrado.'),
-            const SizedBox(height: 16),
+            const Text('Ingresa tu correo electrónico registrado.', style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 20),
             TextFormField(
               controller: emailCtrl,
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
                 labelText: 'Correo electrónico',
-                prefixIcon: Icon(Icons.email_rounded),
+                labelStyle: const TextStyle(color: Colors.white38),
+                prefixIcon: const Icon(Icons.email_rounded, color: Colors.white54),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.05),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -66,11 +73,11 @@ class _LoginPageState extends State<LoginPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.white38)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, emailCtrl.text.trim()),
-            child: const Text('Enviar'),
+            child: const Text('ENVIAR'),
           ),
         ],
       ),
@@ -88,6 +95,7 @@ class _LoginPageState extends State<LoginPage> {
       title: 'Scanner Animal',
       showBack: false,
       showHome: false,
+      backgroundColor: Colors.transparent, // Transparencia base
       actions: [
         _LanguagePicker(
             current: settings.locale.languageCode,
@@ -98,115 +106,127 @@ class _LoginPageState extends State<LoginPage> {
           padding: AppSpacing.paddingLg,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: Card(
-              // Color sólido oscuro para que no se vea transparente
-              color: const Color(0xFF1A1A1A), 
-              elevation: 8,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
-                padding: AppSpacing.paddingLg,
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(height: AppSpacing.md),
-                      Image.asset(
-                        'assets/icons/logos_app.png', // Corregido el nombre si era logo_app.png
-                        height: 150,
-                        width: 150,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      
-                      // CAMPO USUARIO
-                      TextFormField(
-                        controller: _usernameCtrl,
-                        style: const TextStyle(color: Colors.white), // TEXTO BLANCO AL ESCRIBIR
-                        decoration: InputDecoration(
-                          labelText: strings('username'),
-                          labelStyle: const TextStyle(color: Colors.white70),
-                          prefixIcon: const Icon(Icons.person_rounded, color: Colors.white),
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.1), // Fondo sutil para el input
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(color: Colors.white, width: 2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+            child: Container(
+              // EL CAMBIO CLAVE: De Card a Container con Opacity
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7), // Oscuro pero deja ver al animal
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white.withOpacity(0.12)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))
+                ],
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset(
+                      'assets/icons/logos_app.png',
+                      height: 120,
+                      width: 120,
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // CAMPO USUARIO
+                    TextFormField(
+                      controller: _usernameCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: strings('username'),
+                        labelStyle: const TextStyle(color: Colors.white54),
+                        prefixIcon: const Icon(Icons.person_outline_rounded, color: Colors.white70),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.05),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Completa el usuario' : null,
-                        textInputAction: TextInputAction.next,
-                        cursorColor: Colors.white,
-                      ),
-                      
-                      const SizedBox(height: AppSpacing.md),
-                      
-                      // CAMPO CONTRASEÑA
-                      TextFormField(
-                        controller: _passwordCtrl,
-                        obscureText: _obscurePassword,
-                        style: const TextStyle(color: Colors.white), // TEXTO BLANCO AL ESCRIBIR
-                        decoration: InputDecoration(
-                          labelText: strings('password'),
-                          labelStyle: const TextStyle(color: Colors.white70),
-                          prefixIcon: const Icon(Icons.lock_rounded, color: Colors.white),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                                _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-                                color: Colors.white),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.1),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(color: Colors.white, width: 2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.isEmpty) ? 'Completa la contraseña' : null,
-                        onFieldSubmitted: (_) => _submit(),
-                        cursorColor: Colors.white,
-                      ),
-                      
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _forgotPassword,
-                          child: Text(
-                            '¿Olvidaste tu contraseña?',
-                            style: TextStyle(color: t.colorScheme.primary),
-                          ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: t.colorScheme.primary, width: 2),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      
-                      // BOTÓN LOGIN
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: FilledButton.icon(
-                          onPressed: auth.isLoading ? null : _submit,
-                          icon: const Icon(Icons.login_rounded),
-                          label: Text(strings('login').toUpperCase(), 
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Completa el usuario' : null,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // CAMPO CONTRASEÑA
+                    TextFormField(
+                      controller: _passwordCtrl,
+                      obscureText: _obscurePassword,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: strings('password'),
+                        labelStyle: const TextStyle(color: Colors.white54),
+                        prefixIcon: const Icon(Icons.lock_outline_rounded, color: Colors.white70),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                              _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                              color: Colors.white38),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.05),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: t.colorScheme.primary, width: 2),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      
-                      const SizedBox(height: AppSpacing.md),
-                      
-                      // BOTÓN REGISTRO
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: () => context.push(AppRoutes.register),
-                          style: OutlinedButton.styleFrom(side: BorderSide(color: t.colorScheme.primary)),
-                          child: Text(strings('register')),
+                      validator: (v) => (v == null || v.isEmpty) ? 'Completa la contraseña' : null,
+                      onFieldSubmitted: (_) => _submit(),
+                    ),
+                    
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _forgotPassword,
+                        child: Text(
+                          '¿Olvidaste tu contraseña?',
+                          style: TextStyle(color: t.colorScheme.primary.withOpacity(0.8), fontSize: 13),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // BOTÓN LOGIN
+                    SizedBox(
+                      width: double.infinity,
+                      height: 58,
+                      child: FilledButton(
+                        onPressed: auth.isLoading ? null : _submit,
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: Text(strings('login').toUpperCase(), 
+                          style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // BOTÓN REGISTRO
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: OutlinedButton(
+                        onPressed: () => context.push(AppRoutes.register),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: Text(strings('register'), style: const TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -226,25 +246,5 @@ class _LanguagePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      margin: const EdgeInsets.only(right: 8),
-      decoration: BoxDecoration(
-        color: cs.surface.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: current,
-          icon: Icon(Icons.translate_rounded, color: cs.onSurface),
-          items: AppStrings.supportedLocales
-              .map((l) => DropdownMenuItem(
-                    value: l.languageCode,
-                    child: Text(AppStrings.languageLabel(l.languageCode)),
-                  ))
-              .toList(),
-          onChanged: (v) { if (v != null) onChanged(v); },
-        ),
-      ),
-    );
-  }
-}
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      margin: const EdgeInsets.
