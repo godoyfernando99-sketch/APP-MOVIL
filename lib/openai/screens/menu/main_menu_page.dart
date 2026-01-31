@@ -65,7 +65,7 @@ class MainMenuPage extends StatelessWidget {
                 Expanded(
                   child: _QuickActionCard(
                     title: 'Enfermedades',
-                    icon: Icons.Sick_rounded,
+                    icon: Icons.sick_rounded,
                     color: Colors.red.shade700,
                     onTap: () => context.push(AppRoutes.diseases),
                   ),
