@@ -42,6 +42,19 @@ class _RegisterPageState extends State<RegisterPage> {
       firstDate: DateTime(1900),
       lastDate: now,
       initialDate: _birthDate ?? DateTime(now.year - 18),
+      // Estilo oscuro para el DatePicker
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Colors.blueAccent,
+              onPrimary: Colors.white,
+              surface: Color(0xFF1A1A1A),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (selected == null) return;
     setState(() => _birthDate = selected);
@@ -70,7 +83,7 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registro exitoso. Verifica tu correo electrónico y luego inicia sesión.')));
+        const SnackBar(content: Text('Registro exitoso. Inicia sesión.')));
     context.go(AppRoutes.login);
   }
 
@@ -80,118 +93,78 @@ class _RegisterPageState extends State<RegisterPage> {
     final auth = context.watch<AuthController>();
     final birthLabel = _birthDate == null
         ? 'Fecha de nacimiento'
-        : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}';
+        : 'Nacido el: ${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}';
 
     return FarmBackgroundScaffold(
-      title: 'Registro',
+      title: 'Crear Cuenta',
+      backgroundColor: Colors.transparent,
       child: Center(
         child: SingleChildScrollView(
-          padding: AppSpacing.paddingLg,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Card(
-                child: Padding(
-                  padding: AppSpacing.paddingLg,
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7), // Efecto cristal
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 15)
+                ],
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.assignment_ind_rounded, color: Colors.white24, size: 48),
+                    const SizedBox(height: 16),
+                    const Text('REGISTRO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                    const SizedBox(height: 24),
+                    
+                    // NOMBRES Y APELLIDOS EN FILA (Si hay espacio)
+                    Row(
                       children: [
-                        TextFormField(
-                          controller: _firstNameCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre(s)',
-                            prefixIcon: Icon(Icons.person_rounded),
-                          ),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Requerido'
-                              : null,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        TextFormField(
-                          controller: _lastNameCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Apellidos',
-                            prefixIcon: Icon(Icons.badge_outlined),
-                          ),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Requerido'
-                              : null,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        TextFormField(
-                          controller: _emailCtrl,
-                          decoration: const InputDecoration(
-                              labelText: 'Correo electrónico',
-                              prefixIcon: Icon(Icons.email_rounded)),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (v) => (v == null || !v.contains('@'))
-                              ? 'Correo inválido'
-                              : null,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        TextFormField(
-                          controller: _usernameCtrl,
-                          decoration: const InputDecoration(
-                              labelText: 'Nombre de usuario',
-                              prefixIcon: Icon(Icons.account_circle_rounded)),
-                          validator: (v) =>
-                              (v == null || v.trim().length < 3)
-                                  ? 'Mínimo 3 caracteres'
-                                  : null,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        OutlinedButton.icon(
-                          onPressed: _pickBirthDate,
-                          icon: Icon(Icons.cake_rounded,
-                              color: t.colorScheme.primary),
-                          label: Text(birthLabel,
-                              style:
-                                  TextStyle(color: t.colorScheme.primary)),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 48),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        TextFormField(
-                          controller: _passwordCtrl,
-                          obscureText: true,
-                          decoration: const InputDecoration(
-                              labelText: 'Contraseña',
-                              prefixIcon: Icon(Icons.lock_rounded)),
-                          validator: (v) => (v == null || v.length < 6)
-                              ? 'Mínimo 6 caracteres'
-                              : null,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: auth.isLoading ? null : _submit,
-                            icon: Icon(Icons.check_circle_rounded,
-                                color: t.colorScheme.onPrimary),
-                            label: Text('Registrar',
-                                style: TextStyle(color: t.colorScheme.onPrimary)),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                            'Tu cuenta se creará en Firebase. Asegúrate de que la autenticación esté habilitada.',
-                            style: t.textTheme.bodySmall),
-                        const SizedBox(height: AppSpacing.sm),
-                        TextButton(
-                            onPressed: () => context.go(AppRoutes.login),
-                            child: const Text('Volver a iniciar sesión')),
+                        Expanded(child: _buildField(_firstNameCtrl, 'Nombre', Icons.person_outline)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildField(_lastNameCtrl, 'Apellidos', Icons.badge_outlined)),
                       ],
                     ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+                    const SizedBox(height: 16),
+                    
+                    _buildField(_emailCtrl, 'Correo electrónico', Icons.email_outlined, type: TextInputType.emailAddress),
+                    const SizedBox(height: 16),
+                    
+                    _buildField(_usernameCtrl, 'Usuario', Icons.account_circle_outlined),
+                    const SizedBox(height: 16),
+
+                    // BOTÓN DE FECHA ESTILIZADO COMO INPUT
+                    InkWell(
+                      onTap: _pickBirthDate,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.cake_outlined, color: _birthDate == null ? Colors.white38 : t.colorScheme.primary),
+                            const SizedBox(width: 12),
+                            Text(birthLabel, style: TextStyle(color: _birthDate == null ? Colors.white38 : Colors.white)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    _buildField(_passwordCtrl, 'Contraseña', Icons.lock_outline, obscure: true),
+                    const SizedBox(height: 24),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child
