@@ -11,6 +11,7 @@ class FarmBackgroundScaffold extends StatelessWidget {
     this.showBack = true,
     this.showHome = true,
     this.actions,
+    this.backgroundColor, // <-- Agregado para resolver el error de compilación
   });
 
   final String title;
@@ -18,6 +19,7 @@ class FarmBackgroundScaffold extends StatelessWidget {
   final bool showBack;
   final bool showHome;
   final List<Widget>? actions;
+  final Color? backgroundColor; // <-- Definición de la propiedad
 
   static const String _bgAsset =
       'assets/images/farm_animals_pasture_background_photo_green_1769096572851.jpg';
@@ -25,9 +27,18 @@ class FarmBackgroundScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    
+    // Si no se pasa un color, usamos el color de superficie con transparencia por defecto
+    final overlayColor = backgroundColor ?? cs.surface.withValues(alpha: 0.72);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
+      // Se define el fondo del Scaffold como transparente para ver la imagen del Stack
+      backgroundColor: Colors.transparent, 
       appBar: AppBar(
+        title: Text(title, style: TextStyle(color: cs.onSurface)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: showBack
             ? IconButton(
                 onPressed: () => context.pop(),
@@ -49,8 +60,14 @@ class FarmBackgroundScaffold extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // 1. Imagen de fondo
           Image.asset(_bgAsset, fit: BoxFit.cover),
-          Container(color: cs.surface.withValues(alpha: 0.72)),
+          
+          // 2. Capa de color (Overlay)
+          // Usamos el color configurado para dar el efecto de "cristal"
+          Container(color: overlayColor),
+          
+          // 3. Contenido de la pantalla
           SafeArea(child: child),
         ],
       ),
