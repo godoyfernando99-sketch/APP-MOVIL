@@ -19,41 +19,58 @@ class DiseasesPage extends StatelessWidget {
     final auth = context.watch<AuthController>();
     final isPro = auth.currentUser?.isPro ?? false;
 
-    // --- VISTA PARA USUARIOS NO PRO ---
+    // --- VISTA PARA USUARIOS NO PRO (BLOQUEADA) ---
     if (!isPro) {
       return FarmBackgroundScaffold(
         title: strings('diseases'),
+        backgroundColor: Colors.transparent,
         child: Center(
           child: Padding(
             padding: AppSpacing.paddingLg,
-            child: Card(
-              color: const Color(0xFF1A1A1A),
-              child: Padding(
-                padding: AppSpacing.paddingXl,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.lock_rounded, size: 64, color: t.colorScheme.primary),
-                    const SizedBox(height: AppSpacing.lg),
-                    const Text(
-                      'Contenido Exclusivo PRO',
-                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
+            child: Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.1),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    const Text(
-                      'La lista completa de enfermedades está disponible solo para usuarios del Plan PRO.',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    FilledButton.icon(
+                    child: const Icon(Icons.lock_person_rounded, size: 64, color: Colors.amber),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Catálogo Exclusivo PRO',
+                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Accede a la base de datos completa de patologías, síntomas y tratamientos recomendados por expertos.',
+                    style: TextStyle(color: Colors.white70, fontSize: 15),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
                       onPressed: () => context.push(AppRoutes.subscriptions),
-                      icon: const Icon(Icons.star_rounded),
-                      label: const Text('Ver Planes'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.amber.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      icon: const Icon(Icons.stars_rounded, color: Colors.white),
+                      label: const Text('SUBIR A PLAN PRO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -61,58 +78,61 @@ class DiseasesPage extends StatelessWidget {
       );
     }
 
-    // --- VISTA PRINCIPAL DEL CATÁLOGO (MODO OSCURO) ---
+    // --- VISTA PRINCIPAL (CATÁLOGO DESBLOQUEADO) ---
     return FarmBackgroundScaffold(
-      title: strings('diseases'),
+      title: 'Diccionario Médico',
+      backgroundColor: Colors.transparent,
       child: ListView.separated(
-        padding: AppSpacing.paddingLg,
+        padding: const EdgeInsets.all(20),
         itemCount: DiseasesCatalog.diseases.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (_, __) => const SizedBox(height: 14),
         itemBuilder: (context, i) {
           final d = DiseasesCatalog.diseases[i];
-          return Card(
-            color: const Color(0xFF121212), // Fondo oscuro sólido
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.65),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            child: InkWell(
-              onTap: () => _showDiseaseDetail(context, d),
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                child: Row(
-                  children: [
-                    // Icono en lugar de imagen
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _showDiseaseDetail(context, d),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Icon(Icons.medication_rounded, color: Colors.redAccent, size: 28),
                       ),
-                      child: const Icon(Icons.bug_report_rounded, color: Colors.redAccent, size: 30),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            d.name,
-                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            d.description,
-                            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              d.name,
+                              style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              d.description,
+                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 16),
-                  ],
+                      const Icon(Icons.chevron_right_rounded, color: Colors.white24),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -122,83 +142,110 @@ class DiseasesPage extends StatelessWidget {
     );
   }
 
-  // --- VENTANA EMERGENTE (POP-UP) DETALLADA ---
+  // --- MODAL DE DETALLES ESTILO "FICHA TÉCNICA" ---
   void _showDiseaseDetail(BuildContext context, Disease disease) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: const Color(0xFF1A1A1A), // Fondo de la ventana
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Título
-                Text(
-                  disease.name,
-                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
-                ),
-                const Divider(color: Colors.white12, height: 32),
-                
-                // Descripción
-                _buildDetailSection('Descripción', disease.description, Colors.blueAccent),
-                const SizedBox(height: 20),
-                
-                // Síntomas
-                _buildDetailSection('Síntomas', disease.symptoms, Colors.orangeAccent),
-                const SizedBox(height: 20),
-                
-                // Tratamiento
-                _buildDetailSection('Tratamiento Sugerido', disease.treatment, Colors.greenAccent),
-                
-                const SizedBox(height: 32),
-                
-                // Botón Cerrar
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF0F0F0F),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+          side: const BorderSide(color: Colors.white10),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Cabecera del Modal
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.redAccent.withOpacity(0.3), Colors.transparent],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
                 ),
-              ],
-            ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.health_and_safety_rounded, color: Colors.redAccent, size: 40),
+                    const SizedBox(height: 12),
+                    Text(
+                      disease.name.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 1),
+                    ),
+                  ],
+                ),
+              ),
+              
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Column(
+                    children: [
+                      _buildDetailBox('SITUACIÓN', disease.description, Icons.info_outline, Colors.blueAccent),
+                      _buildDetailBox('SÍNTOMAS CLAVE', disease.symptoms, Icons.warning_amber_rounded, Colors.orangeAccent),
+                      _buildDetailBox('TRATAMIENTO RECOMENDADO', disease.treatment, Icons.healing_rounded, Colors.greenAccent),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Botón de cierre
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 54),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: Colors.white24),
+                    ),
+                  ),
+                  child: const Text('ENTENDIDO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // Widget auxiliar para las secciones del detalle
-  Widget _buildDetailSection(String title, String content, Color accentColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(width: 4, height: 16, color: accentColor),
-            const SizedBox(width: 8),
-            Text(
-              title.toUpperCase(),
-              style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          content,
-          style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.5),
-        ),
-      ],
+  Widget _buildDetailBox(String title, String content, IconData icon, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.1),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            content,
+            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+          ),
+        ],
+      ),
     );
   }
 }
