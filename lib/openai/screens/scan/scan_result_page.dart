@@ -25,6 +25,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
   @override
   void initState() {
     super.initState();
+    // Guardado automático al entrar
     WidgetsBinding.instance.addPostFrameCallback((_) => _autoSave());
   }
 
@@ -41,50 +42,22 @@ class _ScanResultPageState extends State<ScanResultPage> {
         _isSaving = false;
       });
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSaving = false);
+      debugPrint("Error guardando resultado: $e");
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // CASO 1: ERROR O SIN DATOS
+    // CASO 1: SIN DATOS
     if (widget.payload is! ScanResult) {
-      return FarmBackgroundScaffold(
-        title: 'ERROR',
-        backgroundColor: Colors.transparent,
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.all(24),
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
-                const SizedBox(height: 16),
-                const Text('Sin datos del escaneo', 
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: () => context.go(AppRoutes.menu),
-                  child: const Text('VOLVER AL MENÚ'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+      return _buildErrorState();
     }
 
-    // CASO 2: RESULTADO EXITOSO
     final result = widget.payload as ScanResult;
     final animal = AnimalsCatalog.byId(result.animalId);
 
+    // Lógica de colores según estado
     final Color statusColor = result.healthStatus == 'buena' 
         ? Colors.greenAccent 
         : (result.healthStatus == 'regular' ? Colors.orangeAccent : Colors.redAccent);
@@ -100,44 +73,87 @@ class _ScanResultPageState extends State<ScanResultPage> {
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75),
+                color: Colors.black.withOpacity(0.85),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: statusColor.withOpacity(0.3)),
                 boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 20)],
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icono y Estado Principal
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
+                  // Cabecera con Icono
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.analytics_outlined, color: statusColor, size: 48),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'ANÁLISIS VETERINARIO IA',
+                          style: TextStyle(color: statusColor, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 12),
+                        ),
+                      ],
                     ),
-                    child: Icon(Icons.analytics_outlined, color: statusColor, size: 48),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'ANÁLISIS COMPLETADO',
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 12),
                   ),
                   const SizedBox(height: 24),
 
-                  // Información del Animal
+                  // Sección 1: Datos Generales
+                  _buildSectionTitle('INFORMACIÓN GENERAL'),
                   _buildResultRow('Especie:', animal.name, Icons.pets),
                   _buildResultRow('Salud:', result.healthStatus.toUpperCase(), Icons.favorite, valueColor: statusColor),
-                  // Usamos DateTime.now() si timestamp da error, o result.date si existe
-                  _buildResultRow('Fecha:', DateTime.now().toString().substring(0, 16), Icons.calendar_today),
+                  _buildResultRow('ID Animal:', result.animalId, Icons.badge),
                   
+                  const Divider(color: Colors.white10, height: 32),
+
+                  // Sección 2: Hallazgos Médicos (Dinámico)
+                  _buildSectionTitle('HALLAZGOS MÉDICOS'),
+                  if (result.diseaseName != null) 
+                    _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report),
+                  if (result.fractureDescription != null)
+                    _buildResultRow('Lesión:', result.fractureDescription!, Icons.healing),
+                  
+                  // Sección 3: Gestación (Si aplica)
+                  if (result.isPregnant == true) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.pink.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                      child: _buildResultRow('Gestación:', '${result.pregnancyWeeks} Semanas', Icons.child_care, valueColor: Colors.pinkAccent),
+                    ),
+                  ],
+
+                  const SizedBox(height: 20),
+                  
+                  // Sección 4: Recomendación
+                  _buildSectionTitle('RECOMENDACIÓN IA'),
+                  Text(
+                    result.foodRecommendation ?? "Sin recomendaciones específicas.",
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontStyle: FontStyle.italic),
+                  ),
+
                   const SizedBox(height: 32),
                   
-                  // Botón de Salida
+                  // Estado de guardado y Botón
+                  Center(
+                    child: Text(
+                      _isSaving ? "Guardando en historial..." : (_isSaved ? "✓ Guardado automáticamente" : ""),
+                      style: const TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.all(16),
                         backgroundColor: Colors.blueAccent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       onPressed: () => context.go(AppRoutes.menu),
                       icon: const Icon(Icons.home),
@@ -153,28 +169,53 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
-  // FUNCIÓN AUXILIAR PARA LAS FILAS (La que faltaba)
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 8),
+      child: Text(title, style: const TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+    );
+  }
+
   Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blueAccent, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
-          ),
+          Icon(icon, color: Colors.blueAccent.withOpacity(0.7), size: 18),
+          const SizedBox(width: 10),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(color: valueColor ?? Colors.white, fontSize: 15),
-              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: valueColor ?? Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
               textAlign: TextAlign.right,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return FarmBackgroundScaffold(
+      title: 'ERROR',
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(28)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
+              const SizedBox(height: 16),
+              const Text('Error al procesar diagnóstico', style: TextStyle(color: Colors.white, fontSize: 18)),
+              const SizedBox(height: 24),
+              FilledButton(onPressed: () => context.go(AppRoutes.menu), child: const Text('VOLVER')),
+            ],
+          ),
+        ),
       ),
     );
   }
