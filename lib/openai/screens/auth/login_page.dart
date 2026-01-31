@@ -225,4 +225,20 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 class _LanguagePicker extends StatelessWidget {
+  final String current;
+  final ValueChanged<String> onChanged;
+
   const _LanguagePicker({required this.current, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.language, color: Colors.white),
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: 'es', child: Text('Español')),
+        const PopupMenuItem(value: 'en', child: Text('English')),
+      ],
+    );
+  }
+}
