@@ -126,7 +126,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const SizedBox(height: AppSpacing.md),
                       Image.asset(
-                        'images/imagen_circular_recortada.png',
+                        'images/icono_appp.png',
                         height: 170,
                         fit: BoxFit.cover,
                         width: 170,
