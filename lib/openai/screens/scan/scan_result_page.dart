@@ -48,8 +48,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context);
-
     // CASO 1: ERROR O SIN DATOS
     if (widget.payload is! ScanResult) {
       return FarmBackgroundScaffold(
@@ -105,7 +103,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 color: Colors.black.withOpacity(0.75),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
-                boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 20)],
+                boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 20)],
               ),
               child: Column(
                 children: [
@@ -128,6 +126,56 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   // Información del Animal
                   _buildResultRow('Especie:', animal.name, Icons.pets),
                   _buildResultRow('Salud:', result.healthStatus.toUpperCase(), Icons.favorite, valueColor: statusColor),
-                  _buildResultRow('Fecha:', result.timestamp.toString().substring(0, 16), Icons.calendar_today),
+                  // Usamos DateTime.now() si timestamp da error, o result.date si existe
+                  _buildResultRow('Fecha:', DateTime.now().toString().substring(0, 16), Icons.calendar_today),
                   
-                  const
+                  const SizedBox(height: 32),
+                  
+                  // Botón de Salida
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.all(16),
+                        backgroundColor: Colors.blueAccent,
+                      ),
+                      onPressed: () => context.go(AppRoutes.menu),
+                      icon: const Icon(Icons.home),
+                      label: const Text('VOLVER AL INICIO'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // FUNCIÓN AUXILIAR PARA LAS FILAS (La que faltaba)
+  Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blueAccent, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(color: valueColor ?? Colors.white, fontSize: 15),
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
