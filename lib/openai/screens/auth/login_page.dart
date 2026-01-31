@@ -95,7 +95,7 @@ class _LoginPageState extends State<LoginPage> {
       title: 'Scanner Animal',
       showBack: false,
       showHome: false,
-      backgroundColor: Colors.transparent, // Transparencia base
+      backgroundColor: Colors.transparent, 
       actions: [
         _LanguagePicker(
             current: settings.locale.languageCode,
@@ -103,14 +103,13 @@ class _LoginPageState extends State<LoginPage> {
       ],
       child: Center(
         child: SingleChildScrollView(
-          padding: AppSpacing.paddingLg,
+          padding: const EdgeInsets.all(24.0),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Container(
-              // EL CAMBIO CLAVE: De Card a Container con Opacity
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7), // Oscuro pero deja ver al animal
+                color: Colors.black.withOpacity(0.7), 
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(color: Colors.white.withOpacity(0.12)),
                 boxShadow: [
@@ -128,8 +127,6 @@ class _LoginPageState extends State<LoginPage> {
                       width: 120,
                     ),
                     const SizedBox(height: 32),
-                    
-                    // CAMPO USUARIO
                     TextFormField(
                       controller: _usernameCtrl,
                       style: const TextStyle(color: Colors.white),
@@ -151,10 +148,7 @@ class _LoginPageState extends State<LoginPage> {
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Completa el usuario' : null,
                       textInputAction: TextInputAction.next,
                     ),
-                    
                     const SizedBox(height: 20),
-                    
-                    // CAMPO CONTRASEÑA
                     TextFormField(
                       controller: _passwordCtrl,
                       obscureText: _obscurePassword,
@@ -183,7 +177,6 @@ class _LoginPageState extends State<LoginPage> {
                       validator: (v) => (v == null || v.isEmpty) ? 'Completa la contraseña' : null,
                       onFieldSubmitted: (_) => _submit(),
                     ),
-                    
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -195,8 +188,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    
-                    // BOTÓN LOGIN
                     SizedBox(
                       width: double.infinity,
                       height: 58,
@@ -204,16 +195,12 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: auth.isLoading ? null : _submit,
                         style: FilledButton.styleFrom(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 0,
                         ),
                         child: Text(strings('login').toUpperCase(), 
                           style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
                       ),
                     ),
-                    
                     const SizedBox(height: 16),
-                    
-                    // BOTÓN REGISTRO
                     SizedBox(
                       width: double.infinity,
                       height: 54,
@@ -239,12 +226,3 @@ class _LoginPageState extends State<LoginPage> {
 
 class _LanguagePicker extends StatelessWidget {
   const _LanguagePicker({required this.current, required this.onChanged});
-  final String current;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      margin: const EdgeInsets.
