@@ -1,10 +1,9 @@
 import 'dart:async';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:scanneranimal/openai/screens/animals/animal_detail_page.dart';
+// Importaciones de pantallas
 import 'package:scanneranimal/openai/screens/animals/animals_page.dart';
 import 'package:scanneranimal/openai/screens/auth/login_page.dart';
 import 'package:scanneranimal/openai/screens/auth/register_page.dart';
@@ -16,6 +15,9 @@ import 'package:scanneranimal/openai/screens/scan/scan_capture_page.dart';
 import 'package:scanneranimal/openai/screens/scan/scan_result_page.dart';
 import 'package:scanneranimal/openai/screens/subscriptions/subscriptions_page.dart';
 import 'package:scanneranimal/openai/screens/welcome/welcome_page.dart';
+
+// IMPORTANTE: Importar el modelo para que GoRouter reconozca el tipo en 'extra'
+import 'package:scanneranimal/app/history/scan_models.dart';
 
 class AuthStateNotifier extends ChangeNotifier {
   StreamSubscription<User?>? _subscription;
@@ -39,21 +41,14 @@ class AppRouter {
     refreshListenable: _authNotifier,
     redirect: (context, state) {
       final user = FirebaseAuth.instance.currentUser;
-      final isLoggedIn = user != null && user.emailVerified;
+      // Verifica si el usuario existe (puedes quitar user.emailVerified si quieres permitir acceso sin verificar)
+      final isLoggedIn = user != null; 
       final isOnAuthPage = state.matchedLocation == AppRoutes.login || 
                           state.matchedLocation == AppRoutes.register;
       
-      // Si el usuario está autenticado y verificado, y está en una página de autenticación, redirigir al welcome
-      if (isLoggedIn && isOnAuthPage) {
-        return AppRoutes.welcome;
-      }
+      if (isLoggedIn && isOnAuthPage) return AppRoutes.welcome;
+      if (!isLoggedIn && !isOnAuthPage) return AppRoutes.login;
       
-      // Si el usuario no está autenticado y no está en una página de autenticación, redirigir al login
-      if (!isLoggedIn && !isOnAuthPage) {
-        return AppRoutes.login;
-      }
-      
-      // En todos los demás casos, permitir la navegación normal
       return null;
     },
     routes: [
@@ -67,9 +62,7 @@ class AppRouter {
         name: 'animals', 
         pageBuilder: (context, state) {
           final category = state.pathParameters['category'] ?? 'home'; 
-          return MaterialPage(
-            child: AnimalsPage(category: category),
-          ); 
+          return MaterialPage(child: AnimalsPage(category: category)); 
         },
       ),
 
@@ -77,8 +70,8 @@ class AppRouter {
         path: '${AppRoutes.scanCapture}/:animalId/:mode',
         name: 'scanCapture',
         pageBuilder: (context, state) {
-          final animalId = state.pathParameters['animalId']!;
-          final mode = state.pathParameters['mode']!;
+          final animalId = state.pathParameters['animalId'] ?? '';
+          final mode = state.pathParameters['mode'] ?? 'nochip';
           return MaterialPage(child: ScanCapturePage(animalId: animalId, mode: mode));
         },
       ),
@@ -87,11 +80,12 @@ class AppRouter {
         path: AppRoutes.scanResult,
         name: 'scanResult',
         pageBuilder: (context, state) {
-          final extra = state.extra;
-          if (extra == null) {
-            return const MaterialPage(child: MainMenuPage());
+          // Si el payload es un ScanResult, lo pasamos, si no, volvemos al menú
+          final payload = state.extra;
+          if (payload is! ScanResult) {
+            return const NoTransitionPage(child: MainMenuPage());
           }
-          return MaterialPage(child: ScanResultPage(payload: extra));
+          return MaterialPage(child: ScanResultPage(payload: payload));
         },
       ),
 
@@ -100,23 +94,24 @@ class AppRouter {
       GoRoute(path: AppRoutes.diseases, name: 'diseases', pageBuilder: (context, state) => const MaterialPage(child: DiseasesPage())),
       GoRoute(path: AppRoutes.medications, name: 'medications', pageBuilder: (context, state) => const MaterialPage(child: MedicationsPage())),
       
-      // --- NUEVA RUTA DE PERFIL AÑADIDA ---
       GoRoute(
         path: AppRoutes.profile, 
         name: 'profile', 
         pageBuilder: (context, state) => MaterialPage(
           child: Scaffold(
-            appBar: AppBar(title: const Text('Mi Perfil')),
+            appBar: AppBar(title: const Text('Mi Perfil'), backgroundColor: Colors.green),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.account_circle, size: 80, color: Colors.grey),
+                  const Icon(Icons.account_circle, size: 80, color: Colors.green),
                   const SizedBox(height: 16),
-                  Text(FirebaseAuth.instance.currentUser?.email ?? 'Usuario'),
+                  Text(FirebaseAuth.instance.currentUser?.email ?? 'Usuario no identificado'),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () => FirebaseAuth.instance.signOut(),
+                    onPressed: () async {
+                      await FirebaseAuth.instance.signOut();
+                    },
                     child: const Text('Cerrar Sesión'),
                   ),
                 ],
@@ -135,13 +130,11 @@ class AppRoutes {
   static const String welcome = '/welcome';
   static const String menu = '/menu';
   static const String animals = '/animals';
-  static const String animal = '/animal';
   static const String scanCapture = '/scan/capture';
   static const String scanResult = '/scan/result';
   static const String history = '/history';
   static const String subscriptions = '/subscriptions';
   static const String diseases = '/diseases';
   static const String medications = '/medications';
-  // AÑADIDO:
   static const String profile = '/profile';
 }
