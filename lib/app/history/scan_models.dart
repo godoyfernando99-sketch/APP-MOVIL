@@ -80,13 +80,12 @@ class ScanResult {
   };
 
   static ScanResult fromJson(Map<String, dynamic> json) {
+    // Manejo seguro de la lista de fotos
     final photos = (json['photosBase64'] is List) 
-        ? (json['photosBase64'] as List).map((e) => e.toString()).toList() 
+        ? List<String>.from(json['photosBase64']) 
         : <String>[];
     
-    final createdAtRaw = json['createdAt'];
-    final updatedAtRaw = json['updatedAt'];
-    
+    // Función interna para parsear fechas de Firestore o String
     DateTime parseDate(dynamic raw) {
       if (raw is Timestamp) return raw.toDate();
       if (raw is String) return DateTime.tryParse(raw) ?? DateTime.now();
@@ -94,22 +93,22 @@ class ScanResult {
     }
     
     return ScanResult(
-      id: (json['id'] ?? '').toString(),
-      ownerId: (json['ownerId'] ?? '').toString(),
-      createdAt: parseDate(createdAtRaw),
-      updatedAt: parseDate(updatedAtRaw),
-      animalId: (json['animalId'] ?? '').toString(),
-      animalCategory: (json['animalCategory'] ?? '').toString(),
-      mode: (json['mode'] ?? '').toString(),
+      id: json['id']?.toString() ?? '',
+      ownerId: json['ownerId']?.toString() ?? '',
+      createdAt: parseDate(json['createdAt']),
+      updatedAt: parseDate(json['updatedAt']),
+      animalId: json['animalId']?.toString() ?? '',
+      animalCategory: json['animalCategory']?.toString() ?? '',
+      mode: json['mode']?.toString() ?? 'nochip',
       microchipNumber: json['microchipNumber']?.toString(),
       photosBase64: photos,
-      healthStatus: (json['healthStatus'] ?? '').toString(),
+      healthStatus: json['healthStatus']?.toString() ?? 'desconocida',
       diseaseName: json['diseaseName']?.toString(),
       fractureDescription: json['fractureDescription']?.toString(),
       medicationName: json['medicationName']?.toString(),
       medicationDose: json['medicationDose']?.toString(),
-      isPregnant: json['isPregnant'] is bool ? json['isPregnant'] as bool : null,
-      pregnancyWeeks: json['pregnancyWeeks'] is num ? (json['pregnancyWeeks'] as num).toInt() : null,
+      isPregnant: json['isPregnant'] as bool?,
+      pregnancyWeeks: (json['pregnancyWeeks'] as num?)?.toInt(),
       foodRecommendation: json['foodRecommendation']?.toString(),
     );
   }
@@ -132,23 +131,25 @@ class ScanResult {
     bool? isPregnant,
     int? pregnancyWeeks,
     String? foodRecommendation,
-  }) => ScanResult(
-    id: id ?? this.id,
-    ownerId: ownerId ?? this.ownerId,
-    createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
-    animalId: animalId ?? this.animalId,
-    animalCategory: animalCategory ?? this.animalCategory,
-    mode: mode ?? this.mode,
-    microchipNumber: microchipNumber ?? this.microchipNumber,
-    photosBase64: photosBase64 ?? this.photosBase64,
-    healthStatus: healthStatus ?? this.healthStatus,
-    diseaseName: diseaseName ?? this.diseaseName,
-    fractureDescription: fractureDescription ?? this.fractureDescription,
-    medicationName: medicationName ?? this.medicationName,
-    medicationDose: medicationDose ?? this.medicationDose,
-    isPregnant: isPregnant ?? this.isPregnant,
-    pregnancyWeeks: pregnancyWeeks ?? this.pregnancyWeeks,
-    foodRecommendation: foodRecommendation ?? this.foodRecommendation,
-  );
+  }) {
+    return ScanResult(
+      id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      animalId: animalId ?? this.animalId,
+      animalCategory: animalCategory ?? this.animalCategory,
+      mode: mode ?? this.mode,
+      microchipNumber: microchipNumber ?? this.microchipNumber,
+      photosBase64: photosBase64 ?? this.photosBase64,
+      healthStatus: healthStatus ?? this.healthStatus,
+      diseaseName: diseaseName ?? this.diseaseName,
+      fractureDescription: fractureDescription ?? this.fractureDescription,
+      medicationName: medicationName ?? this.medicationName,
+      medicationDose: medicationDose ?? this.medicationDose,
+      isPregnant: isPregnant ?? this.isPregnant,
+      pregnancyWeeks: pregnancyWeeks ?? this.pregnancyWeeks,
+      foodRecommendation: foodRecommendation ?? this.foodRecommendation,
+    );
+  }
 }
