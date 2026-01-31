@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -36,9 +35,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   Future<void> _purchasePlan(String planId) async {
     final auth = context.read<AuthController>();
 
-    // Si las compras in-app están disponibles, intentar usar la tienda nativa
-    if (_subscriptionService.isAvailable &&
-        _subscriptionService.products.isNotEmpty) {
+    if (_subscriptionService.isAvailable && _subscriptionService.products.isNotEmpty) {
       final product = _subscriptionService.products.firstWhere(
         (p) => p.id.contains(planId),
         orElse: () => _subscriptionService.products.first,
@@ -48,20 +45,18 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         await auth.updateSubscription(purchasedPlanId);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('¡Plan $purchasedPlanId activado correctamente!')),
+          SnackBar(content: Text('¡Plan $purchasedPlanId activado correctamente!')),
         );
       });
     } else {
-      // Si no está disponible, activar directamente (para testing o web)
       await auth.updateSubscription(planId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             Platform.isAndroid || Platform.isIOS
-                ? 'Las compras in-app no están disponibles en este momento. Plan activado para prueba.'
-                : 'Compras in-app no disponibles en web. Plan activado para prueba.',
+                ? 'Modo prueba: Plan activado.'
+                : 'Plan activado para prueba web.',
           ),
         ),
       );
@@ -78,96 +73,85 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     final locale = settings.locale;
     final currentPlan = auth.currentUser?.subscriptionPlan ?? 'free';
 
-    if (_isLoading) {
-      return FarmBackgroundScaffold(
-        title: strings('subscriptions'),
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return FarmBackgroundScaffold(
       title: strings('subscriptions'),
-      child: ListView(
-        padding: AppSpacing.paddingLg,
-        children: [
-          if (currentPlan != 'free')
-            Card(
-              color: t.colorScheme.primaryContainer,
-              child: Padding(
-                padding: AppSpacing.paddingLg,
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle_rounded,
-                        color: t.colorScheme.primary, size: 32),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Plan Actual',
-                            style: t.textTheme.labelMedium,
-                          ),
-                          Text(
-                            _getPlanName(currentPlan),
-                            style: t.textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+      backgroundColor: Colors.transparent, // Fondo nítido
+      child: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: Colors.white))
+        : ListView(
+            padding: AppSpacing.paddingLg,
+            children: [
+              if (currentPlan != 'free') ...[
+                _buildCurrentPlanBanner(t, currentPlan),
+                const SizedBox(height: 20),
+              ],
+              
+              _PlanCard(
+                name: 'Plan Básico',
+                priceLabel: currency.formatUsd(6.99, locale),
+                accent: Colors.blue.shade400,
+                features: const [
+                  '15 escaneos mensuales',
+                  'Diagnóstico básico',
+                  'Historial de escaneos',
+                  'Soporte estándar'
+                ],
+                isCurrentPlan: currentPlan == 'basic',
+                onSelectPlan: currentPlan == 'basic' ? null : () => _purchasePlan('basic'),
               ),
-            ),
-          if (currentPlan != 'free') const SizedBox(height: 14),
-          _PlanCard(
-            name: 'Plan Básico',
-            priceLabel: currency.formatUsd(6.99, locale),
-            accent: t.colorScheme.primaryContainer,
-            features: const [
-              '15 escaneos mensuales',
-              'Diagnóstico básico',
-              'Historial de escaneos',
-              'Soporte estándar'
+              const SizedBox(height: 16),
+              _PlanCard(
+                name: 'Plan Premium',
+                priceLabel: currency.formatUsd(12.99, locale),
+                accent: Colors.purple.shade400,
+                features: const [
+                  '30 escaneos mensuales',
+                  'Diagnóstico completo',
+                  'Historial ilimitado',
+                  'Soporte prioritario'
+                ],
+                isCurrentPlan: currentPlan == 'intermediate',
+                onSelectPlan: currentPlan == 'intermediate' ? null : () => _purchasePlan('intermediate'),
+              ),
+              const SizedBox(height: 16),
+              _PlanCard(
+                name: 'Plan PRO',
+                priceLabel: currency.formatUsd(29.99, locale),
+                accent: Colors.amber.shade400,
+                features: const [
+                  'Escaneos ilimitados',
+                  'Diagnóstico avanzado con IA',
+                  'Lista completa de medicamentos',
+                  'Base de datos de enfermedades',
+                  'Soporte VIP 24/7'
+                ],
+                recommended: true,
+                isCurrentPlan: currentPlan == 'pro',
+                onSelectPlan: currentPlan == 'pro' ? null : () => _purchasePlan('pro'),
+              ),
             ],
-            isCurrentPlan: currentPlan == 'basic',
-            onSelectPlan:
-                currentPlan == 'basic' ? null : () => _purchasePlan('basic'),
           ),
-          const SizedBox(height: 14),
-          _PlanCard(
-            name: 'Plan Premium',
-            priceLabel: currency.formatUsd(12.99, locale),
-            accent: t.colorScheme.secondaryContainer,
-            features: const [
-              '30 escaneos mensuales',
-              'Diagnóstico completo',
-              'Historial ilimitado',
-              'Soporte prioritario'
+    );
+  }
+
+  Widget _buildCurrentPlanBanner(ThemeData t, String planId) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.stars_rounded, color: Colors.greenAccent, size: 30),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('ESTADO ACTUAL', style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+              Text(_getPlanName(planId), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             ],
-            isCurrentPlan: currentPlan == 'intermediate',
-            onSelectPlan: currentPlan == 'intermediate'
-                ? null
-                : () => _purchasePlan('intermediate'),
-          ),
-          const SizedBox(height: 14),
-          _PlanCard(
-            name: 'Plan PRO',
-            priceLabel: currency.formatUsd(29.99, locale),
-            accent: t.colorScheme.tertiaryContainer,
-            features: const [
-              'Escaneos ilimitados',
-              'Diagnóstico avanzado con IA',
-              'Lista completa de medicamentos',
-              'Base de datos de enfermedades',
-              'Reportes detallados',
-              'Soporte VIP 24/7'
-            ],
-            recommended: true,
-            isCurrentPlan: currentPlan == 'pro',
-            onSelectPlan:
-                currentPlan == 'pro' ? null : () => _purchasePlan('pro'),
           ),
         ],
       ),
@@ -176,14 +160,10 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   String _getPlanName(String planId) {
     switch (planId) {
-      case 'basic':
-        return 'Plan Básico';
-      case 'intermediate':
-        return 'Plan Intermedio';
-      case 'pro':
-        return 'Plan PRO';
-      default:
-        return 'Plan Gratuito';
+      case 'basic': return 'Plan Básico';
+      case 'intermediate': return 'Plan Premium';
+      case 'pro': return 'Plan PRO';
+      default: return 'Plan Gratuito';
     }
   }
 }
@@ -209,101 +189,62 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    final cs = t.colorScheme;
-    return Card(
-      elevation: recommended ? 4 : 1,
-      child: Container(
-        decoration: recommended
-            ? BoxDecoration(
-                border: Border.all(color: cs.primary, width: 2),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              )
-            : null,
-        child: Padding(
-          padding: AppSpacing.paddingLg,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (recommended)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: cs.primary,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: Text(
-                    'RECOMENDADO',
-                    style: t.textTheme.labelSmall?.copyWith(
-                      color: cs.onPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              if (recommended) const SizedBox(height: 8),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6), // Efecto cristal ahumado
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: recommended ? accent : Colors.white.withOpacity(0.1),
+          width: recommended ? 2 : 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (recommended)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: t.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      priceLabel,
-                      style: t.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.primary,
-                      ),
-                    ),
-                  ],
-                ),
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(8)),
+                child: const Text('MÁS POPULAR', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
               ),
-              const SizedBox(height: 12),
-              ...features.map(
-                (f) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle_rounded,
-                          size: 18, color: cs.primary),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(f, style: t.textTheme.bodyMedium)),
-                    ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(priceLabel, style: TextStyle(color: accent, fontSize: 20, fontWeight: FontWeight.w900)),
+              ],
+            ),
+            const Divider(color: Colors.white12, height: 30),
+            ...features.map((f) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle_outline_rounded, size: 18, color: accent),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(f, style: const TextStyle(color: Colors.white70, fontSize: 14))),
+                ],
+              ),
+            )),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: isCurrentPlan
+                ? OutlinedButton(
+                    onPressed: null,
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white24), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: const Text('PLAN ACTUAL', style: TextStyle(color: Colors.white38)),
+                  )
+                : FilledButton(
+                    onPressed: onSelectPlan,
+                    style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: const Text('ADQUIRIR AHORA', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: isCurrentPlan
-                    ? OutlinedButton.icon(
-                        onPressed: null,
-                        icon: Icon(Icons.check_rounded, color: cs.primary),
-                        label: Text('Plan Actual',
-                            style: TextStyle(color: cs.primary)),
-                      )
-                    : FilledButton.icon(
-                        onPressed: onSelectPlan,
-                        icon: Icon(Icons.shopping_cart_rounded,
-                            color: cs.onPrimary),
-                        label: Text('Elegir plan',
-                            style: TextStyle(color: cs.onPrimary)),
-                      ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
