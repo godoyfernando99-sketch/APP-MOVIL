@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:scanneranimal/app/auth/auth_controller.dart';
 import 'package:scanneranimal/nav.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
+import 'package:scanneranimal/openai/legal_texts.dart';
 
 // --- TEXTOS LEGALES PARA EVITAR RECHAZOS ---
 class LegalTexts {
