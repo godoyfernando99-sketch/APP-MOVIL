@@ -5,9 +5,16 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+// Bloque para leer tu archivo key.properties
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.scanneranimal.app"
-    compileSdk = 36 // Correcto para las nuevas dependencias
+    compileSdk = 36 
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -16,25 +23,37 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = "11" // Simplificado para evitar errores de tipo
+        jvmTarget = "11"
     }
 
     defaultConfig {
         applicationId "com.scanneranimal.app"
         minSdk = 21
-        targetSdk = 36 // Sincronizado con compileSdk
+        targetSdk = 36 
         versionCode = 1
         versionName = "1.0"
         multiDexEnabled true
     }
 
+    // Configuramos la firma para que use los datos del key.properties
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+
     buildTypes {
         release {
-            // En Codemagic, la firma se inyecta automáticamente. 
-            // Si no tienes configurado el Keystore en Codemagic, usará la de debug por defecto.
-            signingConfig signingConfigs.debug 
-            minifyEnabled false
-            shrinkResources false
+            // CAMBIO: Ahora usa la firma de release oficial
+            signingConfig signingConfigs.release 
+            
+            // Recomendado para reducir el tamaño de la app
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
@@ -46,6 +65,5 @@ flutter {
 dependencies {
     implementation platform('com.google.firebase:firebase-bom:34.8.0')
     implementation 'com.google.firebase:firebase-analytics'
-    // Soporte para multidex necesario en SDKs antiguos con muchas librerías (Firebase)
     implementation 'androidx.multidex:multidex:2.0.1' 
 }
