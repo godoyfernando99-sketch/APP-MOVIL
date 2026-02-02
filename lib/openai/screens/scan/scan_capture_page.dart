@@ -48,7 +48,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       const service = AiDiagnosisService();
       final result = await service.diagnose(
         animalId: widget.animalId,
-        animalCategory: 'vaca', 
+        animalCategory: 'vaca',
         mode: widget.mode,
         photos: _photos,
       );
@@ -71,12 +71,10 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   Widget build(BuildContext context) {
     return FarmBackgroundScaffold(
       title: 'Captura de Fotos',
-      // CORRECCIÓN CLAVE: Forzar transparencia para ver el fondo de la granja
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent, // Permite ver la imagen de fondo
       child: Container(
-        // Añadimos un ligero degradado oscuro superior para que el texto sea legible
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withOpacity(0.3), // Filtro para legibilidad
         ),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
@@ -86,10 +84,9 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
               Text(
                 "Captura hasta 3 fotos del animal",
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  shadows: [const Shadow(blurRadius: 5, color: Colors.black)],
-                ),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 30),
               Expanded(
@@ -106,7 +103,6 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                       onTap: hasPhoto ? null : _takePhoto,
                       child: Container(
                         decoration: BoxDecoration(
-                          // Usamos un fondo semi-transparente oscuro en lugar de blanco
                           color: Colors.black45,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
@@ -119,12 +115,12 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                                 borderRadius: BorderRadius.circular(18),
                                 child: Image.memory(_photos[index], fit: BoxFit.cover),
                               )
-                            : Column(
+                            : const Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.add_a_photo_rounded, color: Colors.white70, size: 45),
-                                  const SizedBox(height: 8),
-                                  Text("Foto ${index + 1}", style: const TextStyle(color: Colors.white60)),
+                                  Icon(Icons.add_a_photo_rounded, color: Colors.white70, size: 45),
+                                  SizedBox(height: 8),
+                                  Text("Foto", style: TextStyle(color: Colors.white60)),
                                 ],
                               ),
                       ),
@@ -154,6 +150,16 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
                     child: const Text(
-                      "ANALIZAR CON IA", 
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1.2)
+                      "ANALIZAR CON IA",
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
                     ),
+                  ),
+                ),
+              const SizedBox(height: 30),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
