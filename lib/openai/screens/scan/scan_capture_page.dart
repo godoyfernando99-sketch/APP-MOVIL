@@ -1,4 +1,3 @@
-
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -31,7 +30,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
 
     final XFile? image = await _picker.pickImage(
       source: ImageSource.camera,
-      imageQuality: 70, // Optimizado para la IA
+      imageQuality: 70,
     );
 
     if (image != null) {
@@ -41,16 +40,15 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   }
 
   Future<void> _processDiagnosis() async {
-    if (_photos.length < 1) return;
+    if (_photos.isEmpty) return;
 
     setState(() => _isProcessing = true);
 
     try {
       const service = AiDiagnosisService();
-      // El servicio ahora retorna un objeto ScanResult compatible
       final result = await service.diagnose(
         animalId: widget.animalId,
-        animalCategory: 'vaca', // O la categoría dinámica que manejes
+        animalCategory: 'vaca', 
         mode: widget.mode,
         photos: _photos,
       );
@@ -73,68 +71,89 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   Widget build(BuildContext context) {
     return FarmBackgroundScaffold(
       title: 'Captura de Fotos',
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Text(
-              "Captura hasta 3 fotos del animal",
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                ),
-                itemCount: 3,
-                itemBuilder: (context, index) {
-                  final hasPhoto = index < _photos.length;
-                  return GestureDetector(
-                    onTap: hasPhoto ? null : _takePhoto,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black26,
-                        borderRadius: BorderRadius.circular(16),
-                        // CORRECCIÓN: Eliminado dashPattern que causaba el error en Codemagic
-                        border: Border.all(
-                          color: Colors.white24, 
-                          width: 2,
-                        ),
-                      ),
-                      child: hasPhoto
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Image.memory(_photos[index], fit: BoxFit.cover),
-                            )
-                          : const Icon(Icons.add_a_photo, color: Colors.white, size: 40),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (_isProcessing)
-              const CircularProgressIndicator(color: Colors.green)
-            else
-              SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: _photos.isNotEmpty ? _processDiagnosis : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: const Text("ANALIZAR CON IA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                ),
-              ),
-            const SizedBox(height: 40),
-          ],
+      // CORRECCIÓN CLAVE: Forzar transparencia para ver el fondo de la granja
+      backgroundColor: Colors.transparent, 
+      child: Container(
+        // Añadimos un ligero degradado oscuro superior para que el texto sea legible
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.3),
         ),
-      ),
-    );
-  }
-}
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Text(
+                "Captura hasta 3 fotos del animal",
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  shadows: [const Shadow(blurRadius: 5, color: Colors.black)],
+                ),
+              ),
+              const SizedBox(height: 30),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 15,
+                    mainAxisSpacing: 15,
+                  ),
+                  itemCount: 3,
+                  itemBuilder: (context, index) {
+                    final hasPhoto = index < _photos.length;
+                    return GestureDetector(
+                      onTap: hasPhoto ? null : _takePhoto,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          // Usamos un fondo semi-transparente oscuro en lugar de blanco
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: hasPhoto ? Colors.greenAccent : Colors.white30,
+                            width: 2,
+                          ),
+                        ),
+                        child: hasPhoto
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(18),
+                                child: Image.memory(_photos[index], fit: BoxFit.cover),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.add_a_photo_rounded, color: Colors.white70, size: 45),
+                                  const SizedBox(height: 8),
+                                  Text("Foto ${index + 1}", style: const TextStyle(color: Colors.white60)),
+                                ],
+                              ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (_isProcessing)
+                const Column(
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 10),
+                    Text("Analizando con IA...", style: TextStyle(color: Colors.white)),
+                  ],
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: _photos.isNotEmpty ? _processDiagnosis : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade600,
+                      foregroundColor: Colors.white,
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                    child: const Text(
+                      "ANALIZAR CON IA", 
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1.2)
+                    ),
