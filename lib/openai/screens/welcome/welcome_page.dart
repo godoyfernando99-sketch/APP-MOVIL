@@ -21,7 +21,6 @@ class WelcomePage extends StatelessWidget {
     return FarmBackgroundScaffold(
       title: strings('welcome'),
       showBack: false,
-      // Forzamos fondo transparente para que se vea la imagen clara
       backgroundColor: Colors.transparent,
       child: Center(
         child: Padding(
@@ -29,7 +28,6 @@ class WelcomePage extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: Card(
-              // Usamos negro con opacidad para crear el efecto de cristal
               color: Colors.black.withOpacity(0.7),
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -41,7 +39,6 @@ class WelcomePage extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Icono resaltado
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -77,23 +74,25 @@ class WelcomePage extends StatelessWidget {
                     
                     const SizedBox(height: 40),
                     
-                    // Botón Continuar estilo premium
+                    // BOTÓN CORREGIDO
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: FilledButton.icon(
                         onPressed: () => context.go(AppRoutes.menu),
                         style: FilledButton.styleFrom(
-                          backgroundColor: t.colorScheme.primary,
+                          backgroundColor: Colors.white, // Forzamos fondo blanco
+                          foregroundColor: Colors.black, // Forzamos letras negras
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                        // Forzamos el color del icono a negro
+                        icon: const Icon(Icons.arrow_forward_rounded, color: Colors.black),
                         label: Text(
                           strings('continue').toUpperCase(),
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Colors.black, // Forzamos el color del texto a negro
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1.2,
                           ),
