@@ -14,9 +14,9 @@ class AiDiagnosisService {
     String? microchipNumber,
     required List<Uint8List> photos,
   }) async {
-    // 1. Verificar configuración
+    // 1. Verificar configuración - SI ESTO ES TRUE, NUNCA LLAMARÁ A GEMINI
     if (OpenAiConfig.useMock || !OpenAiConfig.isConfigured) {
-      debugPrint('Usando modo simulador.');
+      debugPrint('⚠️ ALERTA: Usando modo simulador. Verifica OpenAiConfig.useMock y tu API KEY.');
       return _mock(
         animalId: animalId, 
         animalCategory: animalCategory, 
@@ -27,7 +27,6 @@ class AiDiagnosisService {
     }
 
     final String apiKey = OpenAiConfig.apiKey;
-    // USAMOS GEMINI-1.5-PRO PARA MÁXIMA PRECISIÓN MÉDICA Y VETERINARIA
     final url = Uri.parse(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=$apiKey'
     );
@@ -53,8 +52,9 @@ class AiDiagnosisService {
             ]
           }],
           "generationConfig": {
-            "temperature": 0.4, // Un poco más bajo para evitar alucinaciones en la raza
+            "temperature": 0.4,
             "maxOutputTokens": 2048,
+            "responseMimeType": "application/json", // Forzamos respuesta JSON
           }
         }),
       ).timeout(const Duration(seconds: 45));
@@ -63,14 +63,13 @@ class AiDiagnosisService {
         final data = jsonDecode(response.body);
         String text = data['candidates'][0]['content']['parts'][0]['text'];
         
-        // Limpiar el Markdown de la respuesta
-        text = text.replaceAll(RegExp(r'```json|```'), '').trim();
+        // Limpieza de Markdown mejorada
+        text = text.replaceAll('```json', '').replaceAll('```', '').trim();
         
         final Map<String, dynamic> aiJson = jsonDecode(text);
         final photoB64 = photos.map((p) => base64Encode(p)).toList();
         final now = DateTime.now();
 
-        // Combinamos la dosis con los CM3
         String dosisFinal = aiJson['medicationDose']?.toString() ?? 'N/A';
         if (aiJson['injectionCm3'] != null && aiJson['injectionCm3'] != 'N/A') {
           dosisFinal += " | Aplicar: ${aiJson['injectionCm3']} cm³ (Inyectable)";
@@ -87,24 +86,24 @@ class AiDiagnosisService {
           microchipNumber: microchipNumber,
           photosBase64: photoB64,
           healthStatus: (aiJson['healthStatus'] ?? 'regular').toString().toLowerCase(),
-          // NUEVOS CAMPOS: Capturamos lo que la IA "adivinó"
           detectedBreed: aiJson['detectedBreed']?.toString(),
           detectedSpecies: aiJson['detectedSpecies']?.toString(),
-          
           diseaseName: aiJson['diseaseName']?.toString(),
           fractureDescription: aiJson['fractureDescription']?.toString(),
           medicationName: aiJson['medicationName']?.toString(),
           medicationDose: dosisFinal,
           isPregnant: aiJson['isPregnant'] is bool ? aiJson['isPregnant'] as bool : false,
           pregnancyWeeks: aiJson['pregnancyWeeks'] is num ? (aiJson['pregnancyWeeks'] as num).toInt() : null,
-          foodRecommendation: "ALIMENTO: ${aiJson['foodRecommendation']} | CUIDADOS: ${aiJson['specialCare']}",
+          foodRecommendation: "ALIMENTO: ${aiJson['foodRecommendation'] ?? 'No especificado'} | CUIDADOS: ${aiJson['specialCare'] ?? 'N/A'}",
           observations: aiJson['observations']?.toString(),
         );
       } else {
+        print("❌ Error de API: ${response.body}");
         throw Exception('Error Gemini: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Error en diagnóstico: $e');
+      print('🚨 ERROR CRÍTICO EN DIAGNÓSTICO: $e');
+      // Si llegamos aquí, es porque algo falló en la conexión o el JSON y vuelve al simulador
       return _mock(
         animalId: animalId, 
         animalCategory: animalCategory, 
@@ -117,30 +116,29 @@ class AiDiagnosisService {
 
   String _buildPrompt(String category, String id) {
     return """
-    ACTÚA COMO UN VETERINARIO PATÓLOGO Y EXPERTO EN ZOOTECNIA.
-    Analiza las fotos adjuntas para este animal de la categoría: $category.
+    ACTÚA COMO UN VETERINARIO EXPERTO.
+    Analiza la imagen de este animal (Categoría sugerida: $category).
     
-    TAREAS OBLIGATORIAS:
-    1. IDENTIFICACIÓN: Determina la especie y la raza exacta del animal basándote en sus rasgos físicos (ej. Perro - Golden Retriever, Vaca - Holando Argentino).
-    2. DIAGNÓSTICO: Identifica enfermedades específicas (Aftosa, Mastitis, Moquillo, Brucelosis, etc.) o lesiones visibles.
-    3. PREÑEZ: En hembras, analiza signos de gestación (asimetría, ubre, vulva).
-    4. TRATAMIENTO: Medicamento, dosis y cm³ si es inyectable.
+    TAREAS:
+    1. IDENTIFICACIÓN: Determina la especie y la raza exacta según rasgos físicos.
+    2. SALUD: Evalúa el estado general y detecta enfermedades visibles.
+    3. TRATAMIENTO: Sugiere medicamento y dosis.
 
-    RESPONDE EXCLUSIVAMENTE EN JSON PLANO:
+    DEBES RESPONDER EXCLUSIVAMENTE EN ESTE FORMATO JSON:
     {
-      "detectedSpecies": "Especie identificada",
-      "detectedBreed": "Raza identificada",
-      "healthStatus": "buena" | "regular" | "mala",
-      "diseaseName": "Nombre de la enfermedad o 'Ninguna'",
-      "fractureDescription": "Descripción de lesiones",
-      "medicationName": "Medicamento",
-      "medicationDose": "Dosis",
+      "detectedSpecies": "especie",
+      "detectedBreed": "raza",
+      "healthStatus": "buena/regular/mala",
+      "diseaseName": "enfermedad",
+      "fractureDescription": "descripción",
+      "medicationName": "nombre",
+      "medicationDose": "dosis",
       "injectionCm3": "cm3 o N/A",
       "isPregnant": true/false,
-      "pregnancyWeeks": número o null,
-      "foodRecommendation": "Dieta sugerida",
-      "specialCare": "Instrucciones de manejo",
-      "observations": "Breve resumen del hallazgo visual"
+      "pregnancyWeeks": null o número,
+      "foodRecommendation": "dieta",
+      "specialCare": "cuidados",
+      "observations": "resumen"
     }
     """;
   }
@@ -164,10 +162,10 @@ class AiDiagnosisService {
       microchipNumber: microchipNumber,
       photosBase64: photos.map((p) => base64Encode(p)).toList(),
       healthStatus: 'buena',
-      detectedBreed: 'Raza Simulada',
-      detectedSpecies: 'Especie Simulada',
+      detectedBreed: 'SIMULADOR ACTIVADO',
+      detectedSpecies: 'Verifica tu API KEY',
       diseaseName: 'Simulación de diagnóstico',
-      foodRecommendation: 'Mantener dieta balanceada.',
+      foodRecommendation: 'Asegúrate de poner useMock en false en openai_config.dart',
     );
   }
 
