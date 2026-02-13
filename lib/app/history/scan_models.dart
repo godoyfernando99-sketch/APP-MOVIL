@@ -12,6 +12,8 @@ class ScanResult {
     this.microchipNumber,
     required this.photosBase64,
     required this.healthStatus,
+    this.detectedBreed, // Nueva: Para que la IA "adivine" la raza
+    this.detectedSpecies, // Nueva: Para la especie detectada por IA
     this.diseaseName,
     this.fractureDescription,
     this.medicationName,
@@ -32,6 +34,8 @@ class ScanResult {
   final String? microchipNumber;
   final List<String> photosBase64;
   final String healthStatus;
+  final String? detectedBreed;   // Campo para la raza detectada
+  final String? detectedSpecies; // Campo para la especie detectada
   final String? diseaseName;
   final String? fractureDescription;
   final String? medicationName;
@@ -52,6 +56,8 @@ class ScanResult {
     'microchipNumber': microchipNumber,
     'photosBase64': photosBase64,
     'healthStatus': healthStatus,
+    'detectedBreed': detectedBreed,
+    'detectedSpecies': detectedSpecies,
     'diseaseName': diseaseName,
     'fractureDescription': fractureDescription,
     'medicationName': medicationName,
@@ -78,6 +84,8 @@ class ScanResult {
       microchipNumber: map['microchipNumber']?.toString(),
       photosBase64: List<String>.from(map['photosBase64'] ?? []),
       healthStatus: map['healthStatus']?.toString() ?? 'buena',
+      detectedBreed: map['detectedBreed']?.toString(),
+      detectedSpecies: map['detectedSpecies']?.toString(),
       diseaseName: map['diseaseName']?.toString(),
       fractureDescription: map['fractureDescription']?.toString(),
       medicationName: map['medicationName']?.toString(),
@@ -97,37 +105,4 @@ class ScanResult {
     String? animalId,
     String? animalCategory,
     String? mode,
-    String? microchipNumber,
-    List<String>? photosBase64,
-    String? healthStatus,
-    String? diseaseName,
-    String? fractureDescription,
-    String? medicationName,
-    String? medicationDose,
-    bool? isPregnant,
-    int? pregnancyWeeks,
-    String? foodRecommendation,
-    String? observations,
-  }) {
-    return ScanResult(
-      id: id ?? this.id,
-      ownerId: ownerId ?? this.ownerId,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      animalId: animalId ?? this.animalId,
-      animalCategory: animalCategory ?? this.animalCategory,
-      mode: mode ?? this.mode,
-      microchipNumber: microchipNumber ?? this.microchipNumber,
-      photosBase64: photosBase64 ?? this.photosBase64,
-      healthStatus: healthStatus ?? this.healthStatus,
-      diseaseName: diseaseName ?? this.diseaseName,
-      fractureDescription: fractureDescription ?? this.fractureDescription,
-      medicationName: medicationName ?? this.medicationName,
-      medicationDose: medicationDose ?? this.medicationDose,
-      isPregnant: isPregnant ?? this.isPregnant,
-      pregnancyWeeks: pregnancyWeeks ?? this.pregnancyWeeks,
-      foodRecommendation: foodRecommendation ?? this.foodRecommendation,
-      observations: observations ?? this.observations,
-    );
-  }
-}
+    String? microchipNumber
