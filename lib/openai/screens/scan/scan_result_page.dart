@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-// --- IMPORTS RELATIVOS CORREGIDOS PARA GITHUB ---
+// --- IMPORTS RELATIVOS CORREGIDOS ---
 import '../../../app/auth/auth_controller.dart'; 
 import '../../../app/history/history_controller.dart';
 import '../../../app/history/scan_models.dart';
@@ -101,7 +101,6 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     setState(() => _isSaving = true);
     try {
       await historyController.add(finalResult);
-      // Descontamos el escaneo si no es PRO
       await authController.useFreeScan();
     } catch (e) {
       debugPrint("Error al finalizar: $e");
@@ -189,7 +188,8 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                       style: ElevatedButton.styleFrom(
                         backgroundColor: statusColor.withOpacity(0.8),
                         foregroundColor: Colors.black,
-                        fontWeight: FontWeight.bold,
+                        // CORRECCIÓN AQUÍ: fontWeight va dentro de textStyle
+                        textStyle: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       child: _isSaving 
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
