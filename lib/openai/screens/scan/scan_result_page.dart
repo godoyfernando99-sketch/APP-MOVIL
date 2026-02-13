@@ -3,13 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-// IMPORTACIÓN CRÍTICA
-import 'package:scanneranimal/app/auth/auth_controller.dart'; 
-import 'package:scanneranimal/app/history/history_controller.dart';
-import 'package:scanneranimal/app/history/scan_models.dart';
-import 'package:scanneranimal/data/animals.dart';
-import 'package:scanneranimal/nav.dart';
-import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
+// --- IMPORTS RELATIVOS CORREGIDOS PARA GITHUB ---
+import '../../../app/auth/auth_controller.dart'; 
+import '../../../app/history/history_controller.dart';
+import '../../../app/history/scan_models.dart';
+import '../../../../data/animals.dart';
+import '../../../../nav.dart';
+import '../../../../widgets/farm_background_scaffold.dart';
 
 class ScanResultPage extends StatefulWidget {
   const ScanResultPage({super.key, this.payload});
@@ -101,6 +101,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     setState(() => _isSaving = true);
     try {
       await historyController.add(finalResult);
+      // Descontamos el escaneo si no es PRO
       await authController.useFreeScan();
     } catch (e) {
       debugPrint("Error al finalizar: $e");
@@ -142,32 +143,57 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
           child: Column(
             children: [
               Icon(health.contains('buen') ? Icons.check_circle : Icons.warning, color: statusColor, size: 70),
+              const SizedBox(height: 10),
               Text(result.healthStatus.toUpperCase(), 
                 style: TextStyle(color: statusColor, fontSize: 24, fontWeight: FontWeight.bold)),
               const Divider(color: Colors.white24, height: 40),
+              
               _buildResultRow('Especie/Raza:', displayBreed, Icons.pets),
+              
               if (result.isPregnant == true)
                 _buildResultRow('Gestación:', '${result.pregnancyWeeks} Sem', Icons.favorite, valueColor: Colors.pinkAccent),
+              
               _buildResultRow('Enfermedad:', result.diseaseName ?? 'Ninguna', Icons.bug_report),
               _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize),
+              
               const SizedBox(height: 20),
-              Text(result.foodRecommendation ?? "Sin recomendaciones adicionales",
-                style: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic)),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(result.foodRecommendation ?? "Sin recomendaciones adicionales",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic, fontSize: 13)),
+              ),
+              
               const SizedBox(height: 30),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: () => _shareResult(result, displayBreed),
-                      child: const Text("COMPARTIR"),
+                      icon: const Icon(Icons.share, size: 18),
+                      label: const Text("COMPARTIR"),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white24),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _showObservationsAndSave,
-                      style: ElevatedButton.styleFrom(backgroundColor: statusColor.withOpacity(0.7)),
-                      child: _isSaving ? const CircularProgressIndicator() : const Text("FINALIZAR"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: statusColor.withOpacity(0.8),
+                        foregroundColor: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      child: _isSaving 
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                        : const Text("FINALIZAR"),
                     ),
                   ),
                 ],
@@ -187,7 +213,11 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.no_photography, color: Colors.redAccent, size: 80),
-            const Text("No se detectó un animal", style: TextStyle(color: Colors.white, fontSize: 20)),
+            const SizedBox(height: 16),
+            const Text("No se detectó un animal", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text("Intenta tomar la foto más cerca.", style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 24),
             ElevatedButton(onPressed: () => context.pop(), child: const Text("REINTENTAR"))
           ],
         ),
