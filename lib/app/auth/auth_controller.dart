@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:scanneranimal/app/auth/user_profile.dart';
+// Asegúrate de que esta ruta sea correcta según tu estructura
+import 'user_profile.dart'; 
 
 class AuthController extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -18,7 +19,8 @@ class AuthController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _auth.currentUser != null && (_auth.currentUser?.emailVerified ?? false);
   
-  bool get isPro => _currentUser?.subscriptionPlan?.toLowerCase() == 'pro';
+  // Getter corregido para mayor seguridad en la comparación
+  bool get isPro => _currentUser?.isPro ?? false;
 
   AuthController() {
     _initGoogleSignIn();
@@ -50,7 +52,10 @@ class AuthController extends ChangeNotifier {
         .listen((doc) async {
       if (doc.exists && doc.data() != null) {
         _currentUser = UserProfile.fromJson(doc.data()!);
-        await checkAndResetMonthlyScans();
+        // Solo reseteamos si no es un plan ilimitado
+        if (!isPro) {
+          await checkAndResetMonthlyScans();
+        }
         notifyListeners();
       }
     }, onError: (e) => debugPrint('Error en el Stream de usuario: $e'));
@@ -74,7 +79,7 @@ class AuthController extends ChangeNotifier {
 
   Future<void> checkAndResetMonthlyScans() async {
     final user = _currentUser;
-    if (user == null) return;
+    if (user == null || isPro) return; // PROs no necesitan reset de límites
 
     final now = DateTime.now();
     final lastReset = user.lastReset ?? user.createdAt;
@@ -83,7 +88,7 @@ class AuthController extends ChangeNotifier {
       final int resetValue = user.maxScansByPlan;
       
       await _firestore.collection('users').doc(user.uid).update({
-        'scansRemaining': resetValue,
+        'monthlyScans': resetValue, // Sincronizado con el nombre del campo en UserProfile
         'lastReset': Timestamp.fromDate(now),
         'updatedAt': Timestamp.fromDate(now),
       });
@@ -92,12 +97,13 @@ class AuthController extends ChangeNotifier {
 
   Future<void> useFreeScan() async {
     final user = _currentUser;
+    // Si no hay usuario o es PRO, no descontamos nada
     if (user == null || isPro) return;
 
     if (user.scansRemaining > 0) {
       try {
         await _firestore.collection('users').doc(user.uid).update({
-          'scansRemaining': user.scansRemaining - 1,
+          'monthlyScans': user.scansRemaining - 1,
           'updatedAt': Timestamp.fromDate(DateTime.now()),
         });
       } catch (e) {
@@ -110,12 +116,13 @@ class AuthController extends ChangeNotifier {
     if (_currentUser == null) return;
     try {
       final now = DateTime.now();
+      // Usamos el copyWith corregido
       final tempProfile = _currentUser!.copyWith(subscriptionPlan: plan);
       final int initialScans = tempProfile.maxScansByPlan;
 
       await _firestore.collection('users').doc(_currentUser!.uid).update({
-        'subscriptionPlan': plan,
-        'scansRemaining': initialScans,
+        'subscriptionPlan': plan.toLowerCase(),
+        'monthlyScans': initialScans,
         'lastReset': Timestamp.fromDate(now),
         'updatedAt': Timestamp.fromDate(now),
       });
@@ -155,7 +162,7 @@ class AuthController extends ChangeNotifier {
         updatedAt: now,
         lastReset: now,
         subscriptionPlan: 'free',
-        scansRemaining: 3,
+        scansRemaining: 3, // Ahora el constructor lo acepta
       );
 
       await _firestore.collection('users').doc(profile.uid).set(profile.toJson());
