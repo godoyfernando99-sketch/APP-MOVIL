@@ -13,7 +13,9 @@ class UserProfile {
     this.subscriptionPlan = 'free',
     this.monthlyScans = 10, 
     this.lastReset,
-  });
+    // --- SOLUCIÓN AL ERROR: Parámetro opcional en el constructor ---
+    int? scansRemaining, 
+  }) : _scansRemainingParam = scansRemaining;
 
   final String uid;
   final String username;
@@ -26,14 +28,14 @@ class UserProfile {
   final String subscriptionPlan;
   final int monthlyScans; 
   final DateTime? lastReset;
+  final int? _scansRemainingParam; // Variable interna temporal
 
-  // --- GETTERS DE COMPATIBILIDAD (Solucionan los errores de compilación) ---
+  // --- GETTERS DE COMPATIBILIDAD ---
 
-  // Esto arregla el error en AuthController (scansRemaining)
-  int get scansRemaining => monthlyScans;
+  // Si se pasó 'scansRemaining' al constructor, lo usamos; si no, usamos 'monthlyScans'
+  int get scansRemaining => _scansRemainingParam ?? monthlyScans;
 
-  // Esto arregla el error en DiseasesPage y MedicationsPage (isPro)
-  bool get isPro => subscriptionPlan == 'pro' || subscriptionPlan == 'premium';
+  bool get isPro => subscriptionPlan.toLowerCase() == 'pro' || subscriptionPlan.toLowerCase() == 'premium';
 
   // --- GETTERS DE LÓGICA DE NEGOCIO ---
 
@@ -42,10 +44,10 @@ class UserProfile {
   
   bool get hasVipSupport => subscriptionPlan == 'basico' || subscriptionPlan == 'premium';
   
-  bool get hasScansAvailable => isPro || monthlyScans > 0;
+  bool get hasScansAvailable => isPro || scansRemaining > 0;
 
   int get maxScansByPlan {
-    switch (subscriptionPlan) {
+    switch (subscriptionPlan.toLowerCase()) {
       case 'basico': return 15;
       case 'premium': return 999999; 
       case 'pro': return 999999;
@@ -74,7 +76,6 @@ class UserProfile {
     final updatedAtRaw = json['updatedAt'];
     final lastResetRaw = json['lastReset'];
 
-    // Lógica para leer si el campo viene como 'monthlyScans' o 'scansRemaining'
     int scans = 10;
     if (json['monthlyScans'] != null) {
       scans = (json['monthlyScans'] as num).toInt();
@@ -108,7 +109,7 @@ class UserProfile {
     DateTime? updatedAt,
     String? subscriptionPlan,
     int? monthlyScans,
-    int? scansRemaining, // Aceptamos ambos en copyWith para evitar errores en AuthController
+    int? scansRemaining,
     DateTime? lastReset,
   }) => UserProfile(
     uid: uid ?? this.uid,
@@ -120,7 +121,8 @@ class UserProfile {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
-    monthlyScans: monthlyScans ?? scansRemaining ?? this.monthlyScans,
+    monthlyScans: monthlyScans ?? this.monthlyScans,
+    scansRemaining: scansRemaining ?? this.scansRemaining,
     lastReset: lastReset ?? this.lastReset,
   );
 }
