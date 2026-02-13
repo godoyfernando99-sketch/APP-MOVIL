@@ -15,6 +15,7 @@ import 'package:scanneranimal/openai/screens/scan/scan_capture_page.dart';
 import 'package:scanneranimal/openai/screens/scan/scan_result_page.dart';
 import 'package:scanneranimal/openai/screens/subscriptions/subscriptions_page.dart';
 import 'package:scanneranimal/openai/screens/welcome/welcome_page.dart';
+import 'package:scanneranimal/openai/screens/support/vip_support_page.dart'; // <--- NUEVA IMPORTACIÓN
 
 // IMPORTANTE: Importar el modelo para que GoRouter reconozca el tipo en 'extra'
 import 'package:scanneranimal/app/history/scan_models.dart';
@@ -41,7 +42,6 @@ class AppRouter {
     refreshListenable: _authNotifier,
     redirect: (context, state) {
       final user = FirebaseAuth.instance.currentUser;
-      // Verifica si el usuario existe (puedes quitar user.emailVerified si quieres permitir acceso sin verificar)
       final isLoggedIn = user != null; 
       final isOnAuthPage = state.matchedLocation == AppRoutes.login || 
                           state.matchedLocation == AppRoutes.register;
@@ -80,7 +80,6 @@ class AppRouter {
         path: AppRoutes.scanResult,
         name: 'scanResult',
         pageBuilder: (context, state) {
-          // Si el payload es un ScanResult, lo pasamos, si no, volvemos al menú
           final payload = state.extra;
           if (payload is! ScanResult) {
             return const NoTransitionPage(child: MainMenuPage());
@@ -93,6 +92,13 @@ class AppRouter {
       GoRoute(path: AppRoutes.subscriptions, name: 'subscriptions', pageBuilder: (context, state) => const MaterialPage(child: SubscriptionsPage())),
       GoRoute(path: AppRoutes.diseases, name: 'diseases', pageBuilder: (context, state) => const MaterialPage(child: DiseasesPage())),
       GoRoute(path: AppRoutes.medications, name: 'medications', pageBuilder: (context, state) => const MaterialPage(child: MedicationsPage())),
+      
+      // --- RUTA DE SOPORTE VIP ---
+      GoRoute(
+        path: AppRoutes.support, 
+        name: 'support', 
+        pageBuilder: (context, state) => const MaterialPage(child: VipSupportPage())
+      ),
       
       GoRoute(
         path: AppRoutes.profile, 
@@ -137,4 +143,5 @@ class AppRoutes {
   static const String diseases = '/diseases';
   static const String medications = '/medications';
   static const String profile = '/profile';
+  static const String support = '/support'; // <--- NUEVA CONSTANTE
 }
