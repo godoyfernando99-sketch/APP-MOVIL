@@ -18,15 +18,11 @@ class ScanResultPage extends StatefulWidget {
 }
 
 class _ScanResultPageState extends State<ScanResultPage> {
-  bool _isSaved = false;
   bool _isSaving = false;
   String? _userObservations;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _askForObservations());
-  }
+  // 1. ELIMINAMOS el initState que pedía notas al principio.
+  // Ahora el flujo es directo a los resultados.
 
   void _shareResult(ScanResult result, dynamic animal) {
     final String textToShare = '''
@@ -37,181 +33,176 @@ Enfermedad: ${result.diseaseName ?? 'Ninguna'}
 Medicamento: ${result.medicationName ?? 'N/A'}
 Dosis: ${result.medicationDose ?? 'N/A'}
 Embarazo: ${result.isPregnant == true ? 'SÍ (${result.pregnancyWeeks} sem)' : 'No detectado'}
-Notas: ${_userObservations ?? 'Sin notas'}
+Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     ''';
     Share.share(textToShare);
   }
 
-  Future<void> _askForObservations() async {
+  // 2. Este método se activará al FINAL, antes de salir.
+  Future<void> _showObservationsAndSave() async {
     if (!mounted || widget.payload is! ScanResult) return;
     
-    final result = await showDialog<String?>(
+    final resultText = await showDialog<String?>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        final controller = TextEditingController();
+        final controller = TextEditingController(text: _userObservations);
         return AlertDialog(
           backgroundColor: Colors.grey[900],
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: const Text("Observaciones del Dueño", style: TextStyle(color: Colors.white)),
-          content: TextField(
-            controller: controller,
-            maxLines: 3,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
-              hintText: "Ej: No ha comido bien hoy...",
-              hintStyle: TextStyle(color: Colors.white38),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.green)),
-            ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Notas Finales", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("¿Deseas agregar algún detalle extra sobre el animal antes de guardar?", 
+                style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 15),
+              TextField(
+                controller: controller,
+                maxLines: 3,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "Ej: Se aplicó la inyección correctamente...",
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: const Text("SALTAR", style: TextStyle(color: Colors.white54))
+              onPressed: () => Navigator.pop(context, ""), // Guarda vacío si saltan
+              child: const Text("SIN NOTAS", style: TextStyle(color: Colors.white54))
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, controller.text), 
-              child: const Text("GUARDAR NOTA")
+              child: const Text("GUARDAR Y SALIR")
             ),
           ],
         );
       },
     );
 
-    if (result != null) {
-      setState(() => _userObservations = result);
+    if (resultText != null) {
+      _userObservations = resultText;
+      await _saveFinalResult();
+      if (mounted) context.go(AppRoutes.menu);
     }
-    _saveFinalResult();
   }
 
   Future<void> _saveFinalResult() async {
-    if (!mounted || widget.payload is! ScanResult) return;
     final baseResult = widget.payload as ScanResult;
     final finalResult = baseResult.copyWith(observations: _userObservations);
     
     setState(() => _isSaving = true);
     try {
       await context.read<HistoryController>().add(finalResult);
-      setState(() {
-        _isSaved = true;
-        _isSaving = false;
-      });
     } catch (e) {
-      setState(() => _isSaving = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error al guardar: $e")),
-        );
-      }
+      debugPrint("Error al guardar: $e");
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.payload is! ScanResult) {
-      return const Scaffold(body: Center(child: Text("No se recibieron datos")));
+      return const Scaffold(body: Center(child: Text("No hay datos")));
     }
 
     final result = widget.payload as ScanResult;
     final animal = AnimalsCatalog.byId(result.animalId);
     
-    // Lógica de colores por estado
-    Color statusColor;
-    if (result.healthStatus.toLowerCase() == 'buena') {
-      statusColor = Colors.greenAccent;
-    } else if (result.healthStatus.toLowerCase() == 'mala') {
-      statusColor = Colors.redAccent;
-    } else {
-      statusColor = Colors.orangeAccent;
-    }
+    final Color statusColor = result.healthStatus.toLowerCase() == 'buena' 
+        ? Colors.greenAccent 
+        : (result.healthStatus.toLowerCase() == 'mala' ? Colors.redAccent : Colors.orangeAccent);
 
     return FarmBackgroundScaffold(
-      title: 'INFORME DE SALUD',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.85),
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: statusColor.withOpacity(0.5), width: 2),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    result.healthStatus.toLowerCase() == 'buena' ? Icons.check_circle : Icons.warning_amber_rounded, 
-                    color: statusColor, 
-                    size: 60
+      title: 'RESULTADO DEL ESCANEO',
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: statusColor.withOpacity(0.4), width: 2),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    result.healthStatus.toUpperCase(), 
-                    style: TextStyle(color: statusColor, fontSize: 22, fontWeight: FontWeight.bold)
-                  ),
-                  const Divider(height: 30, color: Colors.white24),
-                  
-                  _buildResultRow('Animal:', animal.name, Icons.pets),
-                  
-                  if (result.isPregnant == true)
-                    _buildResultRow(
-                      'GESTACIÓN:', 
-                      '${result.pregnancyWeeks} Semanas', 
-                      Icons.auto_awesome, 
-                      valueColor: Colors.blueAccent, // Color azul para resaltar embarazo
-                      isHighlight: true
-                    ),
-
-                  if (result.diseaseName != null && result.diseaseName != 'Ninguna')
-                    _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report, valueColor: Colors.redAccent),
-
-                  if (result.medicationName != null)
-                    _buildResultRow('Tratamiento:', result.medicationName!, Icons.medication_liquid),
-
-                  if (result.medicationDose != null)
-                    _buildResultRow('Dosis/Inyección:', result.medicationDose!, Icons.colorize, valueColor: Colors.yellowAccent),
-
-                  const Divider(height: 30, color: Colors.white24),
-                  
-                  // SECCIÓN DE RECOMENDACIONES
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text("RECOMENDACIONES VETERINARIAS:", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    result.foodRecommendation ?? "Sin recomendaciones específicas.",
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontStyle: FontStyle.italic),
-                  ),
-
-                  const SizedBox(height: 30),
-                  
-                  Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _shareResult(result, animal),
-                          icon: const Icon(Icons.share, size: 18),
-                          label: const Text("REPORTAR"),
-                          style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38)),
-                        ),
+                      Icon(
+                        result.healthStatus.toLowerCase() == 'buena' ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                        color: statusColor, size: 70
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => context.go(AppRoutes.menu),
-                          style: ElevatedButton.styleFrom(backgroundColor: statusColor.withOpacity(0.7)),
-                          child: const Text("FINALIZAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                        ),
+                      const SizedBox(height: 10),
+                      Text(result.healthStatus.toUpperCase(), 
+                        style: TextStyle(color: statusColor, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                      
+                      const Divider(height: 40, color: Colors.white24),
+
+                      _buildResultRow('Especie:', animal.name, Icons.pets),
+
+                      if (result.isPregnant == true)
+                        _buildResultRow('GESTACIÓN:', '${result.pregnancyWeeks} Semanas', Icons.auto_awesome, 
+                          valueColor: Colors.blueAccent, isHighlight: true),
+
+                      if (result.diseaseName != null && result.diseaseName != 'Ninguna')
+                        _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report, valueColor: Colors.redAccent),
+
+                      _buildResultRow('Medicamento:', result.medicationName ?? 'No requerido', Icons.medication),
+                      _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize, valueColor: Colors.yellowAccent),
+
+                      const SizedBox(height: 20),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text("CUIDADOS Y ALIMENTACIÓN:", 
+                          style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(result.foodRecommendation ?? "Consultar veterinario.",
+                        style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)),
+
+                      const SizedBox(height: 35),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _shareResult(result, animal),
+                              icon: const Icon(Icons.share, size: 18),
+                              label: const Text("COMPARTIR"),
+                              style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: ElevatedButton(
+                              // 3. AQUÍ se llama al nuevo flujo: Ver -> Notas -> Guardar
+                              onPressed: _isSaving ? null : _showObservationsAndSave,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: statusColor.withOpacity(0.8),
+                                padding: const EdgeInsets.symmetric(vertical: 15)
+                              ),
+                              child: _isSaving 
+                                ? const CircularProgressIndicator(color: Colors.black)
+                                : const Text("FINALIZAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -219,5 +210,20 @@ Notas: ${_userObservations ?? 'Sin notas'}
   Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor, bool isHighlight = false}) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: isHighlight ? const EdgeInsets.all(8) : null,
-      decoration: isHighlight ? BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(10)) : null
+      padding: isHighlight ? const EdgeInsets.all(10) : null,
+      decoration: isHighlight ? BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(12)) : null,
+      child: Row(
+        children: [
+          Icon(icon, color: valueColor ?? Colors.blueAccent, size: 20),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 14)),
+          const Spacer(),
+          Expanded(
+            child: Text(value, textAlign: TextAlign.end,
+              style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+          ),
+        ],
+      ),
+    );
+  }
+}
