@@ -22,9 +22,9 @@ class AiDiagnosisService {
 
     final String apiKey = OpenAiConfig.apiKey;
     
-    // URL para Gemini 1.5 Flash
+    // --- CORRECCIÓN: URL actualizada a la versión estable v1 ---
     final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey'
+      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey'
     );
 
     try {
@@ -57,9 +57,15 @@ class AiDiagnosisService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        // Verificación de estructura de respuesta de Google
+        if (data['candidates'] == null || data['candidates'].isEmpty) {
+          throw Exception('La IA no devolvió candidatos. Verifica el contenido de la imagen.');
+        }
+
         String rawText = data['candidates'][0]['content']['parts'][0]['text'];
         
-        // Limpieza de JSON
+        // Limpieza de JSON por si la IA incluye bloques de código Markdown
         String cleanJson = rawText;
         if (rawText.contains('```')) {
           cleanJson = rawText.split('```')[1].replaceFirst('json', '').trim();
@@ -68,7 +74,6 @@ class AiDiagnosisService {
         final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
 
         // --- VALIDACIÓN DE SEGURIDAD ESTRICTA ---
-        // Si la IA dice que no es un animal, lanzamos el error que activará tu SnackBar rojo
         if (aiJson['is_animal'] == false) {
           throw Exception('VALIDATION_ERROR: Por favor, coloca una fotografía de un animal.');
         }
@@ -98,6 +103,7 @@ class AiDiagnosisService {
           observations: aiJson['observations']?.toString(),
         );
       } else {
+        // Esto ayudará a diagnosticar si el 404 persiste por otra razón
         throw Exception('Error de Google Gemini (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
@@ -122,14 +128,14 @@ class AiDiagnosisService {
       "diseaseName": "Nombre de posible patología (si aplica)",
       "medicationName": "Principio activo recomendado",
       "medicationDose": "Dosis sugerida según peso visual estimado",
-      "isPregnant": true/false (solo si el modo es diagnóstico),
+      "isPregnant": true/false,
       "pregnancyWeeks": número o null,
       "foodRecommendation": "Tipo de dieta sugerida",
       "observations": "Resumen profesional de lo observado"
     }
 
     Contexto del animal: $category.
-    Responde ÚNICAMENTE el JSON.
+    Responde ÚNICAMENTE el JSON puro.
     """;
   }
 }
