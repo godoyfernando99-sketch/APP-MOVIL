@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart'; // Importante para la función de compartir
 
 import 'package:scanneranimal/app/history/history_controller.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
@@ -21,20 +22,104 @@ class ScanResultPage extends StatefulWidget {
 class _ScanResultPageState extends State<ScanResultPage> {
   bool _isSaved = false;
   bool _isSaving = false;
+  String? _userObservations; 
 
   @override
   void initState() {
     super.initState();
-    // Guardado automático al entrar
-    WidgetsBinding.instance.addPostFrameCallback((_) => _autoSave());
+    // Iniciamos el flujo preguntando por observaciones
+    WidgetsBinding.instance.addPostFrameCallback((_) => _askForObservations());
   }
 
-  Future<void> _autoSave() async {
+  // 1. Lógica para compartir el reporte con formato limpio
+  void _shareResult(ScanResult result, dynamic animal) {
+    final String textToShare = '''
+🐾 *REPORTE VETERINARIO IA - SCANNER ANIMAL* 🐾
+
+📊 *DATOS GENERALES:*
+• Especie: ${animal.name}
+• Estado de Salud: ${result.healthStatus.toUpperCase()}
+• ID Animal: ${result.animalId}
+
+🏥 *HALLAZGOS MÉDICOS:*
+${result.diseaseName != null ? '• Enfermedad: ${result.diseaseName}' : ''}
+${result.fractureDescription != null ? '• Lesión: ${result.fractureDescription}' : ''}
+${result.isPregnant == true ? '• Gestación: ${result.pregnancyWeeks} semanas' : ''}
+
+📝 *OBSERVACIONES DEL USUARIO:*
+${(_userObservations != null && _userObservations!.isNotEmpty) ? _userObservations : 'Sin observaciones adicionales.'}
+
+🍎 *RECOMENDACIÓN:*
+${result.foodRecommendation ?? 'Consultar con un profesional.'}
+
+⚠️ *AVISO:* Este reporte es referencial generado por IA y no sustituye la consulta veterinaria profesional.
+''';
+
+    Share.share(textToShare, subject: 'Análisis de ${animal.name}');
+  }
+
+  // 2. Diálogo para capturar observaciones manuales
+  Future<void> _askForObservations() async {
+    if (!mounted || widget.payload is! ScanResult) return;
+
+    final result = await showDialog<String?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final TextEditingController _textController = TextEditingController();
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("¿Agregar observaciones?", style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "¿Deseas añadir alguna nota o síntoma adicional visto manualmente?",
+                style: TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: _textController,
+                maxLines: 3,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "Ej: No ha comido, está decaído...",
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: Colors.black26,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text("NO, GUARDAR ASÍ", style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent),
+              onPressed: () => Navigator.pop(context, _textController.text),
+              child: const Text("SÍ, AGREGAR", style: TextStyle(color: Colors.black87)),
+            ),
+          ],
+        );
+      },
+    );
+
+    setState(() => _userObservations = result);
+    _saveFinalResult(); 
+  }
+
+  // 3. Guardado en la base de datos local
+  Future<void> _saveFinalResult() async {
     if (!mounted || widget.payload is! ScanResult) return;
     final result = widget.payload as ScanResult;
     
     setState(() => _isSaving = true);
     try {
+      // Aquí el controlador de historial guarda el objeto
       await context.read<HistoryController>().add(result);
       if (!mounted) return;
       setState(() {
@@ -49,15 +134,10 @@ class _ScanResultPageState extends State<ScanResultPage> {
 
   @override
   Widget build(BuildContext context) {
-    // CASO 1: SIN DATOS
-    if (widget.payload is! ScanResult) {
-      return _buildErrorState();
-    }
+    if (widget.payload is! ScanResult) return _buildErrorState();
 
     final result = widget.payload as ScanResult;
     final animal = AnimalsCatalog.byId(result.animalId);
-
-    // Lógica de colores según estado
     final Color statusColor = result.healthStatus == 'buena' 
         ? Colors.greenAccent 
         : (result.healthStatus == 'regular' ? Colors.orangeAccent : Colors.redAccent);
@@ -81,7 +161,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Cabecera con Icono
                   Center(
                     child: Column(
                       children: [
@@ -103,22 +182,36 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Sección 1: Datos Generales
                   _buildSectionTitle('INFORMACIÓN GENERAL'),
                   _buildResultRow('Especie:', animal.name, Icons.pets),
                   _buildResultRow('Salud:', result.healthStatus.toUpperCase(), Icons.favorite, valueColor: statusColor),
-                  _buildResultRow('ID Animal:', result.animalId, Icons.badge),
                   
+                  if (_userObservations != null && _userObservations!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _buildSectionTitle('MIS OBSERVACIONES'),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        _userObservations!,
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                    ),
+                  ],
+
                   const Divider(color: Colors.white10, height: 32),
 
-                  // Sección 2: Hallazgos Médicos (Dinámico)
                   _buildSectionTitle('HALLAZGOS MÉDICOS'),
                   if (result.diseaseName != null) 
                     _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report),
                   if (result.fractureDescription != null)
                     _buildResultRow('Lesión:', result.fractureDescription!, Icons.healing),
                   
-                  // Sección 3: Gestación (Si aplica)
                   if (result.isPregnant == true) ...[
                     const SizedBox(height: 8),
                     Container(
@@ -129,8 +222,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   ],
 
                   const SizedBox(height: 20),
-                  
-                  // Sección 4: Recomendación
                   _buildSectionTitle('RECOMENDACIÓN IA'),
                   Text(
                     result.foodRecommendation ?? "Sin recomendaciones específicas.",
@@ -138,15 +229,25 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   ),
 
                   const SizedBox(height: 32),
-                  
-                  // Estado de guardado y Botón
-                  Center(
-                    child: Text(
-                      _isSaving ? "Guardando en historial..." : (_isSaved ? "✓ Guardado automáticamente" : ""),
-                      style: const TextStyle(color: Colors.white38, fontSize: 12),
+
+                  // BOTÓN COMPARTIR
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.all(16),
+                        side: BorderSide(color: statusColor.withOpacity(0.5)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: () => _shareResult(result, animal),
+                      icon: const Icon(Icons.share, color: Colors.white, size: 20),
+                      label: const Text('COMPARTIR INFORME', style: TextStyle(color: Colors.white)),
                     ),
                   ),
+
                   const SizedBox(height: 12),
+                  
+                  // BOTÓN INICIO
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
@@ -158,6 +259,14 @@ class _ScanResultPageState extends State<ScanResultPage> {
                       onPressed: () => context.go(AppRoutes.menu),
                       icon: const Icon(Icons.home),
                       label: const Text('VOLVER AL INICIO'),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  Center(
+                    child: Text(
+                      _isSaving ? "Guardando en historial..." : (_isSaved ? "✓ Guardado correctamente" : ""),
+                      style: const TextStyle(color: Colors.white38, fontSize: 12),
                     ),
                   ),
                 ],
@@ -206,17 +315,3 @@ class _ScanResultPageState extends State<ScanResultPage> {
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(28)),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
-              const SizedBox(height: 16),
-              const Text('Error al procesar diagnóstico', style: TextStyle(color: Colors.white, fontSize: 18)),
-              const SizedBox(height: 24),
-              FilledButton(onPressed: () => context.go(AppRoutes.menu), child: const Text('VOLVER')),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
