@@ -2,13 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart'; // Importante para la función de compartir
+import 'package:share_plus/share_plus.dart';
 
 import 'package:scanneranimal/app/history/history_controller.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 import 'package:scanneranimal/data/animals.dart';
 import 'package:scanneranimal/nav.dart';
-import 'package:scanneranimal/theme.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 
 class ScanResultPage extends StatefulWidget {
@@ -27,11 +26,10 @@ class _ScanResultPageState extends State<ScanResultPage> {
   @override
   void initState() {
     super.initState();
-    // Iniciamos el flujo preguntando por observaciones
     WidgetsBinding.instance.addPostFrameCallback((_) => _askForObservations());
   }
 
-  // 1. Lógica para compartir el reporte con formato limpio
+  // 1. Lógica para compartir el reporte
   void _shareResult(ScanResult result, dynamic animal) {
     final String textToShare = '''
 🐾 *REPORTE VETERINARIO IA - SCANNER ANIMAL* 🐾
@@ -52,7 +50,7 @@ ${(_userObservations != null && _userObservations!.isNotEmpty) ? _userObservatio
 🍎 *RECOMENDACIÓN:*
 ${result.foodRecommendation ?? 'Consultar con un profesional.'}
 
-⚠️ *AVISO:* Este reporte es referencial generado por IA y no sustituye la consulta veterinaria profesional.
+⚠️ *AVISO:* Este reporte es referencial y no sustituye la consulta veterinaria profesional.
 ''';
 
     Share.share(textToShare, subject: 'Análisis de ${animal.name}');
@@ -66,7 +64,7 @@ ${result.foodRecommendation ?? 'Consultar con un profesional.'}
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        final TextEditingController _textController = TextEditingController();
+        final TextEditingController textController = TextEditingController();
         return AlertDialog(
           backgroundColor: Colors.grey[900],
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -80,7 +78,7 @@ ${result.foodRecommendation ?? 'Consultar con un profesional.'}
               ),
               const SizedBox(height: 15),
               TextField(
-                controller: _textController,
+                controller: textController,
                 maxLines: 3,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
@@ -100,7 +98,7 @@ ${result.foodRecommendation ?? 'Consultar con un profesional.'}
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent),
-              onPressed: () => Navigator.pop(context, _textController.text),
+              onPressed: () => Navigator.pop(context, textController.text),
               child: const Text("SÍ, AGREGAR", style: TextStyle(color: Colors.black87)),
             ),
           ],
@@ -115,12 +113,14 @@ ${result.foodRecommendation ?? 'Consultar con un profesional.'}
   // 3. Guardado en la base de datos local
   Future<void> _saveFinalResult() async {
     if (!mounted || widget.payload is! ScanResult) return;
-    final result = widget.payload as ScanResult;
+    
+    // Actualizamos el objeto con las observaciones antes de guardar
+    final ScanResult baseResult = widget.payload as ScanResult;
+    final finalResult = baseResult.copyWith(observations: _userObservations);
     
     setState(() => _isSaving = true);
     try {
-      // Aquí el controlador de historial guarda el objeto
-      await context.read<HistoryController>().add(result);
+      await context.read<HistoryController>().add(finalResult);
       if (!mounted) return;
       setState(() {
         _isSaved = true;
@@ -230,7 +230,6 @@ ${result.foodRecommendation ?? 'Consultar con un profesional.'}
 
                   const SizedBox(height: 32),
 
-                  // BOTÓN COMPARTIR
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -247,7 +246,6 @@ ${result.foodRecommendation ?? 'Consultar con un profesional.'}
 
                   const SizedBox(height: 12),
                   
-                  // BOTÓN INICIO
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
@@ -280,38 +278,4 @@ ${result.foodRecommendation ?? 'Consultar con un profesional.'}
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12, top: 8),
-      child: Text(title, style: const TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-    );
-  }
-
-  Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blueAccent.withOpacity(0.7), size: 18),
-          const SizedBox(width: 10),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(color: valueColor ?? Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState() {
-    return FarmBackgroundScaffold(
-      title: 'ERROR',
-      child: Center(
-        child: Container(
-          margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(28)),
-          child: Column(
+      padding:
