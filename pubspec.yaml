@@ -2,6 +2,7 @@ name: scanneranimal
 description: "A new Flutter project."
 publish_to: "none"
 
+# Incrementamos el version code a +3 para que Google Play lo acepte
 version: 1.0.0+3
 
 environment:
@@ -22,7 +23,6 @@ dependencies:
 
   # Interfaz y Navegación
   cupertino_icons: ^1.0.8
-  # SE HA ELIMINADO GOOGLE_FONTS PARA REPARAR EL ERROR DE COMPILACIÓN
   go_router: ^16.2.0
   provider: ^6.1.2
   
@@ -40,8 +40,6 @@ dependencies:
   in_app_purchase: ^3.2.0
   in_app_purchase_android: ^0.4.0+5
   in_app_purchase_storekit: ^0.4.4
-
-# Eliminado dependency_overrides de google_fonts para evitar errores de cache
 
 dev_dependencies:
   flutter_test:
