@@ -8,7 +8,6 @@ import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 class MainMenuPage extends StatelessWidget {
   const MainMenuPage({super.key});
 
-  // Modificado: Solo permite el acceso si hasSupport es true (que ahora solo será para PRO)
   void _handleVipSupport(BuildContext context, bool isPro) {
     if (isPro) {
       context.push(AppRoutes.support);
@@ -57,12 +56,8 @@ class MainMenuPage extends StatelessWidget {
     final authController = context.watch<AuthController>();
     final user = authController.currentUser;
     
-    // --- LÓGICA ESTRICTA PRO ---
-    // Solo se desbloquea si el string es exactamente 'pro'
     final String currentPlan = user?.subscriptionPlan?.toLowerCase() ?? 'free';
     final bool isUserPro = currentPlan == 'pro';
-    
-    // Conteos para el banner (solo se muestran si no es pro)
     final int scansLeft = user?.scansRemaining ?? 0;
 
     return FarmBackgroundScaffold(
@@ -82,14 +77,9 @@ class MainMenuPage extends StatelessWidget {
             _buildWelcomeHeader(t, user?.firstName ?? user?.username ?? 'Usuario'),
             const SizedBox(height: 16),
 
-            // Banner dinámico: Si es PRO muestra estatus, si no, muestra escaneos restantes
-            if (isUserPro) 
-              _buildProInfoBanner()
-            else
-              _buildFreeScansBanner(scansLeft),
+            if (isUserPro) _buildProInfoBanner() else _buildFreeScansBanner(scansLeft),
             
             const SizedBox(height: 24),
-            
             _buildSectionTitle(t, '¿Qué vamos a analizar hoy?'),
             const SizedBox(height: 16),
 
@@ -100,9 +90,7 @@ class MainMenuPage extends StatelessWidget {
               color: Colors.orange.shade700.withOpacity(0.9),
               onTap: () => context.push('${AppRoutes.animals}/home'),
             ),
-
             const SizedBox(height: 16),
-
             _CategoryButton(
               title: 'Animales de Granja',
               subtitle: 'Vacas, cerdos, caballos...',
@@ -112,25 +100,18 @@ class MainMenuPage extends StatelessWidget {
             ),
 
             const Divider(height: 48, color: Colors.white24),
-
             _buildSectionTitle(t, 'Servicios VIP'),
             const SizedBox(height: 16),
             
             _CategoryButton(
               title: 'Soporte VIP Prioritario',
-              subtitle: isUserPro 
-                  ? 'Chat activo con veterinarios' 
-                  : 'Desbloquea con el Plan PRO',
+              subtitle: isUserPro ? 'Chat activo con veterinarios' : 'Desbloquea con el Plan PRO',
               icon: Icons.support_agent_rounded,
-              // El color cambia a gris si no es PRO para indicar que está bloqueado
-              color: isUserPro 
-                  ? Colors.amber.shade800.withOpacity(0.9) 
-                  : Colors.grey.withOpacity(0.5),
+              color: isUserPro ? Colors.amber.shade800.withOpacity(0.9) : Colors.grey.withOpacity(0.5),
               onTap: () => _handleVipSupport(context, isUserPro),
             ),
 
             const Divider(height: 48, color: Colors.white24),
-
             _buildSectionTitle(t, 'Biblioteca & Historial'),
             const SizedBox(height: 16),
             
@@ -169,8 +150,6 @@ class MainMenuPage extends StatelessWidget {
     );
   }
 
-  // --- WIDGETS DE APOYO ---
-
   Widget _buildFreeScansBanner(int count) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -185,9 +164,7 @@ class MainMenuPage extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              count > 0 
-                ? "Te quedan $count escaneos disponibles." 
-                : "Escaneos agotados. ¡Pásate a PRO!",
+              count > 0 ? "Te quedan $count escaneos disponibles." : "Escaneos agotados. ¡Pásate a PRO!",
               style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
@@ -207,11 +184,8 @@ class MainMenuPage extends StatelessWidget {
       child: const Row(
         children: [
           Icon(Icons.verified_user_rounded, color: Colors.amber, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            "USUARIO PRO - ACCESO TOTAL",
-            style: TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.bold),
-          ),
+          SizedBox(width: 12),
+          Text("USUARIO PRO - ACCESO TOTAL", style: TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -228,6 +202,76 @@ class MainMenuPage extends StatelessWidget {
         Text('¡Hola, $name!', style: t.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
         const Text('Tu asistente veterinario con IA listo.', style: TextStyle(color: Colors.white70)),
       ],
+    );
+  }
+}
+
+// --- CLASES QUE FALTABAN ---
+class _CategoryButton extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _CategoryButton({required this.title, required this.subtitle, required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
+        child: Row(
+          children: [
+            Icon(icon, size: 40, color: Colors.white),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionCard({required this.title, required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.black26,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: color.withOpacity(0.5))),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 8),
+              Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 12)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
