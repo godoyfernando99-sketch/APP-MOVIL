@@ -184,7 +184,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
       title: 'ERROR',
       child: Center(
         child: Column(
-          mainAxisAlignment: MainState.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.no_photography, color: Colors.redAccent, size: 80),
             const Text("No se detectó un animal", style: TextStyle(color: Colors.white, fontSize: 20)),
