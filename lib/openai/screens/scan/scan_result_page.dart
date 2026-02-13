@@ -22,10 +22,11 @@ class _ScanResultPageState extends State<ScanResultPage> {
   bool _isSaving = false;
   String? _userObservations;
 
-  void _shareResult(ScanResult result, dynamic animal) {
+  // Actualizado para incluir la raza detectada por IA en el mensaje compartido
+  void _shareResult(ScanResult result, String breedDisplay) {
     final String textToShare = '''
 🐾 *REPORTE VETERINARIO IA* 🐾
-Especie/Raza: ${animal.name}
+Especie/Raza: $breedDisplay
 Salud: ${result.healthStatus.toUpperCase()}
 Enfermedad: ${result.diseaseName ?? 'Ninguna'}
 Medicamento: ${result.medicationName ?? 'N/A'}
@@ -114,7 +115,11 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     }
 
     final result = widget.payload as ScanResult;
-    final animal = AnimalsCatalog.byId(result.animalId);
+    
+    // LÓGICA DE DETECCIÓN: 
+    // Si la IA detectó una raza, la usamos. Si no, usamos el catálogo manual.
+    final manualAnimal = AnimalsCatalog.byId(result.animalId);
+    final String displayBreed = result.detectedBreed ?? manualAnimal.name;
     
     final Color statusColor = result.healthStatus.toLowerCase() == 'buena' 
         ? Colors.greenAccent 
@@ -122,92 +127,93 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
 
     return FarmBackgroundScaffold(
       title: 'RESULTADO DEL ESCANEO',
-      child: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: statusColor.withOpacity(0.4), width: 2),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: statusColor.withOpacity(0.4), width: 2),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    result.healthStatus.toLowerCase() == 'buena' ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                    color: statusColor, size: 70
                   ),
-                  child: Column(
+                  const SizedBox(height: 10),
+                  Text(result.healthStatus.toUpperCase(), 
+                    style: TextStyle(color: statusColor, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                  
+                  const Divider(height: 40, color: Colors.white24),
+
+                  // FILA ACTUALIZADA: Muestra la raza "adivinada" por la IA
+                  _buildResultRow(
+                    'Raza / Especie:', 
+                    displayBreed, 
+                    result.detectedBreed != null ? Icons.auto_awesome : Icons.pets, 
+                    valueColor: result.detectedBreed != null ? Colors.amberAccent : Colors.white
+                  ),
+
+                  if (result.isPregnant == true)
+                    _buildResultRow('GESTACIÓN:', '${result.pregnancyWeeks} Semanas', Icons.auto_awesome, 
+                      valueColor: Colors.blueAccent, isHighlight: true),
+
+                  if (result.diseaseName != null && result.diseaseName != 'Ninguna')
+                    _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report, valueColor: Colors.redAccent),
+
+                  _buildResultRow('Medicamento:', result.medicationName ?? 'No requerido', Icons.medication),
+                  _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize, valueColor: Colors.yellowAccent),
+
+                  const SizedBox(height: 20),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("CUIDADOS Y ALIMENTACIÓN:", 
+                      style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(result.foodRecommendation ?? "Consultar veterinario.",
+                    style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)),
+
+                  const SizedBox(height: 35),
+                  
+                  Row(
                     children: [
-                      Icon(
-                        result.healthStatus.toLowerCase() == 'buena' ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-                        color: statusColor, size: 70
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _shareResult(result, displayBreed),
+                          icon: const Icon(Icons.share, size: 18),
+                          label: const Text("COMPARTIR"),
+                          style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+                        ),
                       ),
-                      const SizedBox(height: 10),
-                      Text(result.healthStatus.toUpperCase(), 
-                        style: TextStyle(color: statusColor, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                      
-                      const Divider(height: 40, color: Colors.white24),
-
-                      // NUEVA FILA: Tipo / Raza
-                      _buildResultRow('Raza / Especie:', animal.name, Icons.info_outline, valueColor: Colors.white),
-
-                      if (result.isPregnant == true)
-                        _buildResultRow('GESTACIÓN:', '${result.pregnancyWeeks} Semanas', Icons.auto_awesome, 
-                          valueColor: Colors.blueAccent, isHighlight: true),
-
-                      if (result.diseaseName != null && result.diseaseName != 'Ninguna')
-                        _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report, valueColor: Colors.redAccent),
-
-                      _buildResultRow('Medicamento:', result.medicationName ?? 'No requerido', Icons.medication),
-                      _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize, valueColor: Colors.yellowAccent),
-
-                      const SizedBox(height: 20),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text("CUIDADOS Y ALIMENTACIÓN:", 
-                          style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(result.foodRecommendation ?? "Consultar veterinario.",
-                        style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)),
-
-                      const SizedBox(height: 35),
-                      
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => _shareResult(result, animal),
-                              icon: const Icon(Icons.share, size: 18),
-                              label: const Text("COMPARTIR"),
-                              style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
-                            ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isSaving ? null : _showObservationsAndSave,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: statusColor.withOpacity(0.8),
+                            padding: const EdgeInsets.symmetric(vertical: 15)
                           ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _isSaving ? null : _showObservationsAndSave,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: statusColor.withOpacity(0.8),
-                                padding: const EdgeInsets.symmetric(vertical: 15)
-                              ),
-                              child: _isSaving 
-                                ? const SizedBox(
-                                    width: 20, 
-                                    height: 20, 
-                                    child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)
-                                  )
-                                : const Text("FINALIZAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
+                          child: _isSaving 
+                            ? const SizedBox(
+                                width: 20, 
+                                height: 20, 
+                                child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)
+                              )
+                            : const Text("FINALIZAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
