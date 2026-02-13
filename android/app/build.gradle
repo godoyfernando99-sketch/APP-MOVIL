@@ -14,7 +14,8 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.scanneranimal.app"
-    compileSdk = 36 
+    // Ajustado a 35 (Android 15) para mayor estabilidad
+    compileSdk = 35 
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -28,10 +29,11 @@ android {
 
     defaultConfig {
         applicationId "com.scanneranimal.app"
-        minSdk = 21
-        targetSdk = 36 
-        versionCode = 1
-        versionName = "1.0"
+        // Vinculamos estos valores directamente con Flutter y tu pubspec.yaml
+        minSdk = flutter.minSdkVersion
+        targetSdk = 35
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
         multiDexEnabled true
     }
 
@@ -47,7 +49,6 @@ android {
 
     buildTypes {
         release {
-            // CAMBIO: Ahora usa la firma de release oficial
             signingConfig signingConfigs.release 
             
             // Recomendado para reducir el tamaño de la app
