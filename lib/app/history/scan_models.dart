@@ -12,8 +12,8 @@ class ScanResult {
     this.microchipNumber,
     required this.photosBase64,
     required this.healthStatus,
-    this.detectedBreed, // Nueva: Para que la IA "adivine" la raza
-    this.detectedSpecies, // Nueva: Para la especie detectada por IA
+    this.detectedBreed,
+    this.detectedSpecies,
     this.diseaseName,
     this.fractureDescription,
     this.medicationName,
@@ -21,7 +21,7 @@ class ScanResult {
     this.isPregnant,
     this.pregnancyWeeks,
     this.foodRecommendation,
-    this.observations,
+    this.observations, // <--- Asegúrate de que esta línea esté aquí
   });
 
   final String id;
@@ -34,8 +34,8 @@ class ScanResult {
   final String? microchipNumber;
   final List<String> photosBase64;
   final String healthStatus;
-  final String? detectedBreed;   // Campo para la raza detectada
-  final String? detectedSpecies; // Campo para la especie detectada
+  final String? detectedBreed;
+  final String? detectedSpecies;
   final String? diseaseName;
   final String? fractureDescription;
   final String? medicationName;
@@ -105,4 +105,41 @@ class ScanResult {
     String? animalId,
     String? animalCategory,
     String? mode,
-    String? microchipNumber
+    String? microchipNumber,
+    List<String>? photosBase64,
+    String? healthStatus,
+    String? detectedBreed,
+    String? detectedSpecies,
+    String? diseaseName,
+    String? fractureDescription,
+    String? medicationName,
+    String? medicationDose,
+    bool? isPregnant,
+    int? pregnancyWeeks,
+    String? foodRecommendation,
+    String? observations,
+  }) {
+    return ScanResult(
+      id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      animalId: animalId ?? this.animalId,
+      animalCategory: animalCategory ?? this.animalCategory,
+      mode: mode ?? this.mode,
+      microchipNumber: microchipNumber ?? this.microchipNumber,
+      photosBase64: photosBase64 ?? this.photosBase64,
+      healthStatus: healthStatus ?? this.healthStatus,
+      detectedBreed: detectedBreed ?? this.detectedBreed,
+      detectedSpecies: detectedSpecies ?? this.detectedSpecies,
+      diseaseName: diseaseName ?? this.diseaseName,
+      fractureDescription: fractureDescription ?? this.fractureDescription,
+      medicationName: medicationName ?? this.medicationName,
+      medicationDose: medicationDose ?? this.medicationDose,
+      isPregnant: isPregnant ?? this.isPregnant,
+      pregnancyWeeks: pregnancyWeeks ?? this.pregnancyWeeks,
+      foodRecommendation: foodRecommendation ?? this.foodRecommendation,
+      observations: observations ?? this.observations,
+    );
+  }
+} // <--- ESTA ES LA LLAVE QUE FALTABA
