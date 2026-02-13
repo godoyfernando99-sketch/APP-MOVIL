@@ -21,9 +21,10 @@ class AiDiagnosisService {
     }
 
     final String apiKey = OpenAiConfig.apiKey;
-      final url = Uri.parse(
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey'
-);
+    
+    // URL Corregida: Usamos gemini-1.5-flash y eliminamos errores de sintaxis
+    final url = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey'
     );
 
     try {
@@ -47,30 +48,36 @@ class AiDiagnosisService {
             ]
           }],
           "generationConfig": {
-            "temperature": 0.4,
+            "temperature": 0.2, // Temperatura baja para mayor precisión en el filtro
             "maxOutputTokens": 2048,
+            "responseMimeType": "application/json" // Forzamos formato JSON
           }
         }),
       ).timeout(const Duration(seconds: 45));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
-        // Extraer el texto de la respuesta de Gemini
         String rawText = data['candidates'][0]['content']['parts'][0]['text'];
         
-        // LIMPIEZA EXTREMA DEL JSON
+        // Limpieza de Markdown si Gemini lo incluye
         String cleanJson = rawText;
         if (rawText.contains('```')) {
           cleanJson = rawText.split('```')[1].replaceFirst('json', '').trim();
         }
 
         final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
+
+        // --- VALIDACIÓN DE ANIMAL ---
+        // Si la IA detecta que no es un animal, lanzamos un error específico
+        if (aiJson['is_animal'] == false) {
+          throw Exception('VALIDATION_ERROR: Por favor, coloca una fotografía de un animal.');
+        }
+
         final photoB64 = photos.map((p) => base64Encode(p)).toList();
         final now = DateTime.now();
 
         return ScanResult(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: now.millisecondsSinceEpoch.toString(),
           ownerId: '', 
           createdAt: now,
           updatedAt: now,
@@ -91,33 +98,18 @@ class AiDiagnosisService {
           observations: aiJson['observations']?.toString(),
         );
       } else {
-        // Si la API responde error (ej: 403, 400), lo veremos aquí
         throw Exception('Error de Google Gemini (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
-      // YA NO REGRESAMOS EL MOCK. Ahora lanzamos el error real para saber qué pasa.
-      debugPrint('🚨 ERROR REAL: $e');
+      debugPrint('🚨 ERROR EN SERVICIO: $e');
       rethrow; 
     }
   }
 
   String _buildPrompt(String category) {
     return """
-    Eres un experto Veterinario. Analiza las imágenes.
-    Debes identificar la RAZA y ESPECIE exacta.
-    Responde ÚNICAMENTE en este formato JSON:
-    {
-      "detectedSpecies": "especie",
-      "detectedBreed": "raza",
-      "healthStatus": "buena/regular/mala",
-      "diseaseName": "enfermedad detectada",
-      "medicationName": "medicamento",
-      "medicationDose": "dosis",
-      "isPregnant": true/false,
-      "pregnancyWeeks": semanas o null,
-      "foodRecommendation": "dieta",
-      "observations": "notas adicionales"
-    }
-    """;
-  }
-}
+    Eres un sistema de visión veterinaria profesional y estricto.
+    
+    TAREA DE VALIDACIÓN:
+    - Primero, determina si la imagen contiene un ANIMAL. 
+    - Si
