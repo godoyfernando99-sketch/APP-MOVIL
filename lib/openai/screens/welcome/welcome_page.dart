@@ -119,7 +119,7 @@ class WelcomePage extends StatelessWidget {
                     // Tip opcional para usuarios PRO
                     if (user?.subscriptionPlan == 'pro')
                       Padding(
-                        padding: const EdgeInsets.top(20),
+                        padding: const EdgeInsets.only(20),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
