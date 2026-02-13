@@ -3,14 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:scanneranimal/app/auth/auth_controller.dart';
 import 'package:scanneranimal/nav.dart';
-import 'package:scanneranimal/theme.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 
 class MainMenuPage extends StatelessWidget {
   const MainMenuPage({super.key});
 
-  void _handleVipSupport(BuildContext context, bool hasSupport) {
-    if (hasSupport) {
+  // Modificado: Solo permite el acceso si hasSupport es true (que ahora solo será para PRO)
+  void _handleVipSupport(BuildContext context, bool isPro) {
+    if (isPro) {
       context.push(AppRoutes.support);
     } else {
       showDialog(
@@ -22,17 +22,17 @@ class MainMenuPage extends StatelessWidget {
             children: [
               Icon(Icons.stars_rounded, color: Colors.amber),
               SizedBox(width: 10),
-              Text("Acceso VIP", style: TextStyle(color: Colors.white)),
+              Text("Exclusivo PRO", style: TextStyle(color: Colors.white)),
             ],
           ),
           content: const Text(
-            "El soporte técnico prioritario 24/7 con veterinarios expertos es una función exclusiva para los planes Básico y Premium.",
+            "El soporte técnico prioritario con veterinarios expertos es una función exclusiva para usuarios con el Plan PRO activo.",
             style: TextStyle(color: Colors.white70),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("MÁS TARDE", style: TextStyle(color: Colors.white54)),
+              child: const Text("ENTENDIDO", style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -43,7 +43,7 @@ class MainMenuPage extends StatelessWidget {
                 Navigator.pop(context);
                 context.push(AppRoutes.subscriptions);
               },
-              child: const Text("VER PLANES", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              child: const Text("OBTENER PRO", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -57,9 +57,13 @@ class MainMenuPage extends StatelessWidget {
     final authController = context.watch<AuthController>();
     final user = authController.currentUser;
     
-    final bool hasVipSupport = user?.subscriptionPlan == 'basico' || user?.subscriptionPlan == 'premium';
-    final int scansLeft = user?.monthlyScans ?? 0;
-    final bool isFreePlan = user?.subscriptionPlan == 'free';
+    // --- LÓGICA ESTRICTA PRO ---
+    // Solo se desbloquea si el string es exactamente 'pro'
+    final String currentPlan = user?.subscriptionPlan?.toLowerCase() ?? 'free';
+    final bool isUserPro = currentPlan == 'pro';
+    
+    // Conteos para el banner (solo se muestran si no es pro)
+    final int scansLeft = user?.scansRemaining ?? 0;
 
     return FarmBackgroundScaffold(
       title: 'ScannerAnimal IA',
@@ -71,17 +75,18 @@ class MainMenuPage extends StatelessWidget {
         ),
       ],
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20), // Ajustado según AppSpacing
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildWelcomeHeader(t, user?.displayName ?? 'Usuario'),
+            _buildWelcomeHeader(t, user?.firstName ?? user?.username ?? 'Usuario'),
             const SizedBox(height: 16),
 
-            if (isFreePlan) 
-              _buildFreeScansBanner(scansLeft)
+            // Banner dinámico: Si es PRO muestra estatus, si no, muestra escaneos restantes
+            if (isUserPro) 
+              _buildProInfoBanner()
             else
-              _buildProInfoBanner(user?.subscriptionPlan ?? ''),
+              _buildFreeScansBanner(scansLeft),
             
             const SizedBox(height: 24),
             
@@ -113,14 +118,15 @@ class MainMenuPage extends StatelessWidget {
             
             _CategoryButton(
               title: 'Soporte VIP Prioritario',
-              subtitle: hasVipSupport 
+              subtitle: isUserPro 
                   ? 'Chat activo con veterinarios' 
-                  : 'Función para planes Básico/Premium',
+                  : 'Desbloquea con el Plan PRO',
               icon: Icons.support_agent_rounded,
-              color: hasVipSupport 
+              // El color cambia a gris si no es PRO para indicar que está bloqueado
+              color: isUserPro 
                   ? Colors.amber.shade800.withOpacity(0.9) 
-                  : Colors.blueGrey.withOpacity(0.6),
-              onTap: () => _handleVipSupport(context, hasVipSupport),
+                  : Colors.grey.withOpacity(0.5),
+              onTap: () => _handleVipSupport(context, isUserPro),
             ),
 
             const Divider(height: 48, color: Colors.white24),
@@ -163,7 +169,7 @@ class MainMenuPage extends StatelessWidget {
     );
   }
 
-  // --- WIDGETS DE APOYO INTERNOS ---
+  // --- WIDGETS DE APOYO ---
 
   Widget _buildFreeScansBanner(int count) {
     return Container(
@@ -180,8 +186,8 @@ class MainMenuPage extends StatelessWidget {
           Expanded(
             child: Text(
               count > 0 
-                ? "Te quedan $count escaneos gratuitos este mes." 
-                : "Has agotado tus escaneos. ¡Pásate a un plan superior!",
+                ? "Te quedan $count escaneos disponibles." 
+                : "Escaneos agotados. ¡Pásate a PRO!",
               style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
@@ -190,21 +196,21 @@ class MainMenuPage extends StatelessWidget {
     );
   }
 
-  Widget _buildProInfoBanner(String planName) {
+  Widget _buildProInfoBanner() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.greenAccent.withOpacity(0.1),
+        color: Colors.amber.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.greenAccent.withOpacity(0.3)),
+        border: Border.all(color: Colors.amber.withOpacity(0.3)),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const Icon(Icons.verified_user_rounded, color: Colors.greenAccent, size: 20),
+          Icon(Icons.verified_user_rounded, color: Colors.amber, size: 20),
           const SizedBox(width: 12),
           Text(
-            "Plan ${planName.toUpperCase()} Activo",
-            style: const TextStyle(color: Colors.greenAccent, fontSize: 13, fontWeight: FontWeight.bold),
+            "USUARIO PRO - ACCESO TOTAL",
+            style: TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -222,102 +228,6 @@ class MainMenuPage extends StatelessWidget {
         Text('¡Hola, $name!', style: t.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
         const Text('Tu asistente veterinario con IA listo.', style: TextStyle(color: Colors.white70)),
       ],
-    );
-  }
-}
-
-// --- COMPONENTES EXTERNOS (ESTO ES LO QUE FALTABA) ---
-
-class _CategoryButton extends StatelessWidget {
-  const _CategoryButton({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4)),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 40, color: Colors.white),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13)),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({
-    required this.title, 
-    required this.icon, 
-    required this.color, 
-    required this.onTap
-  });
-  
-  final String title;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Colors.black.withOpacity(0.4), 
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12), 
-        side: BorderSide(color: color.withOpacity(0.5), width: 1.5)
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
-              Text(
-                title, 
-                textAlign: TextAlign.center, 
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
