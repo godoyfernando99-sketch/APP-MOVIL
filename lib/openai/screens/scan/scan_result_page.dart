@@ -1,3 +1,6 @@
+Aquí tienes el código de ScanResultPage corregido y optimizado. He añadido el manejo de errores para el caso de "No es un animal" que definimos en el servicio de IA y he corregido la lógica de visualización para que sea más limpia.
+
+Dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +25,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
   bool _isSaving = false;
   String? _userObservations;
 
-  // Actualizado para incluir la raza detectada por IA en el mensaje compartido
   void _shareResult(ScanResult result, String breedDisplay) {
     final String textToShare = '''
 🐾 *REPORTE VETERINARIO IA* 🐾
@@ -100,6 +102,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     setState(() => _isSaving = true);
     try {
       await historyController.add(finalResult);
+      // El método useFreeScan ya debería manejar si el usuario es PRO o no internamente
       await authController.useFreeScan();
     } catch (e) {
       debugPrint("Error al finalizar el proceso: $e");
@@ -110,20 +113,61 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
 
   @override
   Widget build(BuildContext context) {
+    // Manejo de error si la IA dice que no es un animal
+    if (widget.payload is String && widget.payload.toString().contains('VALIDATION_ERROR')) {
+      return FarmBackgroundScaffold(
+        title: 'ERROR DE ESCANEO',
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(25),
+            decoration: BoxDecoration(
+              color: Colors.black87,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.redAccent)
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 80),
+                const SizedBox(height: 20),
+                const Text(
+                  "¡OBJETO NO IDENTIFICADO!",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  "La IA no ha detectado un animal en la fotografía. Por favor, asegúrate de que el animal sea claramente visible.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 25),
+                ElevatedButton(
+                  onPressed: () => context.pop(),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                  child: const Text("REINTENTAR"),
+                )
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     if (widget.payload is! ScanResult) {
-      return const Scaffold(body: Center(child: Text("No hay datos")));
+      return const Scaffold(body: Center(child: Text("No hay datos disponibles")));
     }
 
     final result = widget.payload as ScanResult;
-    
-    // LÓGICA DE DETECCIÓN: 
-    // Si la IA detectó una raza, la usamos. Si no, usamos el catálogo manual.
     final manualAnimal = AnimalsCatalog.byId(result.animalId);
     final String displayBreed = result.detectedBreed ?? manualAnimal.name;
     
-    final Color statusColor = result.healthStatus.toLowerCase() == 'buena' 
+    // Colores dinámicos según el estado de salud
+    final String health = result.healthStatus.toLowerCase();
+    final Color statusColor = health.contains('buen') 
         ? Colors.greenAccent 
-        : (result.healthStatus.toLowerCase() == 'mala' ? Colors.redAccent : Colors.orangeAccent);
+        : (health.contains('critico') || health.contains('mal') ? Colors.redAccent : Colors.orangeAccent);
 
     return FarmBackgroundScaffold(
       title: 'RESULTADO DEL ESCANEO',
@@ -141,7 +185,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
               child: Column(
                 children: [
                   Icon(
-                    result.healthStatus.toLowerCase() == 'buena' ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                    health.contains('buen') ? Icons.check_circle_rounded : Icons.error_outline_rounded,
                     color: statusColor, size: 70
                   ),
                   const SizedBox(height: 10),
@@ -150,7 +194,6 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                   
                   const Divider(height: 40, color: Colors.white24),
 
-                  // FILA ACTUALIZADA: Muestra la raza "adivinada" por la IA
                   _buildResultRow(
                     'Raza / Especie:', 
                     displayBreed, 
@@ -162,7 +205,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                     _buildResultRow('GESTACIÓN:', '${result.pregnancyWeeks} Semanas', Icons.auto_awesome, 
                       valueColor: Colors.blueAccent, isHighlight: true),
 
-                  if (result.diseaseName != null && result.diseaseName != 'Ninguna')
+                  if (result.diseaseName != null && result.diseaseName!.toLowerCase() != 'ninguna')
                     _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report, valueColor: Colors.redAccent),
 
                   _buildResultRow('Medicamento:', result.medicationName ?? 'No requerido', Icons.medication),
@@ -171,11 +214,11 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                   const SizedBox(height: 20),
                   const Align(
                     alignment: Alignment.centerLeft,
-                    child: Text("CUIDADOS Y ALIMENTACIÓN:", 
+                    child: Text("RECOMENDACIÓN:", 
                       style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                   const SizedBox(height: 5),
-                  Text(result.foodRecommendation ?? "Consultar veterinario.",
+                  Text(result.foodRecommendation ?? "Consultar veterinario para más detalles.",
                     style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)),
 
                   const SizedBox(height: 35),
@@ -231,6 +274,8 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
           const Spacer(),
           Expanded(
             child: Text(value, textAlign: TextAlign.end,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
           ),
         ],
