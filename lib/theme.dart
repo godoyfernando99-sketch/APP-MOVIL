@@ -164,4 +164,31 @@ ThemeData get darkTheme => ThemeData(
         inversePrimary: DarkModeColors.darkInversePrimary,
       ),
       brightness: Brightness.dark,
-      sc
+      scaffoldBackgroundColor: DarkModeColors.darkSurface,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        foregroundColor: DarkModeColors.darkOnSurface,
+        elevation: 0,
+      ),
+      textTheme: _buildTextTheme(Brightness.dark),
+    );
+
+TextTheme _buildTextTheme(Brightness brightness) {
+  return const TextTheme(
+    displayLarge: TextStyle(fontSize: FontSizes.displayLarge, fontWeight: FontWeight.w400, letterSpacing: -0.25),
+    displayMedium: TextStyle(fontSize: FontSizes.displayMedium, fontWeight: FontWeight.w400),
+    displaySmall: TextStyle(fontSize: FontSizes.displaySmall, fontWeight: FontWeight.w400),
+    headlineLarge: TextStyle(fontSize: FontSizes.headlineLarge, fontWeight: FontWeight.w600, letterSpacing: -0.5),
+    headlineMedium: TextStyle(fontSize: FontSizes.headlineMedium, fontWeight: FontWeight.w600),
+    headlineSmall: TextStyle(fontSize: FontSizes.headlineSmall, fontWeight: FontWeight.w600),
+    titleLarge: TextStyle(fontSize: FontSizes.titleLarge, fontWeight: FontWeight.w600),
+    titleMedium: TextStyle(fontSize: FontSizes.titleMedium, fontWeight: FontWeight.w500),
+    titleSmall: TextStyle(fontSize: FontSizes.titleSmall, fontWeight: FontWeight.w500),
+    labelLarge: TextStyle(fontSize: FontSizes.labelLarge, fontWeight: FontWeight.w500, letterSpacing: 0.1),
+    labelMedium: TextStyle(fontSize: FontSizes.labelMedium, fontWeight: FontWeight.w500, letterSpacing: 0.5),
+    labelSmall: TextStyle(fontSize: FontSizes.labelSmall, fontWeight: FontWeight.w500, letterSpacing: 0.5),
+    bodyLarge: TextStyle(fontSize: FontSizes.bodyLarge, fontWeight: FontWeight.w400, letterSpacing: 0.15),
+    bodyMedium: TextStyle(fontSize: FontSizes.bodyMedium, fontWeight: FontWeight.w400, letterSpacing: 0.25),
+    bodySmall: TextStyle(fontSize: FontSizes.bodySmall, fontWeight: FontWeight.w400, letterSpacing: 0.4),
+  );
+}
