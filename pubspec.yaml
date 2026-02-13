@@ -3,7 +3,7 @@ description: "A new Flutter project."
 publish_to: "none"
 
 # Incrementamos el version code a +4 para que Google Play lo acepte
-version: 1.0.0+3
+version: 1.0.0+4
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
