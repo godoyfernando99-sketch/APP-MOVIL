@@ -14,8 +14,9 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.scanneranimal.app"
-    // Ajustado a 35 (Android 15) para mayor estabilidad
-    compileSdk = 35 
+    
+    // CAMBIO OBLIGATORIO: Subimos a 36 para satisfacer las dependencias de AndroidX
+    compileSdk = 36 
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -29,8 +30,9 @@ android {
 
     defaultConfig {
         applicationId "com.scanneranimal.app"
-        // Vinculamos estos valores directamente con Flutter y tu pubspec.yaml
-        minSdk = flutter.minSdkVersion
+        // minSdk se mantiene en 21 para compatibilidad con dispositivos antiguos
+        minSdk = 21
+        // targetSdk se mantiene en 35 para estabilidad en la Play Store
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -51,7 +53,7 @@ android {
         release {
             signingConfig signingConfigs.release 
             
-            // Recomendado para reducir el tamaño de la app
+            // Optimizaciones para producción
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
