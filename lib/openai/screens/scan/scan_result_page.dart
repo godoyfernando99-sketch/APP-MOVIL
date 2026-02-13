@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'package:scanneranimal/app/auth/auth_controller.dart'; // IMPORTANTE: Para el conteo
+import 'package:scanneranimal/app/auth/auth_controller.dart'; 
 import 'package:scanneranimal/app/history/history_controller.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 import 'package:scanneranimal/data/animals.dart';
@@ -25,7 +25,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
   void _shareResult(ScanResult result, dynamic animal) {
     final String textToShare = '''
 🐾 *REPORTE VETERINARIO IA* 🐾
-Especie: ${animal.name}
+Especie/Raza: ${animal.name}
 Salud: ${result.healthStatus.toUpperCase()}
 Enfermedad: ${result.diseaseName ?? 'Ninguna'}
 Medicamento: ${result.medicationName ?? 'N/A'}
@@ -89,23 +89,17 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     }
   }
 
-  // MÉTODO ACTUALIZADO: Ahora guarda historial y descuenta escaneo
   Future<void> _saveFinalResult() async {
     final baseResult = widget.payload as ScanResult;
     final finalResult = baseResult.copyWith(observations: _userObservations);
     
-    // Obtenemos los controladores
     final historyController = context.read<HistoryController>();
     final authController = context.read<AuthController>();
 
     setState(() => _isSaving = true);
     try {
-      // 1. Guardamos en el historial
       await historyController.add(finalResult);
-
-      // 2. DESCONTAMOS el escaneo según el plan (la lógica de "si es pro no descuenta" está en el controlador)
       await authController.useFreeScan();
-
     } catch (e) {
       debugPrint("Error al finalizar el proceso: $e");
     } finally {
@@ -153,7 +147,8 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                       
                       const Divider(height: 40, color: Colors.white24),
 
-                      _buildResultRow('Especie:', animal.name, Icons.pets),
+                      // NUEVA FILA: Tipo / Raza
+                      _buildResultRow('Raza / Especie:', animal.name, Icons.info_outline, valueColor: Colors.white),
 
                       if (result.isPregnant == true)
                         _buildResultRow('GESTACIÓN:', '${result.pregnancyWeeks} Semanas', Icons.auto_awesome, 
