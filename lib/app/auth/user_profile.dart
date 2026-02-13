@@ -11,7 +11,7 @@ class UserProfile {
     required this.createdAt,
     required this.updatedAt,
     this.subscriptionPlan = 'free',
-    this.scansRemaining = 10,
+    this.scansRemaining = 10, // Los 10 escaneos de bienvenida
   });
 
   final String uid;
@@ -25,9 +25,13 @@ class UserProfile {
   final String subscriptionPlan;
   final int scansRemaining;
 
+  // Helpers útiles para la UI
   String get fullName => '$firstName $lastName'.trim();
+  String get displayName => username.isNotEmpty ? username : firstName;
   bool get isPro => subscriptionPlan == 'pro';
-  bool get hasScansAvailable => scansRemaining > 0 || subscriptionPlan == 'pro';
+  
+  // Lógica: Si es Pro tiene escaneos infinitos, si no, depende de scansRemaining
+  bool get hasScansAvailable => subscriptionPlan == 'pro' || scansRemaining > 0;
 
   Map<String, dynamic> toJson() => {
     'uid': uid,
@@ -45,6 +49,7 @@ class UserProfile {
   static UserProfile fromJson(Map<String, dynamic> json) {
     final createdAtRaw = json['createdAt'];
     final updatedAtRaw = json['updatedAt'];
+    
     return UserProfile(
       uid: (json['uid'] ?? '').toString(),
       username: (json['username'] ?? '').toString(),
@@ -55,7 +60,10 @@ class UserProfile {
       createdAt: createdAtRaw is Timestamp ? createdAtRaw.toDate() : DateTime.now(),
       updatedAt: updatedAtRaw is Timestamp ? updatedAtRaw.toDate() : DateTime.now(),
       subscriptionPlan: (json['subscriptionPlan'] ?? 'free').toString(),
-      scansRemaining: json['scansRemaining'] is num ? (json['scansRemaining'] as num).toInt() : 10,
+      // Aseguramos que si el campo no existe en Firebase, por defecto sea 10
+      scansRemaining: json['scansRemaining'] is num 
+          ? (json['scansRemaining'] as num).toInt() 
+          : 10,
     );
   }
 
