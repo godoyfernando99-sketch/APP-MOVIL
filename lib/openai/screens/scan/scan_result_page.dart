@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'package:scanneranimal/app/auth/auth_controller.dart'; // IMPORTANTE: Para descontar escaneos
+import 'package:scanneranimal/app/auth/auth_controller.dart';
 import 'package:scanneranimal/app/history/history_controller.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 import 'package:scanneranimal/data/animals.dart';
@@ -47,7 +47,8 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
         return AlertDialog(
           backgroundColor: Colors.grey[900],
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Notas Finales", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+          title: const Text("Notas Finales", 
+            style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -82,31 +83,40 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
       },
     );
 
-    if (resultText != null) {
+    // Verificamos que el usuario no haya cancelado y que el widget siga en pantalla
+    if (resultText != null && mounted) {
       _userObservations = resultText;
       await _saveFinalResult();
-      if (mounted) context.go(AppRoutes.menu);
     }
   }
 
-  // MÉTODO ACTUALIZADO: Guarda historial y resta escaneo
   Future<void> _saveFinalResult() async {
-    final auth = context.read<AuthController>();
-    final history = context.read<HistoryController>();
+    // Obtenemos las instancias antes del bloque async por seguridad de contexto
+    final auth = Provider.of<AuthController>(context, listen: false);
+    final history = Provider.of<HistoryController>(context, listen: false);
     
     final baseResult = widget.payload as ScanResult;
     final finalResult = baseResult.copyWith(observations: _userObservations);
     
     setState(() => _isSaving = true);
+    
     try {
-      // 1. Guardar en el historial de Firebase
+      // 1. Guardar en el historial
       await history.add(finalResult);
       
-      // 2. DESCONTAR ESCANEO DE BIENVENIDA (Lógica Pro vs Free dentro del controlador)
+      // 2. Descontar escaneo (La lógica interna del controlador decide si descuenta o si es PRO)
       await auth.useFreeScan();
       
+      if (mounted) {
+        context.go(AppRoutes.menu);
+      }
     } catch (e) {
       debugPrint("Error al finalizar el proceso: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Error al guardar los datos. Inténtalo de nuevo."))
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -115,7 +125,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
   @override
   Widget build(BuildContext context) {
     if (widget.payload is! ScanResult) {
-      return const Scaffold(body: Center(child: Text("No hay datos")));
+      return const Scaffold(body: Center(child: Text("No hay datos disponibles")));
     }
 
     final result = widget.payload as ScanResult;
@@ -141,36 +151,52 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
               child: Column(
                 children: [
                   Icon(
-                    result.healthStatus.toLowerCase() == 'buena' ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                    result.healthStatus.toLowerCase() == 'buena' 
+                        ? Icons.check_circle_rounded 
+                        : Icons.error_outline_rounded,
                     color: statusColor, size: 70
                   ),
                   const SizedBox(height: 10),
                   Text(result.healthStatus.toUpperCase(), 
-                    style: TextStyle(color: statusColor, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                    style: TextStyle(
+                      color: statusColor, 
+                      fontSize: 24, 
+                      fontWeight: FontWeight.bold, 
+                      letterSpacing: 1.5
+                    )),
                   
                   const Divider(height: 40, color: Colors.white24),
 
                   _buildResultRow('Especie:', animal.name, Icons.pets),
 
                   if (result.isPregnant == true)
-                    _buildResultRow('GESTACIÓN:', '${result.pregnancyWeeks} Semanas', Icons.auto_awesome, 
+                    _buildResultRow('GESTACIÓN:', '${result.pregnancyWeeks} Semanas', 
+                      Icons.auto_awesome, 
                       valueColor: Colors.blueAccent, isHighlight: true),
 
                   if (result.diseaseName != null && result.diseaseName != 'Ninguna')
-                    _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report, valueColor: Colors.redAccent),
+                    _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report, 
+                      valueColor: Colors.redAccent),
 
-                  _buildResultRow('Medicamento:', result.medicationName ?? 'No requerido', Icons.medication),
-                  _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize, valueColor: Colors.yellowAccent),
+                  _buildResultRow('Medicamento:', result.medicationName ?? 'No requerido', 
+                    Icons.medication),
+                  _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', 
+                    Icons.colorize, valueColor: Colors.yellowAccent),
 
                   const SizedBox(height: 20),
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text("CUIDADOS Y ALIMENTACIÓN:", 
-                      style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+                      style: TextStyle(color: Colors.blueAccent, 
+                      fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                   const SizedBox(height: 5),
                   Text(result.foodRecommendation ?? "Consultar veterinario.",
-                    style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)),
+                    style: const TextStyle(
+                      color: Colors.white70, 
+                      fontSize: 14, 
+                      fontStyle: FontStyle.italic
+                    )),
 
                   const SizedBox(height: 35),
                   
@@ -178,7 +204,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _shareResult(result, animal),
+                          onPressed: _isSaving ? null : () => _shareResult(result, animal),
                           icon: const Icon(Icons.share, size: 18),
                           label: const Text("COMPARTIR"),
                           style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
@@ -193,8 +219,13 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                             padding: const EdgeInsets.symmetric(vertical: 15)
                           ),
                           child: _isSaving 
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
-                            : const Text("FINALIZAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                            ? const SizedBox(
+                                height: 20, 
+                                width: 20, 
+                                child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)
+                              )
+                            : const Text("FINALIZAR", 
+                                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -212,7 +243,9 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: isHighlight ? const EdgeInsets.all(10) : null,
-      decoration: isHighlight ? BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(12)) : null,
+      decoration: isHighlight 
+          ? BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(12)) 
+          : null,
       child: Row(
         children: [
           Icon(icon, color: valueColor ?? Colors.blueAccent, size: 20),
@@ -221,7 +254,11 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
           const Spacer(),
           Expanded(
             child: Text(value, textAlign: TextAlign.end,
-              style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+              style: TextStyle(
+                color: valueColor ?? Colors.white, 
+                fontWeight: FontWeight.bold, 
+                fontSize: 14
+              )),
           ),
         ],
       ),
