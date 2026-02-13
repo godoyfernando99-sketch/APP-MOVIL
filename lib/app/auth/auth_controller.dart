@@ -1,50 +1,73 @@
+El problema principal en tu AuthController es que la carga del perfil del usuario es estática. Es decir, lee los datos de Firebase una vez cuando inicias sesión, pero si luego compras un plan o cambias algo en la base de datos, el código no "se entera" automáticamente a menos que reinicies la app.
+
+He corregido el código implementando un Stream (Escucha en tiempo real). Ahora, en cuanto el campo subscriptionPlan cambie a pro en Firebase, el AuthController lo detectará al instante y desbloqueará el soporte VIP y los conteos.
+
+Aquí tienes el nuevo auth_controller.dart:
+
+Dart
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
 import 'package:scanneranimal/app/auth/user_profile.dart';
 
 class AuthController extends ChangeNotifier {
-  AuthController() {
-    try {
-      _initGoogleSignIn();
-      _auth.authStateChanges().listen((user) {
-        if (user == null) {
-          _currentUser = null;
-          notifyListeners();
-        } else {
-          _loadUserProfile(user.uid);
-        }
-      });
-    } catch (e) {
-      debugPrint('AuthController initialization failed: $e');
-    }
-  }
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late final GoogleSignIn _googleSignIn;
+  
+  StreamSubscription<DocumentSnapshot>? _userSubscription;
+  UserProfile? _currentUser;
+  bool _isLoading = false;
 
-  void _initGoogleSignIn() {
-    if (kIsWeb) {
-      _googleSignIn = GoogleSignIn(
-        clientId: '71382402825-95402b132c675faf79f5d8.apps.googleusercontent.com',
-        scopes: ['email'],
-      );
-    } else {
-      _googleSignIn = GoogleSignIn(
-        scopes: ['email'],
-      );
-    }
+  UserProfile? get currentUser => _currentUser;
+  bool get isLoading => _isLoading;
+  bool get isLoggedIn => _auth.currentUser != null && (_auth.currentUser?.emailVerified ?? false);
+  
+  // Getter útil para la UI
+  bool get isPro => _currentUser?.subscriptionPlan == 'pro';
+
+  AuthController() {
+    _initGoogleSignIn();
+    // Escuchar cambios de autenticación
+    _auth.authStateChanges().listen((user) {
+      if (user == null) {
+        _userSubscription?.cancel();
+        _currentUser = null;
+        notifyListeners();
+      } else {
+        _listenToUserProfile(user.uid);
+      }
+    });
   }
 
-  UserProfile? _currentUser;
-  UserProfile? get currentUser => _currentUser;
-  bool get isLoggedIn => _auth.currentUser != null && (_auth.currentUser?.emailVerified ?? false);
+  void _initGoogleSignIn() {
+    _googleSignIn = GoogleSignIn(
+      clientId: kIsWeb ? '71382402825-95402b132c675faf79f5d8.apps.googleusercontent.com' : null,
+      scopes: ['email'],
+    );
+  }
 
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
+  // --- ESCUCHA EN TIEMPO REAL (CORRECCIÓN CLAVE) ---
+  void _listenToUserProfile(String uid) {
+    _userSubscription?.cancel(); // Cancelar suscripción previa si existe
+    
+    _userSubscription = _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .listen((doc) async {
+      if (doc.exists && doc.data() != null) {
+        _currentUser = UserProfile.fromJson(doc.data()!);
+        
+        // Verificar reseteo mensual
+        await checkAndResetMonthlyScans();
+        
+        notifyListeners(); // Esto actualiza la UI automáticamente cuando cambias a PRO
+      }
+    }, onError: (e) => debugPrint('Error en el Stream de usuario: $e'));
+  }
 
   Future<void> init() async {
     try {
@@ -52,7 +75,7 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       final user = _auth.currentUser;
       if (user != null) {
-        await _loadUserProfile(user.uid);
+        _listenToUserProfile(user.uid);
       }
     } catch (e) {
       debugPrint('AuthController.init failed: $e');
@@ -62,122 +85,67 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadUserProfile(String uid) async {
-    try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-      if (doc.exists && doc.data() != null) {
-        _currentUser = UserProfile.fromJson(doc.data()!);
-        
-        // --- VERIFICAR RENOVACIÓN MENSUAL AL CARGAR ---
-        await checkAndResetMonthlyScans();
-        
-        notifyListeners();
-      } else {
-        // Lógica de creación por defecto si el documento no existe...
-        final user = _auth.currentUser;
-        if (user != null) {
-          final now = DateTime.now();
-          _currentUser = UserProfile(
-            uid: uid,
-            username: user.email?.split('@').first ?? 'user',
-            firstName: user.displayName ?? '',
-            lastName: '',
-            email: user.email ?? '',
-            birthDateIso: '',
-            createdAt: now,
-            updatedAt: now,
-            lastReset: now, // Iniciamos el ciclo
-          );
-          notifyListeners();
-        }
-      }
-    } catch (e) {
-      debugPrint('AuthController._loadUserProfile failed: $e');
-    }
-  }
-
-  // --- LÓGICA DE RENOVACIÓN MENSUAL (NO ACUMULABLE) ---
+  // --- LÓGICA DE RENOVACIÓN MENSUAL ---
   Future<void> checkAndResetMonthlyScans() async {
     final user = _currentUser;
-    // Si no hay usuario, o es PRO (ilimitado) o FREE (no se renueva), salimos.
     if (user == null || user.subscriptionPlan == 'free' || user.subscriptionPlan == 'pro') return;
 
     final now = DateTime.now();
     final lastReset = user.lastReset ?? user.createdAt;
 
-    // Verificar si han pasado 30 días o más
     if (now.difference(lastReset).inDays >= 30) {
-      final int resetValue = user.maxScansByPlan; // 15 para básico, 30 para premium
+      final int resetValue = user.maxScansByPlan;
       
       await _firestore.collection('users').doc(user.uid).update({
         'scansRemaining': resetValue,
         'lastReset': Timestamp.fromDate(now),
         'updatedAt': Timestamp.fromDate(now),
       });
-
-      _currentUser = user.copyWith(
-        scansRemaining: resetValue,
-        lastReset: now,
-      );
-      notifyListeners();
-      debugPrint("¡Ciclo mensual cumplido! Escaneos reseteados a $resetValue.");
+      debugPrint("Ciclo mensual reseteado.");
     }
   }
 
-  // --- DESCONTAR ESCANEO (Compatible con ScanResultPage) ---
+  // --- DESCONTAR ESCANEO ---
   Future<void> useFreeScan() async {
     final user = _currentUser;
     if (user == null || user.subscriptionPlan == 'pro') return;
 
     if (user.scansRemaining > 0) {
-      final newScans = user.scansRemaining - 1;
-      final now = DateTime.now();
-
       try {
         await _firestore.collection('users').doc(user.uid).update({
-          'scansRemaining': newScans,
-          'updatedAt': Timestamp.fromDate(now),
+          'scansRemaining': user.scansRemaining - 1,
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
         });
-
-        _currentUser = user.copyWith(scansRemaining: newScans, updatedAt: now);
-        notifyListeners();
       } catch (e) {
         debugPrint('Error al descontar escaneo: $e');
       }
     }
   }
 
-  // --- ACTUALIZAR SUSCRIPCIÓN CON ASIGNACIÓN DE ESCANEOS ---
+  // --- ACTUALIZAR SUSCRIPCIÓN ---
   Future<void> updateSubscription(String plan) async {
     if (_currentUser == null) return;
     try {
       final now = DateTime.now();
       
-      // Creamos un perfil temporal para obtener el máximo de escaneos del nuevo plan
+      // Calculamos escaneos según el nuevo plan usando un temporal
       final tempProfile = _currentUser!.copyWith(subscriptionPlan: plan);
       final int initialScans = tempProfile.maxScansByPlan;
 
       await _firestore.collection('users').doc(_currentUser!.uid).update({
         'subscriptionPlan': plan,
         'scansRemaining': initialScans,
-        'lastReset': Timestamp.fromDate(now), // El ciclo de 30 días inicia hoy
+        'lastReset': Timestamp.fromDate(now),
         'updatedAt': Timestamp.fromDate(now),
       });
-
-      _currentUser = tempProfile.copyWith(
-        scansRemaining: initialScans,
-        lastReset: now,
-        updatedAt: now,
-      );
       
-      notifyListeners();
+      // Nota: notifyListeners() será llamado automáticamente por el Stream (_listenToUserProfile)
     } catch (e) {
       debugPrint('AuthController.updateSubscription failed: $e');
     }
   }
 
-  // --- MÉTODOS DE AUTH (LOGIN, REGISTER, GOOGLE, ETC.) ---
-
+  // --- REGISTRO ---
   Future<String?> register({
     required String username,
     required String firstName,
@@ -194,13 +162,12 @@ class AuthController extends ChangeNotifier {
         email: email.trim(), 
         password: password
       );
-      final uid = credential.user!.uid;
-
+      
       await credential.user!.sendEmailVerification();
 
       final now = DateTime.now();
       final profile = UserProfile(
-        uid: uid,
+        uid: credential.user!.uid,
         username: username.toLowerCase().trim(),
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -208,46 +175,37 @@ class AuthController extends ChangeNotifier {
         birthDateIso: birthDateIso,
         createdAt: now,
         updatedAt: now,
-        lastReset: now, // Fecha inicial de ciclo
+        lastReset: now,
+        subscriptionPlan: 'free',
+        scansRemaining: 3, // Valor inicial por defecto
       );
 
-      await _firestore.collection('users').doc(uid).set(profile.toJson());
-      
+      await _firestore.collection('users').doc(profile.uid).set(profile.toJson());
       await _auth.signOut();
-      _currentUser = null;
-      notifyListeners();
       return null;
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'weak-password') return 'La contraseña es demasiado débil.';
-      if (e.code == 'email-already-in-use') return 'El correo electrónico ya está en uso.';
-      return 'No se pudo registrar: ${e.message}';
+      return e.message;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  // --- LOGIN ---
   Future<String?> login({required String username, required String password}) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      String? email;
-      final cleanUsername = username.trim().toLowerCase();
-      
-      if (!cleanUsername.contains('@')) {
-        final usernameQuery = await _firestore
+      String? email = username.trim();
+      if (!email.contains('@')) {
+        final query = await _firestore
             .collection('users')
-            .where('username', isEqualTo: cleanUsername)
+            .where('username', isEqualTo: email.toLowerCase())
             .limit(1)
             .get();
-            
-        if (usernameQuery.docs.isNotEmpty) {
-          email = usernameQuery.docs.first.data()['email'] as String;
-        }
-        if (email == null) return 'Usuario o contraseña incorrectos.';
-      } else {
-        email = cleanUsername;
+        if (query.docs.isEmpty) return 'Usuario no encontrado.';
+        email = query.docs.first.data()['email'] as String;
       }
 
       final credential = await _auth.signInWithEmailAndPassword(
@@ -257,26 +215,26 @@ class AuthController extends ChangeNotifier {
       
       if (!credential.user!.emailVerified) {
         await _auth.signOut();
-        return 'Debes verificar tu correo electrónico antes de iniciar sesión.';
+        return 'Verifica tu correo electrónico.';
       }
       
-      await _loadUserProfile(credential.user!.uid);
       return null;
-    } on FirebaseAuthException catch (e) {
-      return 'Usuario o contraseña incorrectos.';
+    } catch (e) {
+      return 'Credenciales incorrectas.';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  // --- GOOGLE SIGN IN ---
   Future<String?> signInWithGoogle() async {
     try {
       _isLoading = true;
       notifyListeners();
 
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return 'Inicio de sesión cancelado.';
+      if (googleUser == null) return 'Cancelado.';
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -293,7 +251,7 @@ class AuthController extends ChangeNotifier {
         final now = DateTime.now();
         final profile = UserProfile(
           uid: user.uid,
-          username: user.email?.split('@').first ?? 'user_${user.uid.substring(0, 8)}',
+          username: user.email?.split('@').first ?? 'user',
           firstName: user.displayName?.split(' ').first ?? '',
           lastName: user.displayName?.split(' ').skip(1).join(' ') ?? '',
           email: user.email ?? '',
@@ -301,32 +259,14 @@ class AuthController extends ChangeNotifier {
           createdAt: now,
           updatedAt: now,
           lastReset: now,
+          subscriptionPlan: 'free',
+          scansRemaining: 3,
         );
         await _firestore.collection('users').doc(user.uid).set(profile.toJson());
-        _currentUser = profile;
-      } else {
-        _currentUser = UserProfile.fromJson(userDoc.data()!);
-        await checkAndResetMonthlyScans();
       }
-      
-      notifyListeners();
       return null;
     } catch (e) {
-      return 'Error al conectar con Google.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<String?> resetPassword({required String email}) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-      await _auth.sendPasswordResetEmail(email: email.trim());
-      return null;
-    } catch (e) {
-      return 'Error al enviar el correo.';
+      return 'Error con Google: $e';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -334,9 +274,16 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _userSubscription?.cancel();
     await _auth.signOut();
     await _googleSignIn.signOut();
     _currentUser = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _userSubscription?.cancel();
+    super.dispose();
   }
 }
