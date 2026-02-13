@@ -22,7 +22,7 @@ class AiDiagnosisService {
 
     final String apiKey = OpenAiConfig.apiKey;
     
-    // URL Corregida: Usamos gemini-1.5-flash y eliminamos errores de sintaxis
+    // URL para Gemini 1.5 Flash
     final url = Uri.parse(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey'
     );
@@ -48,9 +48,9 @@ class AiDiagnosisService {
             ]
           }],
           "generationConfig": {
-            "temperature": 0.2, // Temperatura baja para mayor precisión en el filtro
+            "temperature": 0.2,
             "maxOutputTokens": 2048,
-            "responseMimeType": "application/json" // Forzamos formato JSON
+            "responseMimeType": "application/json"
           }
         }),
       ).timeout(const Duration(seconds: 45));
@@ -59,7 +59,7 @@ class AiDiagnosisService {
         final data = jsonDecode(response.body);
         String rawText = data['candidates'][0]['content']['parts'][0]['text'];
         
-        // Limpieza de Markdown si Gemini lo incluye
+        // Limpieza de JSON
         String cleanJson = rawText;
         if (rawText.contains('```')) {
           cleanJson = rawText.split('```')[1].replaceFirst('json', '').trim();
@@ -67,8 +67,8 @@ class AiDiagnosisService {
 
         final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
 
-        // --- VALIDACIÓN DE ANIMAL ---
-        // Si la IA detecta que no es un animal, lanzamos un error específico
+        // --- VALIDACIÓN DE SEGURIDAD ESTRICTA ---
+        // Si la IA dice que no es un animal, lanzamos el error que activará tu SnackBar rojo
         if (aiJson['is_animal'] == false) {
           throw Exception('VALIDATION_ERROR: Por favor, coloca una fotografía de un animal.');
         }
@@ -108,8 +108,28 @@ class AiDiagnosisService {
 
   String _buildPrompt(String category) {
     return """
-    Eres un sistema de visión veterinaria profesional y estricto.
+    Eres un experto en visión veterinaria. Analiza las imágenes adjuntas con rigor científico.
     
-    TAREA DE VALIDACIÓN:
-    - Primero, determina si la imagen contiene un ANIMAL. 
-    - Si
+    REGLA DE ORO DE SEGURIDAD:
+    Si la imagen muestra una persona, un objeto inanimado, comida, o cualquier cosa que NO sea un animal, debes responder estrictamente con {"is_animal": false}.
+
+    Si es un animal, responde en formato JSON con la siguiente estructura:
+    {
+      "is_animal": true,
+      "detectedSpecies": "Especie detectada",
+      "detectedBreed": "Raza detectada",
+      "healthStatus": "bueno/regular/critico",
+      "diseaseName": "Nombre de posible patología (si aplica)",
+      "medicationName": "Principio activo recomendado",
+      "medicationDose": "Dosis sugerida según peso visual estimado",
+      "isPregnant": true/false (solo si el modo es diagnóstico),
+      "pregnancyWeeks": número o null,
+      "foodRecommendation": "Tipo de dieta sugerida",
+      "observations": "Resumen profesional de lo observado"
+    }
+
+    Contexto del animal: $category.
+    Responde ÚNICAMENTE el JSON.
+    """;
+  }
+}
