@@ -25,7 +25,6 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   bool _isProcessing = false;
   final ImagePicker _picker = ImagePicker();
 
-  // Función principal modificada para ofrecer ambas opciones
   Future<void> _pickImageSource() async {
     if (_photos.length >= 3) return;
 
@@ -68,11 +67,10 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
     );
   }
 
-  // Lógica de captura y conversión a bytes
   Future<void> _processPicker(ImageSource source) async {
     final XFile? image = await _picker.pickImage(
       source: source,
-      imageQuality: 85, // Mayor calidad para mejorar detección de IA
+      imageQuality: 85, 
     );
 
     if (image != null) {
@@ -81,6 +79,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
     }
   }
 
+  // FUNCIÓN DE DIAGNÓSTICO CORREGIDA CON SNACKBAR DE VALIDACIÓN
   Future<void> _processDiagnosis() async {
     if (_photos.isEmpty) return;
 
@@ -90,7 +89,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       const service = AiDiagnosisService();
       final result = await service.diagnose(
         animalId: widget.animalId,
-        animalCategory: 'vaca',
+        animalCategory: 'vaca', // O la categoría que corresponda
         mode: widget.mode,
         photos: _photos,
       );
@@ -100,8 +99,23 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = "Error en el análisis";
+        
+        // Capturamos el error de validación de humano/objeto que pusimos en el servicio
+        if (e.toString().contains('VALIDATION_ERROR')) {
+          errorMessage = "⚠️ Por favor, coloca una fotografía de un animal.";
+        } else if (e.toString().contains('404')) {
+          errorMessage = "Error de conexión (404). Verifica el modelo en el servicio.";
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error en el análisis: $e')),
+          SnackBar(
+            content: Text(errorMessage, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     } finally {
@@ -142,7 +156,6 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                   itemBuilder: (context, index) {
                     final hasPhoto = index < _photos.length;
                     return GestureDetector(
-                      // AQUÍ se llama a la nueva función que da a elegir
                       onTap: hasPhoto ? null : _pickImageSource, 
                       child: Container(
                         decoration: BoxDecoration(
@@ -156,7 +169,23 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                         child: hasPhoto
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(18),
-                                child: Image.memory(_photos[index], fit: BoxFit.cover),
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(child: Image.memory(_photos[index], fit: BoxFit.cover)),
+                                    Positioned(
+                                      top: 5,
+                                      right: 5,
+                                      child: GestureDetector(
+                                        onTap: () => setState(() => _photos.removeAt(index)),
+                                        child: const CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: Colors.red,
+                                          child: Icon(Icons.close, size: 15, color: Colors.white),
+                                        ),
+                                      ),
+                                    )
+                                  ],
+                                ),
                               )
                             : const Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -175,7 +204,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
               if (_isProcessing)
                 const Column(
                   children: [
-                    CircularProgressIndicator(color: Colors.white),
+                    CircularProgressIndicator(color: Colors.greenAccent),
                     SizedBox(height: 10),
                     Text("Analizando con IA...", style: TextStyle(color: Colors.white)),
                   ],
@@ -190,6 +219,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                       backgroundColor: Colors.green.shade600,
                       foregroundColor: Colors.white,
                       elevation: 8,
+                      disabledBackgroundColor: Colors.white10,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
                     child: const Text(
