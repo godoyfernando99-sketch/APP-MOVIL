@@ -53,11 +53,11 @@ class AiDiagnosisService {
             ]
           }],
           "generationConfig": {
-            "temperature": 0.5, // PERMITE DEDUCCIÓN DE SIGNOS SUTILES
+            "temperature": 0.4, // Un poco más bajo para evitar alucinaciones en la raza
             "maxOutputTokens": 2048,
           }
         }),
-      ).timeout(const Duration(seconds: 45)); // MÁS TIEMPO PARA ANÁLISIS PROFUNDO
+      ).timeout(const Duration(seconds: 45));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -70,7 +70,7 @@ class AiDiagnosisService {
         final photoB64 = photos.map((p) => base64Encode(p)).toList();
         final now = DateTime.now();
 
-        // Combinamos la dosis con los CM3 para la visualización
+        // Combinamos la dosis con los CM3
         String dosisFinal = aiJson['medicationDose']?.toString() ?? 'N/A';
         if (aiJson['injectionCm3'] != null && aiJson['injectionCm3'] != 'N/A') {
           dosisFinal += " | Aplicar: ${aiJson['injectionCm3']} cm³ (Inyectable)";
@@ -87,6 +87,10 @@ class AiDiagnosisService {
           microchipNumber: microchipNumber,
           photosBase64: photoB64,
           healthStatus: (aiJson['healthStatus'] ?? 'regular').toString().toLowerCase(),
+          // NUEVOS CAMPOS: Capturamos lo que la IA "adivinó"
+          detectedBreed: aiJson['detectedBreed']?.toString(),
+          detectedSpecies: aiJson['detectedSpecies']?.toString(),
+          
           diseaseName: aiJson['diseaseName']?.toString(),
           fractureDescription: aiJson['fractureDescription']?.toString(),
           medicationName: aiJson['medicationName']?.toString(),
@@ -94,6 +98,7 @@ class AiDiagnosisService {
           isPregnant: aiJson['isPregnant'] is bool ? aiJson['isPregnant'] as bool : false,
           pregnancyWeeks: aiJson['pregnancyWeeks'] is num ? (aiJson['pregnancyWeeks'] as num).toInt() : null,
           foodRecommendation: "ALIMENTO: ${aiJson['foodRecommendation']} | CUIDADOS: ${aiJson['specialCare']}",
+          observations: aiJson['observations']?.toString(),
         );
       } else {
         throw Exception('Error Gemini: ${response.statusCode}');
@@ -112,27 +117,30 @@ class AiDiagnosisService {
 
   String _buildPrompt(String category, String id) {
     return """
-    ACTÚA COMO UN VETERINARIO PATÓLOGO Y EXPERTO EN REPRODUCCIÓN ANIMAL.
-    Analiza las fotos de este $category (ID: $id).
+    ACTÚA COMO UN VETERINARIO PATÓLOGO Y EXPERTO EN ZOOTECNIA.
+    Analiza las fotos adjuntas para este animal de la categoría: $category.
     
     TAREAS OBLIGATORIAS:
-    1. DIAGNÓSTICO: Identifica enfermedades específicas de la lista: Aftosa, Mastitis, Parvovirus, Moquillo, Brucelosis, Rabia, Parásitos, etc.
-    2. PREÑEZ: Analiza asimetría de flanco derecho, llenado de ubre y cambios vulvares. Detecta preñez incluso si NO hay bulto evidente.
-    3. TRATAMIENTO: Provee nombre del medicamento, dosis exacta según peso visual estimado y, si es inyección, indica los cm³ exactos.
-    4. MANEJO: Indica alimento recomendado y cuidados (aislamiento, limpieza).
+    1. IDENTIFICACIÓN: Determina la especie y la raza exacta del animal basándote en sus rasgos físicos (ej. Perro - Golden Retriever, Vaca - Holando Argentino).
+    2. DIAGNÓSTICO: Identifica enfermedades específicas (Aftosa, Mastitis, Moquillo, Brucelosis, etc.) o lesiones visibles.
+    3. PREÑEZ: En hembras, analiza signos de gestación (asimetría, ubre, vulva).
+    4. TRATAMIENTO: Medicamento, dosis y cm³ si es inyectable.
 
-    RESPONDE ÚNICAMENTE EN JSON PLANO:
+    RESPONDE EXCLUSIVAMENTE EN JSON PLANO:
     {
+      "detectedSpecies": "Especie identificada",
+      "detectedBreed": "Raza identificada",
       "healthStatus": "buena" | "regular" | "mala",
       "diseaseName": "Nombre de la enfermedad o 'Ninguna'",
-      "fractureDescription": "Descripción de lesiones o fracturas",
-      "medicationName": "Medicamento recomendado",
-      "medicationDose": "Dosis (ej: 500mg cada 8h)",
-      "injectionCm3": "Cantidad en cm3 si es inyectable, sino N/A",
+      "fractureDescription": "Descripción de lesiones",
+      "medicationName": "Medicamento",
+      "medicationDose": "Dosis",
+      "injectionCm3": "cm3 o N/A",
       "isPregnant": true/false,
-      "pregnancyWeeks": número de semanas estimado,
-      "foodRecommendation": "Dieta específica para recuperación",
-      "specialCare": "Instrucciones de aislamiento y manejo"
+      "pregnancyWeeks": número o null,
+      "foodRecommendation": "Dieta sugerida",
+      "specialCare": "Instrucciones de manejo",
+      "observations": "Breve resumen del hallazgo visual"
     }
     """;
   }
@@ -156,6 +164,8 @@ class AiDiagnosisService {
       microchipNumber: microchipNumber,
       photosBase64: photos.map((p) => base64Encode(p)).toList(),
       healthStatus: 'buena',
+      detectedBreed: 'Raza Simulada',
+      detectedSpecies: 'Especie Simulada',
       diseaseName: 'Simulación de diagnóstico',
       foodRecommendation: 'Mantener dieta balanceada.',
     );
