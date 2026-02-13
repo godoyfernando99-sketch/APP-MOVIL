@@ -19,7 +19,7 @@ class ScanResult {
     this.isPregnant,
     this.pregnancyWeeks,
     this.foodRecommendation,
-    this.observations, // <--- AÑADIDO
+    this.observations,
   });
 
   final String id;
@@ -28,7 +28,7 @@ class ScanResult {
   final DateTime updatedAt;
   final String animalId;
   final String animalCategory;
-  final String mode; // chip | nochip
+  final String mode; 
   final String? microchipNumber;
   final List<String> photosBase64;
   final String healthStatus;
@@ -39,9 +39,8 @@ class ScanResult {
   final bool? isPregnant;
   final int? pregnancyWeeks;
   final String? foodRecommendation;
-  final String? observations; // <--- AÑADIDO
+  final String? observations;
 
-  // Mapeo para consistencia con el Controller
   Map<String, dynamic> toMap() => {
         'id': id,
         'ownerId': ownerId,
@@ -60,10 +59,9 @@ class ScanResult {
         'isPregnant': isPregnant,
         'pregnancyWeeks': pregnancyWeeks,
         'foodRecommendation': foodRecommendation,
-        'observations': observations, // <--- AÑADIDO
+        'observations': observations,
       };
 
-  // Método específico para Firestore que maneja los Timestamps nativos
   Map<String, dynamic> toFirestoreMap() {
     final map = toMap();
     map['createdAt'] = Timestamp.fromDate(createdAt);
@@ -71,7 +69,6 @@ class ScanResult {
     return map;
   }
 
-  // Creación del objeto desde un Mapa
   static ScanResult fromMap(Map<String, dynamic> map) {
     final photos = (map['photosBase64'] is List)
         ? List<String>.from(map['photosBase64'])
@@ -101,7 +98,7 @@ class ScanResult {
       isPregnant: map['isPregnant'] as bool?,
       pregnancyWeeks: (map['pregnancyWeeks'] as num?)?.toInt(),
       foodRecommendation: map['foodRecommendation']?.toString(),
-      observations: map['observations']?.toString(), // <--- AÑADIDO
+      observations: map['observations']?.toString(),
     );
   }
 
@@ -126,7 +123,7 @@ class ScanResult {
     bool? isPregnant,
     int? pregnancyWeeks,
     String? foodRecommendation,
-    String? observations, // <--- AÑADIDO
+    String? observations,
   }) {
     return ScanResult(
       id: id ?? this.id,
@@ -136,4 +133,17 @@ class ScanResult {
       animalId: animalId ?? this.animalId,
       animalCategory: animalCategory ?? this.animalCategory,
       mode: mode ?? this.mode,
-      microchipNumber: micro
+      microchipNumber: microchipNumber ?? this.microchipNumber,
+      photosBase64: photosBase64 ?? this.photosBase64, // <-- Corregido
+      healthStatus: healthStatus ?? this.healthStatus,
+      diseaseName: diseaseName ?? this.diseaseName,
+      fractureDescription: fractureDescription ?? this.fractureDescription,
+      medicationName: medicationName ?? this.medicationName,
+      medicationDose: medicationDose ?? this.medicationDose,
+      isPregnant: isPregnant ?? this.isPregnant,
+      pregnancyWeeks: pregnancyWeeks ?? this.pregnancyWeeks,
+      foodRecommendation: foodRecommendation ?? this.foodRecommendation,
+      observations: observations ?? this.observations,
+    );
+  }
+}
