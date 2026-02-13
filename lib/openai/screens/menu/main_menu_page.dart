@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:scanneranimal/app/auth/auth_controller.dart';
-import 'package:scanneranimal/nav.dart';
-import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
+
+// Import corregido con ruta relativa para asegurar compatibilidad en GitHub
+import '../../../app/auth/auth_controller.dart';
+import '../../../../nav.dart';
+import '../../../../widgets/farm_background_scaffold.dart';
 
 class MainMenuPage extends StatelessWidget {
   const MainMenuPage({super.key});
@@ -53,10 +55,10 @@ class MainMenuPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    // Usamos el import relativo de AuthController
     final authController = context.watch<AuthController>();
     final user = authController.currentUser;
     
-    // Normalizamos el plan a minúsculas para evitar errores de comparación
     final String currentPlan = user?.subscriptionPlan?.toLowerCase() ?? 'free';
     final bool isUserPro = currentPlan == 'pro';
     final int scansLeft = user?.scansRemaining ?? 0;
@@ -75,7 +77,6 @@ class MainMenuPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Corregido: Usamos fullName o username según lo que esté disponible
             _buildWelcomeHeader(t, user?.fullName ?? user?.username ?? 'Usuario'),
             const SizedBox(height: 16),
 
@@ -117,6 +118,7 @@ class MainMenuPage extends StatelessWidget {
             _buildSectionTitle(t, 'Biblioteca & Historial'),
             const SizedBox(height: 16),
             
+            // Fila superior: Historial y Enfermedades
             Row(
               children: [
                 Expanded(
@@ -139,11 +141,28 @@ class MainMenuPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            _QuickActionCard(
-              title: 'Gestionar Suscripción',
-              icon: Icons.star_rounded,
-              color: Colors.amber.shade400,
-              onTap: () => context.push(AppRoutes.subscriptions),
+            
+            // Fila inferior: Medicamentos y Suscripción
+            Row(
+              children: [
+                Expanded(
+                  child: _QuickActionCard(
+                    title: 'Medicamentos', // <--- BOTÓN AGREGADO
+                    icon: Icons.vaccines_rounded,
+                    color: Colors.purpleAccent,
+                    onTap: () => context.push(AppRoutes.medications),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _QuickActionCard(
+                    title: 'Suscripción',
+                    icon: Icons.star_rounded,
+                    color: Colors.amber.shade400,
+                    onTap: () => context.push(AppRoutes.subscriptions),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 30),
           ],
