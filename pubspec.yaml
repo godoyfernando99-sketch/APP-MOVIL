@@ -18,17 +18,19 @@ dependencies:
   intl: ^0.20.2
   url_launcher: ^6.3.1
   permission_handler: ^11.3.1
-  share_plus: ^10.1.0  # <--- SE AÑADIÓ ESTA LÍNEA
+  share_plus: ^10.1.0
 
   # Interfaz y Navegación
   cupertino_icons: ^1.0.8
-  google_fonts: ^6.1.0
+  # Se fijó en 6.1.0 sin el símbolo ^ para evitar el error de compilación de la 6.2.1
+  google_fonts: 6.1.0 
   go_router: ^16.2.0
   provider: ^6.1.2
   
   # Cámara y Almacenamiento
   image_picker: ^1.1.2
-  shared_preferences: ^2.0.0
+  # Se actualizó shared_preferences a una versión compatible con el SDK actual
+  shared_preferences: ^2.3.2
   
   # Firebase (Base de datos y Auth)
   firebase_core: ^3.10.0
@@ -36,7 +38,7 @@ dependencies:
   cloud_firestore: ^5.5.0
   google_sign_in: ^6.2.1
   
-  # Pagos y Suscripciones (Play Store)
+  # Pagos y Suscripciones
   in_app_purchase: ^3.2.0
   in_app_purchase_android: ^0.4.0+5
   in_app_purchase_storekit: ^0.4.4
@@ -49,6 +51,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
+  # Asegúrate de que estas carpetas existan físicamente en tu proyecto
   assets:
     - assets/images/
     - assets/icons/
