@@ -28,7 +28,6 @@ class AuthController extends ChangeNotifier {
 
   void _initGoogleSignIn() {
     if (kIsWeb) {
-      // Para web, necesitamos pasar el clientId explícitamente
       _googleSignIn = GoogleSignIn(
         clientId: '71382402825-95402b132c675faf79f5d8.apps.googleusercontent.com',
         scopes: ['email'],
@@ -70,7 +69,6 @@ class AuthController extends ChangeNotifier {
         _currentUser = UserProfile.fromJson(doc.data()!);
         notifyListeners();
       } else {
-        // Si el documento no existe, crear un perfil básico para permitir que la app funcione
         final user = _auth.currentUser;
         if (user != null) {
           final now = DateTime.now();
@@ -89,7 +87,6 @@ class AuthController extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('AuthController._loadUserProfile failed: $e');
-      // En caso de error de permisos, crear un perfil temporal para que la app funcione
       final user = _auth.currentUser;
       if (user != null) {
         final now = DateTime.now();
@@ -120,21 +117,21 @@ class AuthController extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Create Firebase Auth user
-      final credential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(), 
+        password: password
+      );
       final uid = credential.user!.uid;
 
-      // Send email verification
       await credential.user!.sendEmailVerification();
 
-      // Create user profile in Firestore
       final now = DateTime.now();
       final profile = UserProfile(
         uid: uid,
-        username: username.toLowerCase(),
-        firstName: firstName,
-        lastName: lastName,
-        email: email,
+        username: username.toLowerCase().trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
         birthDateIso: birthDateIso,
         createdAt: now,
         updatedAt: now,
@@ -142,23 +139,16 @@ class AuthController extends ChangeNotifier {
 
       await _firestore.collection('users').doc(uid).set(profile.toJson());
       
-      // Cerrar sesión para que el usuario deba iniciar sesión después de verificar su correo
       await _auth.signOut();
       _currentUser = null;
       notifyListeners();
       return null;
     } on FirebaseAuthException catch (e) {
-      debugPrint('AuthController.register FirebaseAuthException: $e');
-      if (e.code == 'weak-password') {
-        return 'La contraseña es demasiado débil.';
-      } else if (e.code == 'email-already-in-use') {
-        return 'El correo electrónico ya está en uso.';
-      } else if (e.code == 'invalid-email') {
-        return 'El correo electrónico no es válido.';
-      }
-      return 'No se pudo registrar. Intenta nuevamente.';
+      if (e.code == 'weak-password') return 'La contraseña es demasiado débil.';
+      if (e.code == 'email-already-in-use') return 'El correo electrónico ya está en uso.';
+      if (e.code == 'invalid-email') return 'El correo electrónico no es válido.';
+      return 'No se pudo registrar: ${e.message}';
     } catch (e) {
-      debugPrint('AuthController.register failed: $e');
       return 'No se pudo registrar. Intenta nuevamente.';
     } finally {
       _isLoading = false;
@@ -172,49 +162,40 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
 
       String? email;
+      final cleanUsername = username.trim().toLowerCase();
       
-      // Intentar buscar usuario por username en Firestore (solo si el username no es un email)
-      if (!username.contains('@')) {
-        try {
-          final usernameQuery = await _firestore.collection('users').where('username', isEqualTo: username.toLowerCase()).limit(1).get();
-          if (usernameQuery.docs.isNotEmpty) {
-            email = usernameQuery.docs.first.data()['email'] as String;
-          }
-        } catch (e) {
-          debugPrint('Error buscando usuario en Firestore: $e');
-          // Si falla Firestore, continuar sin el email
+      if (!cleanUsername.contains('@')) {
+        final usernameQuery = await _firestore
+            .collection('users')
+            .where('username', isEqualTo: cleanUsername)
+            .limit(1)
+            .get();
+            
+        if (usernameQuery.docs.isNotEmpty) {
+          email = usernameQuery.docs.first.data()['email'] as String;
         }
-
-        // Si no se encontró en Firestore y no es un email, devolver error
-        if (email == null) {
-          return 'Usuario o contraseña incorrectos.';
-        }
+        if (email == null) return 'Usuario o contraseña incorrectos.';
       } else {
-        // El username es un email
-        email = username;
+        email = cleanUsername;
       }
 
-      // Sign in with email and password
-      final credential = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email, 
+        password: password
+      );
       
-      // Verificar si el correo está verificado
       if (!credential.user!.emailVerified) {
         await _auth.signOut();
-        return 'Debes verificar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.';
+        return 'Debes verificar tu correo electrónico antes de iniciar sesión.';
       }
       
-      // Cargar perfil del usuario
       await _loadUserProfile(credential.user!.uid);
       return null;
     } on FirebaseAuthException catch (e) {
-      debugPrint('AuthController.login FirebaseAuthException: $e');
       if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
         return 'Usuario o contraseña incorrectos.';
       }
-      return 'No se pudo iniciar sesión.';
-    } catch (e) {
-      debugPrint('AuthController.login failed: $e');
-      return 'No se pudo iniciar sesión.';
+      return 'Error al iniciar sesión: ${e.message}';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -226,32 +207,21 @@ class AuthController extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      
-      if (googleUser == null) {
-        // User canceled the sign-in
-        return 'Inicio de sesión cancelado.';
-      }
+      if (googleUser == null) return 'Inicio de sesión cancelado.';
 
-      // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      // Create a new credential
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken ?? '',
-        idToken: googleAuth.idToken ?? '',
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
-      // Sign in to Firebase with the Google credential
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user!;
 
-      // Check if user profile exists in Firestore
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       
       if (!userDoc.exists) {
-        // Create new user profile
         final now = DateTime.now();
         final profile = UserProfile(
           uid: user.uid,
@@ -271,36 +241,44 @@ class AuthController extends ChangeNotifier {
       
       notifyListeners();
       return null;
-    } on FirebaseAuthException catch (e) {
-      debugPrint('AuthController.signInWithGoogle FirebaseAuthException: $e');
-      return 'No se pudo iniciar sesión con Google. Intenta nuevamente.';
     } catch (e) {
-      debugPrint('AuthController.signInWithGoogle failed: $e');
-      return 'No se pudo iniciar sesión con Google. Intenta nuevamente.';
+      return 'Error al conectar con Google.';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  // FUNCIÓN CORREGIDA PARA RESTABLECER CONTRASEÑA
   Future<String?> resetPassword({required String email}) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _auth.sendPasswordResetEmail(email: email);
+      // Limpieza del email para evitar errores de espacios
+      final cleanEmail = email.trim();
+      
+      if (cleanEmail.isEmpty) return 'Por favor, ingresa tu correo.';
+
+      debugPrint('Solicitando restablecimiento de contraseña para: $cleanEmail');
+
+      await _auth.sendPasswordResetEmail(email: cleanEmail);
+      
+      debugPrint('Correo de restablecimiento enviado correctamente por Firebase API');
       return null;
     } on FirebaseAuthException catch (e) {
-      debugPrint('AuthController.resetPassword FirebaseAuthException: $e');
+      debugPrint('Error en resetPassword [${e.code}]: ${e.message}');
       if (e.code == 'user-not-found') {
-        return 'No se encontró una cuenta con este correo electrónico.';
+        return 'No existe una cuenta asociada a este correo.';
       } else if (e.code == 'invalid-email') {
-        return 'El correo electrónico no es válido.';
+        return 'El formato del correo electrónico no es válido.';
+      } else if (e.code == 'too-many-requests') {
+        return 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.';
       }
-      return 'No se pudo enviar el correo de restablecimiento.';
+      return 'No se pudo enviar el correo: ${e.message}';
     } catch (e) {
-      debugPrint('AuthController.resetPassword failed: $e');
-      return 'No se pudo enviar el correo de restablecimiento.';
+      debugPrint('Error inesperado en resetPassword: $e');
+      return 'Ocurrió un error inesperado al intentar enviar el correo.';
     } finally {
       _isLoading = false;
       notifyListeners();
