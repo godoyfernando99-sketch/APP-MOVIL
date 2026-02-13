@@ -63,7 +63,10 @@ class ScanResult {
   };
 
   static ScanResult fromMap(Map<String, dynamic> map) {
-    DateTime parse(dynamic r) => r is Timestamp ? r.toDate() : (DateTime.tryParse(r.toString()) ?? DateTime.now());
+    DateTime parse(dynamic r) {
+      if (r is Timestamp) return r.toDate();
+      return DateTime.tryParse(r.toString()) ?? DateTime.now();
+    }
     return ScanResult(
       id: map['id']?.toString() ?? '',
       ownerId: map['ownerId']?.toString() ?? '',
@@ -87,11 +90,24 @@ class ScanResult {
   }
 
   ScanResult copyWith({
-    String? id, String? ownerId, DateTime? createdAt, DateTime? updatedAt,
-    String? animalId, String? animalCategory, String? mode, String? microchipNumber,
-    List<String>? photosBase64, String? healthStatus, String? diseaseName,
-    String? fractureDescription, String? medicationName, String? medicationDose,
-    bool? isPregnant, int? pregnancyWeeks, String? foodRecommendation, String? observations,
+    String? id,
+    String? ownerId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? animalId,
+    String? animalCategory,
+    String? mode,
+    String? microchipNumber,
+    List<String>? photosBase64,
+    String? healthStatus,
+    String? diseaseName,
+    String? fractureDescription,
+    String? medicationName,
+    String? medicationDose,
+    bool? isPregnant,
+    int? pregnancyWeeks,
+    String? foodRecommendation,
+    String? observations,
   }) {
     return ScanResult(
       id: id ?? this.id,
