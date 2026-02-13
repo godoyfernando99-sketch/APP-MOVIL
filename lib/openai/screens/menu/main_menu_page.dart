@@ -7,14 +7,55 @@ import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 class MainMenuPage extends StatelessWidget {
   const MainMenuPage({super.key});
 
+  // TODO: Implementar lógica real de suscripción desde tu AuthController o Provider
+  final bool isUserPro = false; 
+
+  void _handleVipSupport(BuildContext context) {
+    if (isUserPro) {
+      // Si es Pro, navegamos al soporte (Asegúrate de tener esta ruta en nav.dart)
+      context.push(AppRoutes.support);
+    } else {
+      // Si no es Pro, mostramos aviso
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Row(
+            children: [
+              Icon(Icons.stars_rounded, color: Colors.amber),
+              SizedBox(width: 10),
+              Text("Acceso VIP", style: TextStyle(color: Colors.white)),
+            ],
+          ),
+          content: const Text(
+            "El soporte técnico prioritario es una función exclusiva para usuarios con un Plan Pro activo.",
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("MÁS TARDE"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade700),
+              onPressed: () {
+                Navigator.pop(context);
+                context.push(AppRoutes.subscriptions);
+              },
+              child: const Text("VER PLANES PRO", style: TextStyle(color: Colors.black)),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
 
     return FarmBackgroundScaffold(
       title: 'ScannerAnimal IA',
-      // IMPORTANTE: Si tu FarmBackgroundScaffold tiene una propiedad de color, 
-      // asegúrate de que sea transparente.
       backgroundColor: Colors.transparent, 
       actions: [
         IconButton(
@@ -23,8 +64,6 @@ class MainMenuPage extends StatelessWidget {
         ),
       ],
       child: Container(
-        // Usamos un degradado muy sutil solo en la base o fondo transparente
-        // para asegurar que el texto sea legible sin tapar la imagen.
         color: Colors.transparent, 
         child: SingleChildScrollView(
           padding: AppSpacing.paddingLg,
@@ -34,21 +73,14 @@ class MainMenuPage extends StatelessWidget {
               _buildWelcomeHeader(t),
               const SizedBox(height: 24),
               
-              Text(
-                '¿Qué vamos a analizar hoy?',
-                style: t.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white, // Forzamos blanco para resaltar sobre el fondo
-                  shadows: [const Shadow(blurRadius: 4, color: Colors.black54)],
-                ),
-              ),
+              _buildSectionTitle(t, '¿Qué vamos a analizar hoy?'),
               const SizedBox(height: 16),
 
               _CategoryButton(
                 title: 'Animales de Casa',
                 subtitle: 'Perros, gatos, conejos...',
                 icon: Icons.pets_rounded,
-                color: Colors.orange.shade700.withOpacity(0.9), // Ligera transparencia
+                color: Colors.orange.shade700.withOpacity(0.9),
                 onTap: () => context.push('${AppRoutes.animals}/home'),
               ),
 
@@ -64,14 +96,7 @@ class MainMenuPage extends StatelessWidget {
 
               const Divider(height: 48, color: Colors.white24),
 
-              Text(
-                'Biblioteca Veterinaria',
-                style: t.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold, 
-                  color: Colors.white,
-                  shadows: [const Shadow(blurRadius: 4, color: Colors.black54)],
-                ),
-              ),
+              _buildSectionTitle(t, 'Biblioteca Veterinaria'),
               const SizedBox(height: 16),
               
               Row(
@@ -80,7 +105,7 @@ class MainMenuPage extends StatelessWidget {
                     child: _QuickActionCard(
                       title: 'Enfermedades',
                       icon: Icons.sick_rounded,
-                      color: Colors.red.shade400, // Color más vivo
+                      color: Colors.red.shade400,
                       onTap: () => context.push(AppRoutes.diseases),
                     ),
                   ),
@@ -98,14 +123,21 @@ class MainMenuPage extends StatelessWidget {
 
               const Divider(height: 48, color: Colors.white24),
 
-              Text(
-                'Mi Actividad',
-                style: t.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold, 
-                  color: Colors.white,
-                  shadows: [const Shadow(blurRadius: 4, color: Colors.black54)],
-                ),
+              // --- NUEVA SECCIÓN SOPORTE VIP ---
+              _buildSectionTitle(t, 'Servicios VIP'),
+              const SizedBox(height: 16),
+              _CategoryButton(
+                title: 'Soporte VIP Prioritario',
+                subtitle: 'Chat directo con expertos veterinarios',
+                icon: Icons.support_agent_rounded,
+                color: isUserPro ? Colors.amber.shade800.withOpacity(0.9) : Colors.blueGrey.withOpacity(0.6),
+                onTap: () => _handleVipSupport(context),
               ),
+              // --------------------------------
+
+              const Divider(height: 48, color: Colors.white24),
+
+              _buildSectionTitle(t, 'Mi Actividad'),
               const SizedBox(height: 16),
 
               Row(
@@ -129,9 +161,21 @@ class MainMenuPage extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 30),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(ThemeData t, String title) {
+    return Text(
+      title,
+      style: t.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+        shadows: [const Shadow(blurRadius: 4, color: Colors.black54)],
       ),
     );
   }
@@ -157,7 +201,7 @@ class MainMenuPage extends StatelessWidget {
   }
 }
 
-// COMPONENTE: BOTÓN DE CATEGORÍA (Sin cambios estructurales, solo ajustes de color)
+// COMPONENTE: BOTÓN DE CATEGORÍA
 class _CategoryButton extends StatelessWidget {
   const _CategoryButton({
     required this.title,
@@ -208,7 +252,7 @@ class _CategoryButton extends StatelessWidget {
   }
 }
 
-// COMPONENTE: TARJETAS PEQUEÑAS (FONDO MÁS OSCURO/TRANSPARENTE PARA NO OPACAR)
+// COMPONENTE: TARJETAS PEQUEÑAS
 class _QuickActionCard extends StatelessWidget {
   const _QuickActionCard({required this.title, required this.icon, required this.color, required this.onTap});
   
@@ -221,7 +265,6 @@ class _QuickActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      // Usamos un fondo oscuro traslúcido para que se vea el animal detrás
       color: Colors.black.withOpacity(0.4), 
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12), 
@@ -236,7 +279,7 @@ class _QuickActionCard extends StatelessWidget {
             children: [
               Icon(icon, color: color, size: 28),
               const SizedBox(height: 8),
-              Text(title, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
             ],
           ),
         ),
