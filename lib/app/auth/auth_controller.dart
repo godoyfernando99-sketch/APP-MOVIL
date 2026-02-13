@@ -1,10 +1,3 @@
-El problema principal en tu AuthController es que la carga del perfil del usuario es estática. Es decir, lee los datos de Firebase una vez cuando inicias sesión, pero si luego compras un plan o cambias algo en la base de datos, el código no "se entera" automáticamente a menos que reinicies la app.
-
-He corregido el código implementando un Stream (Escucha en tiempo real). Ahora, en cuanto el campo subscriptionPlan cambie a pro en Firebase, el AuthController lo detectará al instante y desbloqueará el soporte VIP y los conteos.
-
-Aquí tienes el nuevo auth_controller.dart:
-
-Dart
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -25,12 +18,10 @@ class AuthController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _auth.currentUser != null && (_auth.currentUser?.emailVerified ?? false);
   
-  // Getter útil para la UI
-  bool get isPro => _currentUser?.subscriptionPlan == 'pro';
+  bool get isPro => _currentUser?.subscriptionPlan?.toLowerCase() == 'pro';
 
   AuthController() {
     _initGoogleSignIn();
-    // Escuchar cambios de autenticación
     _auth.authStateChanges().listen((user) {
       if (user == null) {
         _userSubscription?.cancel();
@@ -49,9 +40,8 @@ class AuthController extends ChangeNotifier {
     );
   }
 
-  // --- ESCUCHA EN TIEMPO REAL (CORRECCIÓN CLAVE) ---
   void _listenToUserProfile(String uid) {
-    _userSubscription?.cancel(); // Cancelar suscripción previa si existe
+    _userSubscription?.cancel();
     
     _userSubscription = _firestore
         .collection('users')
@@ -60,11 +50,8 @@ class AuthController extends ChangeNotifier {
         .listen((doc) async {
       if (doc.exists && doc.data() != null) {
         _currentUser = UserProfile.fromJson(doc.data()!);
-        
-        // Verificar reseteo mensual
         await checkAndResetMonthlyScans();
-        
-        notifyListeners(); // Esto actualiza la UI automáticamente cuando cambias a PRO
+        notifyListeners();
       }
     }, onError: (e) => debugPrint('Error en el Stream de usuario: $e'));
   }
@@ -85,10 +72,9 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  // --- LÓGICA DE RENOVACIÓN MENSUAL ---
   Future<void> checkAndResetMonthlyScans() async {
     final user = _currentUser;
-    if (user == null || user.subscriptionPlan == 'free' || user.subscriptionPlan == 'pro') return;
+    if (user == null) return;
 
     final now = DateTime.now();
     final lastReset = user.lastReset ?? user.createdAt;
@@ -101,14 +87,12 @@ class AuthController extends ChangeNotifier {
         'lastReset': Timestamp.fromDate(now),
         'updatedAt': Timestamp.fromDate(now),
       });
-      debugPrint("Ciclo mensual reseteado.");
     }
   }
 
-  // --- DESCONTAR ESCANEO ---
   Future<void> useFreeScan() async {
     final user = _currentUser;
-    if (user == null || user.subscriptionPlan == 'pro') return;
+    if (user == null || isPro) return;
 
     if (user.scansRemaining > 0) {
       try {
@@ -122,13 +106,10 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  // --- ACTUALIZAR SUSCRIPCIÓN ---
   Future<void> updateSubscription(String plan) async {
     if (_currentUser == null) return;
     try {
       final now = DateTime.now();
-      
-      // Calculamos escaneos según el nuevo plan usando un temporal
       final tempProfile = _currentUser!.copyWith(subscriptionPlan: plan);
       final int initialScans = tempProfile.maxScansByPlan;
 
@@ -138,14 +119,11 @@ class AuthController extends ChangeNotifier {
         'lastReset': Timestamp.fromDate(now),
         'updatedAt': Timestamp.fromDate(now),
       });
-      
-      // Nota: notifyListeners() será llamado automáticamente por el Stream (_listenToUserProfile)
     } catch (e) {
       debugPrint('AuthController.updateSubscription failed: $e');
     }
   }
 
-  // --- REGISTRO ---
   Future<String?> register({
     required String username,
     required String firstName,
@@ -177,7 +155,7 @@ class AuthController extends ChangeNotifier {
         updatedAt: now,
         lastReset: now,
         subscriptionPlan: 'free',
-        scansRemaining: 3, // Valor inicial por defecto
+        scansRemaining: 3,
       );
 
       await _firestore.collection('users').doc(profile.uid).set(profile.toJson());
@@ -191,7 +169,6 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  // --- LOGIN ---
   Future<String?> login({required String username, required String password}) async {
     try {
       _isLoading = true;
@@ -227,7 +204,6 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  // --- GOOGLE SIGN IN ---
   Future<String?> signInWithGoogle() async {
     try {
       _isLoading = true;
