@@ -24,7 +24,7 @@ class HistoryPage extends StatelessWidget {
 
     return FarmBackgroundScaffold(
       title: strings('history'),
-      backgroundColor: Colors.transparent, // Fondo transparente
+      backgroundColor: Colors.transparent,
       child: RefreshIndicator(
         onRefresh: () => context.read<HistoryController>().refresh(),
         child: history.items.isEmpty 
@@ -78,7 +78,7 @@ class _HistoryCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.65), // Efecto cristal
+        color: Colors.black.withOpacity(0.65),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
@@ -89,7 +89,7 @@ class _HistoryCard extends StatelessWidget {
             context: context,
             isScrollControlled: true,
             showDragHandle: true,
-            backgroundColor: const Color(0xFF0F0F0F), // Fondo oscuro para el modal
+            backgroundColor: const Color(0xFF0F0F0F),
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
             ),
@@ -189,7 +189,6 @@ class HistoryDetailSheet extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Cabecera Modal
               Row(
                 children: [
                   Container(
@@ -211,7 +210,6 @@ class HistoryDetailSheet extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               
-              // Fotos
               if (photos.isNotEmpty)
                 SizedBox(
                   height: 220,
@@ -235,10 +233,26 @@ class HistoryDetailSheet extends StatelessWidget {
                 ),
 
               const SizedBox(height: 24),
+
+              // NUEVA SECCIÓN: OBSERVACIONES DEL USUARIO
+              if (item.observations != null && item.observations!.isNotEmpty)
+                _DetailSection(
+                  title: 'NOTAS DEL USUARIO',
+                  icon: Icons.edit_note_rounded,
+                  color: Colors.orangeAccent,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        item.observations!,
+                        style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
+                      ),
+                    ),
+                  ],
+                ),
               
-              // Secciones de Información
               _DetailSection(
-                title: 'DIAGNÓSTICO',
+                title: 'DIAGNÓSTICO IA',
                 icon: Icons.analytics_outlined,
                 color: Colors.cyanAccent,
                 children: [
@@ -263,7 +277,7 @@ class HistoryDetailSheet extends StatelessWidget {
                 color: Colors.greenAccent,
                 children: [
                   if ((item.medicationName ?? '').isNotEmpty) _DetailRow(label: 'Medicamento', value: item.medicationName!),
-                  if ((item.foodRecommendation ?? '').isNotEmpty) _DetailRow(label: 'Dieta', value: item.foodRecommendation!),
+                  if ((item.foodRecommendation ?? '').isNotEmpty) _DetailRow(label: 'Recomendación', value: item.foodRecommendation!),
                 ],
               ),
 
