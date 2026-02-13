@@ -56,6 +56,7 @@ class MainMenuPage extends StatelessWidget {
     final authController = context.watch<AuthController>();
     final user = authController.currentUser;
     
+    // Normalizamos el plan a minúsculas para evitar errores de comparación
     final String currentPlan = user?.subscriptionPlan?.toLowerCase() ?? 'free';
     final bool isUserPro = currentPlan == 'pro';
     final int scansLeft = user?.scansRemaining ?? 0;
@@ -74,7 +75,8 @@ class MainMenuPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildWelcomeHeader(t, user?.firstName ?? user?.username ?? 'Usuario'),
+            // Corregido: Usamos fullName o username según lo que esté disponible
+            _buildWelcomeHeader(t, user?.fullName ?? user?.username ?? 'Usuario'),
             const SizedBox(height: 16),
 
             if (isUserPro) _buildProInfoBanner() else _buildFreeScansBanner(scansLeft),
@@ -206,7 +208,7 @@ class MainMenuPage extends StatelessWidget {
   }
 }
 
-// --- CLASES QUE FALTABAN ---
+// --- COMPONENTES AUXILIARES ---
 class _CategoryButton extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -257,6 +259,7 @@ class _QuickActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       color: Colors.black26,
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: color.withOpacity(0.5))),
       child: InkWell(
         onTap: onTap,
