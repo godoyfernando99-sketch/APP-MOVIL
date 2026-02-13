@@ -21,10 +21,9 @@ class WelcomePage extends StatelessWidget {
     // Función auxiliar para strings con manejo de seguridad
     String strings(String key) => AppStrings.of(context, key);
 
-    // Lógica de seguridad: Si por alguna razón el usuario es nulo, 
-    // podrías redirigir al login, pero aquí mostraremos un estado vacío seguro.
-    final String displayName = user?.fullName.isNotEmpty == true 
-        ? user!.fullName 
+    // Lógica de seguridad para el nombre mostrado
+    final String displayName = (user?.fullName != null && user!.fullName.isNotEmpty)
+        ? user.fullName 
         : (user?.username ?? 'Usuario');
 
     return FarmBackgroundScaffold(
@@ -94,7 +93,6 @@ class WelcomePage extends StatelessWidget {
                       width: double.infinity,
                       height: 56,
                       child: FilledButton.icon(
-                        // Verificamos si hay usuario antes de navegar
                         onPressed: () => context.go(AppRoutes.menu),
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.white,
@@ -119,7 +117,7 @@ class WelcomePage extends StatelessWidget {
                     // Tip opcional para usuarios PRO
                     if (user?.subscriptionPlan == 'pro')
                       Padding(
-                        padding: const EdgeInsets.only(20),
+                        padding: const EdgeInsets.only(top: 20), // CORREGIDO: se añadió 'top:'
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -127,7 +125,11 @@ class WelcomePage extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               "Plan PRO Activo",
-                              style: TextStyle(color: Colors.amber.shade300, fontSize: 12, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                color: Colors.amber.shade300, 
+                                fontSize: 12, 
+                                fontWeight: FontWeight.bold
+                              ),
                             ),
                           ],
                         ),
