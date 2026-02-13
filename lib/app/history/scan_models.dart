@@ -41,6 +41,7 @@ class ScanResult {
   final String? foodRecommendation;
   final String? observations;
 
+  /// Convierte el objeto a un Map estándar (JSON)
   Map<String, dynamic> toMap() => {
         'id': id,
         'ownerId': ownerId,
@@ -62,6 +63,7 @@ class ScanResult {
         'observations': observations,
       };
 
+  /// Convierte el objeto específicamente para Firebase Cloud Firestore
   Map<String, dynamic> toFirestoreMap() {
     final map = toMap();
     map['createdAt'] = Timestamp.fromDate(createdAt);
@@ -69,11 +71,14 @@ class ScanResult {
     return map;
   }
 
+  /// Crea una instancia de ScanResult desde un Map (Firestore o JSON)
   static ScanResult fromMap(Map<String, dynamic> map) {
+    // Manejo seguro de la lista de fotos
     final photos = (map['photosBase64'] is List)
         ? List<String>.from(map['photosBase64'])
         : <String>[];
 
+    // Helper para parsear fechas de forma flexible (Timestamp o String)
     DateTime parseDate(dynamic raw) {
       if (raw is Timestamp) return raw.toDate();
       if (raw is String) return DateTime.tryParse(raw) ?? DateTime.now();
@@ -95,7 +100,7 @@ class ScanResult {
       fractureDescription: map['fractureDescription']?.toString(),
       medicationName: map['medicationName']?.toString(),
       medicationDose: map['medicationDose']?.toString(),
-      isPregnant: map['isPregnant'] as bool?,
+      isPregnant: map['isPregnant'] is bool ? map['isPregnant'] as bool : null,
       pregnancyWeeks: (map['pregnancyWeeks'] as num?)?.toInt(),
       foodRecommendation: map['foodRecommendation']?.toString(),
       observations: map['observations']?.toString(),
@@ -105,6 +110,7 @@ class ScanResult {
   Map<String, dynamic> toJson() => toMap();
   static ScanResult fromJson(Map<String, dynamic> json) => fromMap(json);
 
+  /// Crea una copia del objeto cambiando solo los parámetros necesarios
   ScanResult copyWith({
     String? id,
     String? ownerId,
@@ -129,21 +135,4 @@ class ScanResult {
       id: id ?? this.id,
       ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      animalId: animalId ?? this.animalId,
-      animalCategory: animalCategory ?? this.animalCategory,
-      mode: mode ?? this.mode,
-      microchipNumber: microchipNumber ?? this.microchipNumber,
-      photosBase64: photosBase64 ?? this.photosBase64, // <-- Corregido
-      healthStatus: healthStatus ?? this.healthStatus,
-      diseaseName: diseaseName ?? this.diseaseName,
-      fractureDescription: fractureDescription ?? this.fractureDescription,
-      medicationName: medicationName ?? this.medicationName,
-      medicationDose: medicationDose ?? this.medicationDose,
-      isPregnant: isPregnant ?? this.isPregnant,
-      pregnancyWeeks: pregnancyWeeks ?? this.pregnancyWeeks,
-      foodRecommendation: foodRecommendation ?? this.foodRecommendation,
-      observations: observations ?? this.observations,
-    );
-  }
-}
+      updatedAt: updatedAt ?? this.updatedAt
