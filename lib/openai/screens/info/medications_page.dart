@@ -1,19 +1,14 @@
-Con este código cerramos el círculo. He revisado tu MedicationsPage y el error principal que reportaba la consola era que no encontraba el tipo AuthController (debido a que los imports a veces fallan si la ruta no es exacta).
-
-Aquí tienes el código corregido y optimizado. Me aseguré de que la lógica de isPro use subscriptionPlan == 'pro' para ser consistente con tu MainMenuPage, y he limpiado las referencias para que el build pase sin problemas.
-
-Dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-// Imports de la app
-import 'package:scanneranimal/app/auth/auth_controller.dart';
-import 'package:scanneranimal/data/medications.dart';
-import 'package:scanneranimal/l10n/app_strings.dart';
-import 'package:scanneranimal/nav.dart';
-import 'package:scanneranimal/theme.dart';
-import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
+// Import corregido con ruta relativa para evitar errores de compilación en GitHub
+import '../../../app/auth/auth_controller.dart';
+import '../../../../data/medications.dart';
+import '../../../../l10n/app_strings.dart';
+import '../../../../nav.dart';
+import '../../../../theme.dart';
+import '../../../../widgets/farm_background_scaffold.dart';
 
 class MedicationsPage extends StatelessWidget {
   const MedicationsPage({super.key});
@@ -21,13 +16,16 @@ class MedicationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    // Función auxiliar para strings (asegúrate de que AppStrings esté configurado o usa texto directo)
+    
+    // Función auxiliar para strings
     String getStr(String key, String fallback) => fallback; 
     
+    // Escuchamos el AuthController
     final auth = context.watch<AuthController>();
     final user = auth.currentUser;
-    // Consistencia con MainMenu: Verificamos si el plan es 'pro'
-    final bool isPro = user?.subscriptionPlan?.toLowerCase() == 'pro';
+    
+    // Verificamos si el usuario es PRO (usando el getter isPro que definimos en el controlador)
+    final bool isPro = auth.isPro;
 
     // --- VISTA PARA USUARIOS NO PRO (MODAL DE BLOQUEO) ---
     if (!isPro) {
