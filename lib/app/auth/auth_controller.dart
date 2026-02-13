@@ -165,4 +165,178 @@ class AuthController extends ChangeNotifier {
       });
 
       _currentUser = tempProfile.copyWith(
-        scansRemaining:
+        scansRemaining: initialScans,
+        lastReset: now,
+        updatedAt: now,
+      );
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('AuthController.updateSubscription failed: $e');
+    }
+  }
+
+  // --- MÉTODOS DE AUTH (LOGIN, REGISTER, GOOGLE, ETC.) ---
+
+  Future<String?> register({
+    required String username,
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String birthDateIso,
+    required String password,
+  }) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(), 
+        password: password
+      );
+      final uid = credential.user!.uid;
+
+      await credential.user!.sendEmailVerification();
+
+      final now = DateTime.now();
+      final profile = UserProfile(
+        uid: uid,
+        username: username.toLowerCase().trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        birthDateIso: birthDateIso,
+        createdAt: now,
+        updatedAt: now,
+        lastReset: now, // Fecha inicial de ciclo
+      );
+
+      await _firestore.collection('users').doc(uid).set(profile.toJson());
+      
+      await _auth.signOut();
+      _currentUser = null;
+      notifyListeners();
+      return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'weak-password') return 'La contraseña es demasiado débil.';
+      if (e.code == 'email-already-in-use') return 'El correo electrónico ya está en uso.';
+      return 'No se pudo registrar: ${e.message}';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String?> login({required String username, required String password}) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      String? email;
+      final cleanUsername = username.trim().toLowerCase();
+      
+      if (!cleanUsername.contains('@')) {
+        final usernameQuery = await _firestore
+            .collection('users')
+            .where('username', isEqualTo: cleanUsername)
+            .limit(1)
+            .get();
+            
+        if (usernameQuery.docs.isNotEmpty) {
+          email = usernameQuery.docs.first.data()['email'] as String;
+        }
+        if (email == null) return 'Usuario o contraseña incorrectos.';
+      } else {
+        email = cleanUsername;
+      }
+
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email, 
+        password: password
+      );
+      
+      if (!credential.user!.emailVerified) {
+        await _auth.signOut();
+        return 'Debes verificar tu correo electrónico antes de iniciar sesión.';
+      }
+      
+      await _loadUserProfile(credential.user!.uid);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return 'Usuario o contraseña incorrectos.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String?> signInWithGoogle() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return 'Inicio de sesión cancelado.';
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user!;
+
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      
+      if (!userDoc.exists) {
+        final now = DateTime.now();
+        final profile = UserProfile(
+          uid: user.uid,
+          username: user.email?.split('@').first ?? 'user_${user.uid.substring(0, 8)}',
+          firstName: user.displayName?.split(' ').first ?? '',
+          lastName: user.displayName?.split(' ').skip(1).join(' ') ?? '',
+          email: user.email ?? '',
+          birthDateIso: '',
+          createdAt: now,
+          updatedAt: now,
+          lastReset: now,
+        );
+        await _firestore.collection('users').doc(user.uid).set(profile.toJson());
+        _currentUser = profile;
+      } else {
+        _currentUser = UserProfile.fromJson(userDoc.data()!);
+        await checkAndResetMonthlyScans();
+      }
+      
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return 'Error al conectar con Google.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String?> resetPassword({required String email}) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null;
+    } catch (e) {
+      return 'Error al enviar el correo.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> logout() async {
+    await _auth.signOut();
+    await _googleSignIn.signOut();
+    _currentUser = null;
+    notifyListeners();
+  }
+}
