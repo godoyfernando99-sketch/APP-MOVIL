@@ -11,8 +11,8 @@ class UserProfile {
     required this.createdAt,
     required this.updatedAt,
     this.subscriptionPlan = 'free',
-    this.scansRemaining = 10,
-    this.lastReset, // Nueva fecha para control de renovación mensual
+    this.monthlyScans = 10, // Cambiado de scansRemaining a monthlyScans
+    this.lastReset,
   });
 
   final String uid;
@@ -24,27 +24,26 @@ class UserProfile {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String subscriptionPlan;
-  final int scansRemaining;
-  final DateTime? lastReset; // Controla el ciclo de 30 días
+  final int monthlyScans; // Este es el campo que pedía el MainMenuPage
+  final DateTime? lastReset;
 
   // --- GETTERS DE LÓGICA DE NEGOCIO ---
 
   String get fullName => '$firstName $lastName'.trim();
   String get displayName => username.isNotEmpty ? username : firstName;
   
-  // El Plan Pro es el único con acceso a Soporte VIP
-  bool get isPro => subscriptionPlan == 'pro';
+  // Soporte VIP para planes específicos
+  bool get hasVipSupport => subscriptionPlan == 'basico' || subscriptionPlan == 'premium';
   
   // Determina si puede escanear
-  bool get hasScansAvailable => subscriptionPlan == 'pro' || scansRemaining > 0;
+  bool get hasScansAvailable => subscriptionPlan == 'premium' || monthlyScans > 0;
 
-  // Retorna el máximo de escaneos según el plan para la renovación
+  // Límites mensuales según el plan
   int get maxScansByPlan {
     switch (subscriptionPlan) {
-      case 'basic': return 15;
-      case 'intermediate': return 30; // Plan Premium
-      case 'pro': return 999999;
-      default: return 10; // Plan Free de bienvenida
+      case 'basico': return 15;
+      case 'premium': return 999999; // Escaneos ilimitados
+      default: return 10; // Plan Free
     }
   }
 
@@ -60,7 +59,7 @@ class UserProfile {
     'createdAt': Timestamp.fromDate(createdAt),
     'updatedAt': Timestamp.fromDate(updatedAt),
     'subscriptionPlan': subscriptionPlan,
-    'scansRemaining': scansRemaining,
+    'monthlyScans': monthlyScans,
     'lastReset': lastReset != null ? Timestamp.fromDate(lastReset!) : null,
   };
 
@@ -79,9 +78,9 @@ class UserProfile {
       createdAt: createdAtRaw is Timestamp ? createdAtRaw.toDate() : DateTime.now(),
       updatedAt: updatedAtRaw is Timestamp ? updatedAtRaw.toDate() : DateTime.now(),
       subscriptionPlan: (json['subscriptionPlan'] ?? 'free').toString(),
-      scansRemaining: json['scansRemaining'] is num 
-          ? (json['scansRemaining'] as num).toInt() 
-          : 10,
+      monthlyScans: json['monthlyScans'] is num 
+          ? (json['monthlyScans'] as num).toInt() 
+          : (json['scansRemaining'] ?? 10), // Fallback por si en Firebase aún se llama scansRemaining
       lastReset: lastResetRaw is Timestamp ? lastResetRaw.toDate() : null,
     );
   }
@@ -96,7 +95,7 @@ class UserProfile {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? subscriptionPlan,
-    int? scansRemaining,
+    int? monthlyScans,
     DateTime? lastReset,
   }) => UserProfile(
     uid: uid ?? this.uid,
@@ -108,7 +107,7 @@ class UserProfile {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
-    scansRemaining: scansRemaining ?? this.scansRemaining,
+    monthlyScans: monthlyScans ?? this.monthlyScans,
     lastReset: lastReset ?? this.lastReset,
   );
 }
