@@ -42,55 +42,39 @@ class ScanResult {
   final String? observations;
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'ownerId': ownerId,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-        'animalId': animalId,
-        'animalCategory': animalCategory,
-        'mode': mode,
-        'microchipNumber': microchipNumber,
-        'photosBase64': photosBase64,
-        'healthStatus': healthStatus,
-        'diseaseName': diseaseName,
-        'fractureDescription': fractureDescription,
-        'medicationName': medicationName,
-        'medicationDose': medicationDose,
-        'isPregnant': isPregnant,
-        'pregnancyWeeks': pregnancyWeeks,
-        'foodRecommendation': foodRecommendation,
-        'observations': observations,
-      };
-
-  Map<String, dynamic> toFirestoreMap() {
-    final map = toMap();
-    map['createdAt'] = Timestamp.fromDate(createdAt);
-    map['updatedAt'] = Timestamp.fromDate(updatedAt);
-    return map;
-  }
+    'id': id,
+    'ownerId': ownerId,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+    'animalId': animalId,
+    'animalCategory': animalCategory,
+    'mode': mode,
+    'microchipNumber': microchipNumber,
+    'photosBase64': photosBase64,
+    'healthStatus': healthStatus,
+    'diseaseName': diseaseName,
+    'fractureDescription': fractureDescription,
+    'medicationName': medicationName,
+    'medicationDose': medicationDose,
+    'isPregnant': isPregnant,
+    'pregnancyWeeks': pregnancyWeeks,
+    'foodRecommendation': foodRecommendation,
+    'observations': observations,
+  };
 
   static ScanResult fromMap(Map<String, dynamic> map) {
-    final photos = (map['photosBase64'] is List)
-        ? List<String>.from(map['photosBase64'])
-        : <String>[];
-
-    DateTime parseDate(dynamic raw) {
-      if (raw is Timestamp) return raw.toDate();
-      if (raw is String) return DateTime.tryParse(raw) ?? DateTime.now();
-      return DateTime.now();
-    }
-
+    DateTime parse(dynamic r) => r is Timestamp ? r.toDate() : (DateTime.tryParse(r.toString()) ?? DateTime.now());
     return ScanResult(
       id: map['id']?.toString() ?? '',
       ownerId: map['ownerId']?.toString() ?? '',
-      createdAt: parseDate(map['createdAt']),
-      updatedAt: parseDate(map['updatedAt']),
+      createdAt: parse(map['createdAt']),
+      updatedAt: parse(map['updatedAt']),
       animalId: map['animalId']?.toString() ?? '',
       animalCategory: map['animalCategory']?.toString() ?? '',
       mode: map['mode']?.toString() ?? 'nochip',
       microchipNumber: map['microchipNumber']?.toString(),
-      photosBase64: photos,
-      healthStatus: map['healthStatus']?.toString() ?? 'desconocida',
+      photosBase64: List<String>.from(map['photosBase64'] ?? []),
+      healthStatus: map['healthStatus']?.toString() ?? 'buena',
       diseaseName: map['diseaseName']?.toString(),
       fractureDescription: map['fractureDescription']?.toString(),
       medicationName: map['medicationName']?.toString(),
@@ -103,24 +87,11 @@ class ScanResult {
   }
 
   ScanResult copyWith({
-    String? id,
-    String? ownerId,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-    String? animalId,
-    String? animalCategory,
-    String? mode,
-    String? microchipNumber,
-    List<String>? photosBase64,
-    String? healthStatus,
-    String? diseaseName,
-    String? fractureDescription,
-    String? medicationName,
-    String? medicationDose,
-    bool? isPregnant,
-    int? pregnancyWeeks,
-    String? foodRecommendation,
-    String? observations,
+    String? id, String? ownerId, DateTime? createdAt, DateTime? updatedAt,
+    String? animalId, String? animalCategory, String? mode, String? microchipNumber,
+    List<String>? photosBase64, String? healthStatus, String? diseaseName,
+    String? fractureDescription, String? medicationName, String? medicationDose,
+    bool? isPregnant, int? pregnancyWeeks, String? foodRecommendation, String? observations,
   }) {
     return ScanResult(
       id: id ?? this.id,
