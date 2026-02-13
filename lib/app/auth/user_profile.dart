@@ -11,7 +11,8 @@ class UserProfile {
     required this.createdAt,
     required this.updatedAt,
     this.subscriptionPlan = 'free',
-    this.scansRemaining = 10, // Los 10 escaneos de bienvenida
+    this.scansRemaining = 10,
+    this.lastReset, // Nueva fecha para control de renovación mensual
   });
 
   final String uid;
@@ -24,14 +25,30 @@ class UserProfile {
   final DateTime updatedAt;
   final String subscriptionPlan;
   final int scansRemaining;
+  final DateTime? lastReset; // Controla el ciclo de 30 días
 
-  // Helpers útiles para la UI
+  // --- GETTERS DE LÓGICA DE NEGOCIO ---
+
   String get fullName => '$firstName $lastName'.trim();
   String get displayName => username.isNotEmpty ? username : firstName;
+  
+  // El Plan Pro es el único con acceso a Soporte VIP
   bool get isPro => subscriptionPlan == 'pro';
   
-  // Lógica: Si es Pro tiene escaneos infinitos, si no, depende de scansRemaining
+  // Determina si puede escanear
   bool get hasScansAvailable => subscriptionPlan == 'pro' || scansRemaining > 0;
+
+  // Retorna el máximo de escaneos según el plan para la renovación
+  int get maxScansByPlan {
+    switch (subscriptionPlan) {
+      case 'basic': return 15;
+      case 'intermediate': return 30; // Plan Premium
+      case 'pro': return 999999;
+      default: return 10; // Plan Free de bienvenida
+    }
+  }
+
+  // --- MAPEO DE DATOS ---
 
   Map<String, dynamic> toJson() => {
     'uid': uid,
@@ -44,12 +61,14 @@ class UserProfile {
     'updatedAt': Timestamp.fromDate(updatedAt),
     'subscriptionPlan': subscriptionPlan,
     'scansRemaining': scansRemaining,
+    'lastReset': lastReset != null ? Timestamp.fromDate(lastReset!) : null,
   };
 
   static UserProfile fromJson(Map<String, dynamic> json) {
     final createdAtRaw = json['createdAt'];
     final updatedAtRaw = json['updatedAt'];
-    
+    final lastResetRaw = json['lastReset'];
+
     return UserProfile(
       uid: (json['uid'] ?? '').toString(),
       username: (json['username'] ?? '').toString(),
@@ -60,10 +79,10 @@ class UserProfile {
       createdAt: createdAtRaw is Timestamp ? createdAtRaw.toDate() : DateTime.now(),
       updatedAt: updatedAtRaw is Timestamp ? updatedAtRaw.toDate() : DateTime.now(),
       subscriptionPlan: (json['subscriptionPlan'] ?? 'free').toString(),
-      // Aseguramos que si el campo no existe en Firebase, por defecto sea 10
       scansRemaining: json['scansRemaining'] is num 
           ? (json['scansRemaining'] as num).toInt() 
           : 10,
+      lastReset: lastResetRaw is Timestamp ? lastResetRaw.toDate() : null,
     );
   }
 
@@ -78,6 +97,7 @@ class UserProfile {
     DateTime? updatedAt,
     String? subscriptionPlan,
     int? scansRemaining,
+    DateTime? lastReset,
   }) => UserProfile(
     uid: uid ?? this.uid,
     username: username ?? this.username,
@@ -89,5 +109,6 @@ class UserProfile {
     updatedAt: updatedAt ?? this.updatedAt,
     subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
     scansRemaining: scansRemaining ?? this.scansRemaining,
+    lastReset: lastReset ?? this.lastReset,
   );
 }
