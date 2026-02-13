@@ -14,16 +14,10 @@ class AiDiagnosisService {
     String? microchipNumber,
     required List<Uint8List> photos,
   }) async {
-    // 1. Verificar configuración - SI ESTO ES TRUE, NUNCA LLAMARÁ A GEMINI
-    if (OpenAiConfig.useMock || !OpenAiConfig.isConfigured) {
-      debugPrint('⚠️ ALERTA: Usando modo simulador. Verifica OpenAiConfig.useMock y tu API KEY.');
-      return _mock(
-        animalId: animalId, 
-        animalCategory: animalCategory, 
-        mode: mode, 
-        microchipNumber: microchipNumber, 
-        photos: photos
-      );
+    
+    // 1. Verificación de Seguridad
+    if (!OpenAiConfig.isConfigured) {
+      throw Exception('La API Key no está configurada correctamente en OpenAiConfig');
     }
 
     final String apiKey = OpenAiConfig.apiKey;
@@ -47,36 +41,35 @@ class AiDiagnosisService {
         body: jsonEncode({
           "contents": [{
             "parts": [
-              {"text": _buildPrompt(animalCategory, animalId)},
+              {"text": _buildPrompt(animalCategory)},
               ...imageParts
             ]
           }],
           "generationConfig": {
             "temperature": 0.4,
             "maxOutputTokens": 2048,
-            "responseMimeType": "application/json", // Forzamos respuesta JSON
           }
         }),
       ).timeout(const Duration(seconds: 45));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        String text = data['candidates'][0]['content']['parts'][0]['text'];
         
-        // Limpieza de Markdown mejorada
-        text = text.replaceAll('```json', '').replaceAll('```', '').trim();
+        // Extraer el texto de la respuesta de Gemini
+        String rawText = data['candidates'][0]['content']['parts'][0]['text'];
         
-        final Map<String, dynamic> aiJson = jsonDecode(text);
+        // LIMPIEZA EXTREMA DEL JSON
+        String cleanJson = rawText;
+        if (rawText.contains('```')) {
+          cleanJson = rawText.split('```')[1].replaceFirst('json', '').trim();
+        }
+
+        final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
         final photoB64 = photos.map((p) => base64Encode(p)).toList();
         final now = DateTime.now();
 
-        String dosisFinal = aiJson['medicationDose']?.toString() ?? 'N/A';
-        if (aiJson['injectionCm3'] != null && aiJson['injectionCm3'] != 'N/A') {
-          dosisFinal += " | Aplicar: ${aiJson['injectionCm3']} cm³ (Inyectable)";
-        }
-
         return ScanResult(
-          id: _id(),
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
           ownerId: '', 
           createdAt: now,
           updatedAt: now,
@@ -85,89 +78,45 @@ class AiDiagnosisService {
           mode: mode,
           microchipNumber: microchipNumber,
           photosBase64: photoB64,
-          healthStatus: (aiJson['healthStatus'] ?? 'regular').toString().toLowerCase(),
-          detectedBreed: aiJson['detectedBreed']?.toString(),
-          detectedSpecies: aiJson['detectedSpecies']?.toString(),
+          healthStatus: aiJson['healthStatus']?.toString().toLowerCase() ?? 'regular',
+          detectedBreed: aiJson['detectedBreed']?.toString() ?? 'Raza no identificada',
+          detectedSpecies: aiJson['detectedSpecies']?.toString() ?? 'Especie no identificada',
           diseaseName: aiJson['diseaseName']?.toString(),
-          fractureDescription: aiJson['fractureDescription']?.toString(),
           medicationName: aiJson['medicationName']?.toString(),
-          medicationDose: dosisFinal,
-          isPregnant: aiJson['isPregnant'] is bool ? aiJson['isPregnant'] as bool : false,
-          pregnancyWeeks: aiJson['pregnancyWeeks'] is num ? (aiJson['pregnancyWeeks'] as num).toInt() : null,
-          foodRecommendation: "ALIMENTO: ${aiJson['foodRecommendation'] ?? 'No especificado'} | CUIDADOS: ${aiJson['specialCare'] ?? 'N/A'}",
+          medicationDose: aiJson['medicationDose']?.toString(),
+          isPregnant: aiJson['isPregnant'] == true,
+          pregnancyWeeks: (aiJson['pregnancyWeeks'] as num?)?.toInt(),
+          foodRecommendation: aiJson['foodRecommendation']?.toString(),
           observations: aiJson['observations']?.toString(),
         );
       } else {
-        print("❌ Error de API: ${response.body}");
-        throw Exception('Error Gemini: ${response.statusCode}');
+        // Si la API responde error (ej: 403, 400), lo veremos aquí
+        throw Exception('Error de Google Gemini (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
-      print('🚨 ERROR CRÍTICO EN DIAGNÓSTICO: $e');
-      // Si llegamos aquí, es porque algo falló en la conexión o el JSON y vuelve al simulador
-      return _mock(
-        animalId: animalId, 
-        animalCategory: animalCategory, 
-        mode: mode, 
-        microchipNumber: microchipNumber, 
-        photos: photos
-      );
+      // YA NO REGRESAMOS EL MOCK. Ahora lanzamos el error real para saber qué pasa.
+      debugPrint('🚨 ERROR REAL: $e');
+      rethrow; 
     }
   }
 
-  String _buildPrompt(String category, String id) {
+  String _buildPrompt(String category) {
     return """
-    ACTÚA COMO UN VETERINARIO EXPERTO.
-    Analiza la imagen de este animal (Categoría sugerida: $category).
-    
-    TAREAS:
-    1. IDENTIFICACIÓN: Determina la especie y la raza exacta según rasgos físicos.
-    2. SALUD: Evalúa el estado general y detecta enfermedades visibles.
-    3. TRATAMIENTO: Sugiere medicamento y dosis.
-
-    DEBES RESPONDER EXCLUSIVAMENTE EN ESTE FORMATO JSON:
+    Eres un experto Veterinario. Analiza las imágenes.
+    Debes identificar la RAZA y ESPECIE exacta.
+    Responde ÚNICAMENTE en este formato JSON:
     {
       "detectedSpecies": "especie",
       "detectedBreed": "raza",
       "healthStatus": "buena/regular/mala",
-      "diseaseName": "enfermedad",
-      "fractureDescription": "descripción",
-      "medicationName": "nombre",
+      "diseaseName": "enfermedad detectada",
+      "medicationName": "medicamento",
       "medicationDose": "dosis",
-      "injectionCm3": "cm3 o N/A",
       "isPregnant": true/false,
-      "pregnancyWeeks": null o número,
+      "pregnancyWeeks": semanas o null,
       "foodRecommendation": "dieta",
-      "specialCare": "cuidados",
-      "observations": "resumen"
+      "observations": "notas adicionales"
     }
     """;
   }
-
-  ScanResult _mock({
-    required String animalId,
-    required String animalCategory,
-    required String mode,
-    required String? microchipNumber,
-    required List<Uint8List> photos,
-  }) {
-    final now = DateTime.now();
-    return ScanResult(
-      id: _id(),
-      ownerId: '',
-      createdAt: now,
-      updatedAt: now,
-      animalId: animalId,
-      animalCategory: animalCategory,
-      mode: mode,
-      microchipNumber: microchipNumber,
-      photosBase64: photos.map((p) => base64Encode(p)).toList(),
-      healthStatus: 'buena',
-      detectedBreed: 'SIMULADOR ACTIVADO',
-      detectedSpecies: 'Verifica tu API KEY',
-      diseaseName: 'Simulación de diagnóstico',
-      foodRecommendation: 'Asegúrate de poner useMock en false en openai_config.dart',
-    );
-  }
-
-  String _id() => DateTime.now().millisecondsSinceEpoch.toString();
 }
