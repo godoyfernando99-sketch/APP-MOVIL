@@ -1,11 +1,9 @@
-Aquí tienes el código de ScanResultPage corregido y optimizado. He añadido el manejo de errores para el caso de "No es un animal" que definimos en el servicio de IA y he corregido la lógica de visualización para que sea más limpia.
-
-Dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+// IMPORTACIÓN CRÍTICA
 import 'package:scanneranimal/app/auth/auth_controller.dart'; 
 import 'package:scanneranimal/app/history/history_controller.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
@@ -54,7 +52,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("¿Deseas agregar algún detalle extra sobre el animal antes de guardar?", 
+              const Text("¿Deseas agregar algún detalle extra sobre el animal?", 
                 style: TextStyle(color: Colors.white70, fontSize: 13)),
               const SizedBox(height: 15),
               TextField(
@@ -62,7 +60,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                 maxLines: 3,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: "Ej: Se aplicó la inyección correctamente...",
+                  hintText: "Ej: Se aplicó la inyección...",
                   hintStyle: const TextStyle(color: Colors.white30),
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.05),
@@ -78,7 +76,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, controller.text), 
-              child: const Text("GUARDAR Y SALIR")
+              child: const Text("GUARDAR")
             ),
           ],
         );
@@ -93,6 +91,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
   }
 
   Future<void> _saveFinalResult() async {
+    if (widget.payload is! ScanResult) return;
     final baseResult = widget.payload as ScanResult;
     final finalResult = baseResult.copyWith(observations: _userObservations);
     
@@ -102,10 +101,9 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     setState(() => _isSaving = true);
     try {
       await historyController.add(finalResult);
-      // El método useFreeScan ya debería manejar si el usuario es PRO o no internamente
       await authController.useFreeScan();
     } catch (e) {
-      debugPrint("Error al finalizar el proceso: $e");
+      debugPrint("Error al finalizar: $e");
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -113,171 +111,100 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
 
   @override
   Widget build(BuildContext context) {
-    // Manejo de error si la IA dice que no es un animal
     if (widget.payload is String && widget.payload.toString().contains('VALIDATION_ERROR')) {
-      return FarmBackgroundScaffold(
-        title: 'ERROR DE ESCANEO',
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(25),
-            decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.redAccent)
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 80),
-                const SizedBox(height: 20),
-                const Text(
-                  "¡OBJETO NO IDENTIFICADO!",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  "La IA no ha detectado un animal en la fotografía. Por favor, asegúrate de que el animal sea claramente visible.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 25),
-                ElevatedButton(
-                  onPressed: () => context.pop(),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                  child: const Text("REINTENTAR"),
-                )
-              ],
-            ),
-          ),
-        ),
-      );
+      return _buildErrorState();
     }
 
     if (widget.payload is! ScanResult) {
-      return const Scaffold(body: Center(child: Text("No hay datos disponibles")));
+      return const Scaffold(body: Center(child: Text("No hay datos")));
     }
 
     final result = widget.payload as ScanResult;
     final manualAnimal = AnimalsCatalog.byId(result.animalId);
     final String displayBreed = result.detectedBreed ?? manualAnimal.name;
-    
-    // Colores dinámicos según el estado de salud
     final String health = result.healthStatus.toLowerCase();
+    
     final Color statusColor = health.contains('buen') 
         ? Colors.greenAccent 
-        : (health.contains('critico') || health.contains('mal') ? Colors.redAccent : Colors.orangeAccent);
+        : (health.contains('mal') || health.contains('crit') ? Colors.redAccent : Colors.orangeAccent);
 
     return FarmBackgroundScaffold(
-      title: 'RESULTADO DEL ESCANEO',
+      title: 'RESULTADO IA',
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: statusColor.withOpacity(0.4), width: 2),
-              ),
-              child: Column(
+        child: Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: statusColor.withOpacity(0.4), width: 2),
+          ),
+          child: Column(
+            children: [
+              Icon(health.contains('buen') ? Icons.check_circle : Icons.warning, color: statusColor, size: 70),
+              Text(result.healthStatus.toUpperCase(), 
+                style: TextStyle(color: statusColor, fontSize: 24, fontWeight: FontWeight.bold)),
+              const Divider(color: Colors.white24, height: 40),
+              _buildResultRow('Especie/Raza:', displayBreed, Icons.pets),
+              if (result.isPregnant == true)
+                _buildResultRow('Gestación:', '${result.pregnancyWeeks} Sem', Icons.favorite, valueColor: Colors.pinkAccent),
+              _buildResultRow('Enfermedad:', result.diseaseName ?? 'Ninguna', Icons.bug_report),
+              _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize),
+              const SizedBox(height: 20),
+              Text(result.foodRecommendation ?? "Sin recomendaciones adicionales",
+                style: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic)),
+              const SizedBox(height: 30),
+              Row(
                 children: [
-                  Icon(
-                    health.contains('buen') ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-                    color: statusColor, size: 70
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _shareResult(result, displayBreed),
+                      child: const Text("COMPARTIR"),
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(result.healthStatus.toUpperCase(), 
-                    style: TextStyle(color: statusColor, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                  
-                  const Divider(height: 40, color: Colors.white24),
-
-                  _buildResultRow(
-                    'Raza / Especie:', 
-                    displayBreed, 
-                    result.detectedBreed != null ? Icons.auto_awesome : Icons.pets, 
-                    valueColor: result.detectedBreed != null ? Colors.amberAccent : Colors.white
-                  ),
-
-                  if (result.isPregnant == true)
-                    _buildResultRow('GESTACIÓN:', '${result.pregnancyWeeks} Semanas', Icons.auto_awesome, 
-                      valueColor: Colors.blueAccent, isHighlight: true),
-
-                  if (result.diseaseName != null && result.diseaseName!.toLowerCase() != 'ninguna')
-                    _buildResultRow('Enfermedad:', result.diseaseName!, Icons.bug_report, valueColor: Colors.redAccent),
-
-                  _buildResultRow('Medicamento:', result.medicationName ?? 'No requerido', Icons.medication),
-                  _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize, valueColor: Colors.yellowAccent),
-
-                  const SizedBox(height: 20),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text("RECOMENDACIÓN:", 
-                      style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(result.foodRecommendation ?? "Consultar veterinario para más detalles.",
-                    style: const TextStyle(color: Colors.white70, fontSize: 14, fontStyle: FontStyle.italic)),
-
-                  const SizedBox(height: 35),
-                  
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _shareResult(result, displayBreed),
-                          icon: const Icon(Icons.share, size: 18),
-                          label: const Text("COMPARTIR"),
-                          style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _showObservationsAndSave,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: statusColor.withOpacity(0.8),
-                            padding: const EdgeInsets.symmetric(vertical: 15)
-                          ),
-                          child: _isSaving 
-                            ? const SizedBox(
-                                width: 20, 
-                                height: 20, 
-                                child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)
-                              )
-                            : const Text("FINALIZAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _showObservationsAndSave,
+                      style: ElevatedButton.styleFrom(backgroundColor: statusColor.withOpacity(0.7)),
+                      child: _isSaving ? const CircularProgressIndicator() : const Text("FINALIZAR"),
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return FarmBackgroundScaffold(
+      title: 'ERROR',
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainState.center,
+          children: [
+            const Icon(Icons.no_photography, color: Colors.redAccent, size: 80),
+            const Text("No se detectó un animal", style: TextStyle(color: Colors.white, fontSize: 20)),
+            ElevatedButton(onPressed: () => context.pop(), child: const Text("REINTENTAR"))
           ],
         ),
       ),
     );
   }
 
-  Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor, bool isHighlight = false}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: isHighlight ? const EdgeInsets.all(10) : null,
-      decoration: isHighlight ? BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(12)) : null,
+  Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: valueColor ?? Colors.blueAccent, size: 20),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 14)),
+          Icon(icon, color: Colors.blueAccent, size: 20),
+          const SizedBox(width: 10),
+          Text(label, style: const TextStyle(color: Colors.white60)),
           const Spacer(),
-          Expanded(
-            child: Text(value, textAlign: TextAlign.end,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-          ),
+          Text(value, style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold)),
         ],
       ),
     );
