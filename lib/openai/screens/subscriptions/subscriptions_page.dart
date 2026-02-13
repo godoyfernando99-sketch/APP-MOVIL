@@ -19,6 +19,7 @@ class SubscriptionsPage extends StatefulWidget {
 class _SubscriptionsPageState extends State<SubscriptionsPage> {
   final _subscriptionService = SubscriptionService();
   bool _isLoading = false;
+  bool _isPurchasing = false; // Nuevo: Evita clics dobles
 
   @override
   void initState() {
@@ -27,39 +28,57 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   }
 
   Future<void> _initializeIAP() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     await _subscriptionService.initialize();
     if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _purchasePlan(String planId) async {
+    if (_isPurchasing) return;
+    
     final auth = context.read<AuthController>();
+    setState(() => _isPurchasing = true);
 
-    if (_subscriptionService.isAvailable && _subscriptionService.products.isNotEmpty) {
-      final product = _subscriptionService.products.firstWhere(
-        (p) => p.id.contains(planId),
-        orElse: () => _subscriptionService.products.first,
-      );
+    try {
+      if (_subscriptionService.isAvailable && _subscriptionService.products.isNotEmpty) {
+        final product = _subscriptionService.products.firstWhere(
+          (p) => p.id.contains(planId),
+          orElse: () => _subscriptionService.products.first,
+        );
 
-      await _subscriptionService.buyProduct(product, (purchasedPlanId) async {
-        await auth.updateSubscription(purchasedPlanId);
+        await _subscriptionService.buyProduct(product, (purchasedPlanId) async {
+          await auth.updateSubscription(purchasedPlanId);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.green.shade800,
+              content: Text('¡Plan $purchasedPlanId activado correctamente!'),
+            ),
+          );
+        });
+      } else {
+        // Modo Desarrollo / Web
+        await auth.updateSubscription(planId);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('¡Plan $purchasedPlanId activado correctamente!')),
-        );
-      });
-    } else {
-      await auth.updateSubscription(planId);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            Platform.isAndroid || Platform.isIOS
-                ? 'Modo prueba: Plan activado.'
-                : 'Plan activado para prueba web.',
+          SnackBar(
+            content: Text(
+              Platform.isAndroid || Platform.isIOS
+                  ? 'Modo prueba: Plan activado.'
+                  : 'Plan activado para prueba web.',
+            ),
           ),
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al procesar la compra')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPurchasing = false);
     }
   }
 
@@ -69,66 +88,79 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     final strings = (String key) => AppStrings.of(context, key);
     final settings = context.watch<AppSettings>();
     final auth = context.watch<AuthController>();
+    
     final currency = settings.currency;
     final locale = settings.locale;
-    final currentPlan = auth.currentUser?.subscriptionPlan ?? 'free';
+    final currentPlan = auth.currentUser?.subscriptionPlan?.toLowerCase() ?? 'free';
 
     return FarmBackgroundScaffold(
       title: strings('subscriptions'),
-      backgroundColor: Colors.transparent, // Fondo nítido
+      backgroundColor: Colors.transparent,
       child: _isLoading 
         ? const Center(child: CircularProgressIndicator(color: Colors.white))
-        : ListView(
-            padding: AppSpacing.paddingLg,
+        : Stack( // Usamos stack para mostrar un loader sobre los planes al comprar
             children: [
-              if (currentPlan != 'free') ...[
-                _buildCurrentPlanBanner(t, currentPlan),
-                const SizedBox(height: 20),
-              ],
-              
-              _PlanCard(
-                name: 'Plan Básico',
-                priceLabel: currency.formatUsd(5.99, locale),
-                accent: Colors.blue.shade400,
-                features: const [
-                  '15 escaneos mensuales',
-                  'Diagnóstico básico',
-                  'Historial de escaneos',
-                  'Soporte estándar'
+              ListView(
+                padding: AppSpacing.paddingLg,
+                children: [
+                  if (currentPlan != 'free') ...[
+                    _buildCurrentPlanBanner(t, currentPlan),
+                    const SizedBox(height: 20),
+                  ],
+                  
+                  _PlanCard(
+                    name: 'Plan Básico',
+                    priceLabel: currency.formatUsd(5.99, locale),
+                    accent: Colors.blue.shade400,
+                    features: const [
+                      '15 escaneos mensuales',
+                      'Diagnóstico básico',
+                      'Historial de escaneos',
+                      'Soporte estándar'
+                    ],
+                    isCurrentPlan: currentPlan == 'basic',
+                    onSelectPlan: (currentPlan == 'basic' || _isPurchasing) ? null : () => _purchasePlan('basic'),
+                  ),
+                  const SizedBox(height: 16),
+                  _PlanCard(
+                    name: 'Plan Premium',
+                    priceLabel: currency.formatUsd(10.99, locale),
+                    accent: Colors.purple.shade400,
+                    features: const [
+                      '30 escaneos mensuales',
+                      'Diagnóstico completo',
+                      'Historial ilimitado',
+                      'Soporte prioritario'
+                    ],
+                    isCurrentPlan: currentPlan == 'intermediate',
+                    onSelectPlan: (currentPlan == 'intermediate' || _isPurchasing) ? null : () => _purchasePlan('intermediate'),
+                  ),
+                  const SizedBox(height: 16),
+                  _PlanCard(
+                    name: 'Plan PRO',
+                    priceLabel: currency.formatUsd(13.99, locale),
+                    accent: Colors.amber.shade400,
+                    features: const [
+                      'Escaneos ilimitados',
+                      'Diagnóstico avanzado con IA',
+                      'Lista completa de medicamentos',
+                      'Base de datos de enfermedades',
+                      'Soporte VIP 24/7'
+                    ],
+                    recommended: true,
+                    isCurrentPlan: currentPlan == 'pro',
+                    onSelectPlan: (currentPlan == 'pro' || _isPurchasing) ? null : () => _purchasePlan('pro'),
+                  ),
+                  const SizedBox(height: 40),
                 ],
-                isCurrentPlan: currentPlan == 'basic',
-                onSelectPlan: currentPlan == 'basic' ? null : () => _purchasePlan('basic'),
               ),
-              const SizedBox(height: 16),
-              _PlanCard(
-                name: 'Plan Premium',
-                priceLabel: currency.formatUsd(10.99, locale),
-                accent: Colors.purple.shade400,
-                features: const [
-                  '30 escaneos mensuales',
-                  'Diagnóstico completo',
-                  'Historial ilimitado',
-                  'Soporte prioritario'
-                ],
-                isCurrentPlan: currentPlan == 'intermediate',
-                onSelectPlan: currentPlan == 'intermediate' ? null : () => _purchasePlan('intermediate'),
-              ),
-              const SizedBox(height: 16),
-              _PlanCard(
-                name: 'Plan PRO',
-                priceLabel: currency.formatUsd(13.99, locale),
-                accent: Colors.amber.shade400,
-                features: const [
-                  'Escaneos ilimitados',
-                  'Diagnóstico avanzado con IA',
-                  'Lista completa de medicamentos',
-                  'Base de datos de enfermedades',
-                  'Soporte VIP 24/7'
-                ],
-                recommended: true,
-                isCurrentPlan: currentPlan == 'pro',
-                onSelectPlan: currentPlan == 'pro' ? null : () => _purchasePlan('pro'),
-              ),
+              if (_isPurchasing)
+                Container(
+                  color: Colors.black45,
+                  child: const Center(
+                    child: CircularProgressIndicator(color: Colors.amber),
+                  ),
+                ),
             ],
           ),
     );
@@ -168,6 +200,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   }
 }
 
+// Clase _PlanCard se mantiene igual, es correcta.
 class _PlanCard extends StatelessWidget {
   const _PlanCard({
     required this.name,
@@ -191,7 +224,7 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6), // Efecto cristal ahumado
+        color: Colors.black.withOpacity(0.6),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: recommended ? accent : Colors.white.withOpacity(0.1),
@@ -235,12 +268,19 @@ class _PlanCard extends StatelessWidget {
               child: isCurrentPlan
                 ? OutlinedButton(
                     onPressed: null,
-                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white24), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.white24), 
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                    ),
                     child: const Text('PLAN ACTUAL', style: TextStyle(color: Colors.white38)),
                   )
                 : FilledButton(
                     onPressed: onSelectPlan,
-                    style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accent, 
+                      foregroundColor: Colors.black, 
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                    ),
                     child: const Text('ADQUIRIR AHORA', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
             ),
