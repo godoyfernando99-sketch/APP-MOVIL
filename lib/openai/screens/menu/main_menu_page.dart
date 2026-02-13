@@ -9,7 +9,6 @@ import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 class MainMenuPage extends StatelessWidget {
   const MainMenuPage({super.key});
 
-  // Manejo del Soporte VIP mejorado
   void _handleVipSupport(BuildContext context, bool hasSupport) {
     if (hasSupport) {
       context.push(AppRoutes.support);
@@ -55,15 +54,10 @@ class MainMenuPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    
-    // Escuchamos los cambios del usuario en tiempo real
     final authController = context.watch<AuthController>();
     final user = authController.currentUser;
     
-    // Lógica de Soporte: Planes 'basico' o 'premium' tienen soporte VIP
     final bool hasVipSupport = user?.subscriptionPlan == 'basico' || user?.subscriptionPlan == 'premium';
-    
-    // Lógica de Escaneos: Usamos el campo monthlyScans que actualizamos en ScanResultPage
     final int scansLeft = user?.monthlyScans ?? 0;
     final bool isFreePlan = user?.subscriptionPlan == 'free';
 
@@ -77,17 +71,16 @@ class MainMenuPage extends StatelessWidget {
         ),
       ],
       child: SingleChildScrollView(
-        padding: AppSpacing.paddingLg,
+        padding: const EdgeInsets.all(20), // Ajustado según AppSpacing
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildWelcomeHeader(t, user?.displayName ?? 'Usuario'),
             const SizedBox(height: 16),
 
-            // BANNER DINÁMICO DE ESCANEOS
             if (isFreePlan) 
               _buildFreeScansBanner(scansLeft)
-            else if (!isFreePlan)
+            else
               _buildProInfoBanner(user?.subscriptionPlan ?? ''),
             
             const SizedBox(height: 24),
@@ -124,7 +117,6 @@ class MainMenuPage extends StatelessWidget {
                   ? 'Chat activo con veterinarios' 
                   : 'Función para planes Básico/Premium',
               icon: Icons.support_agent_rounded,
-              // Color cambia según si tiene el beneficio o no
               color: hasVipSupport 
                   ? Colors.amber.shade800.withOpacity(0.9) 
                   : Colors.blueGrey.withOpacity(0.6),
@@ -170,6 +162,8 @@ class MainMenuPage extends StatelessWidget {
       ),
     );
   }
+
+  // --- WIDGETS DE APOYO INTERNOS ---
 
   Widget _buildFreeScansBanner(int count) {
     return Container(
@@ -232,4 +226,98 @@ class MainMenuPage extends StatelessWidget {
   }
 }
 
-// (Los componentes _CategoryButton y _QuickActionCard se mantienen iguales)
+// --- COMPONENTES EXTERNOS (ESTO ES LO QUE FALTABA) ---
+
+class _CategoryButton extends StatelessWidget {
+  const _CategoryButton({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 40, color: Colors.white),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionCard extends StatelessWidget {
+  const _QuickActionCard({
+    required this.title, 
+    required this.icon, 
+    required this.color, 
+    required this.onTap
+  });
+  
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Colors.black.withOpacity(0.4), 
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12), 
+        side: BorderSide(color: color.withOpacity(0.5), width: 1.5)
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 8),
+              Text(
+                title, 
+                textAlign: TextAlign.center, 
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
