@@ -11,7 +11,7 @@ class UserProfile {
     required this.createdAt,
     required this.updatedAt,
     this.subscriptionPlan = 'free',
-    this.monthlyScans = 10, // Cambiado de scansRemaining a monthlyScans
+    this.monthlyScans = 10, 
     this.lastReset,
   });
 
@@ -24,26 +24,32 @@ class UserProfile {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String subscriptionPlan;
-  final int monthlyScans; // Este es el campo que pedía el MainMenuPage
+  final int monthlyScans; 
   final DateTime? lastReset;
+
+  // --- GETTERS DE COMPATIBILIDAD (Solucionan los errores de compilación) ---
+
+  // Esto arregla el error en AuthController (scansRemaining)
+  int get scansRemaining => monthlyScans;
+
+  // Esto arregla el error en DiseasesPage y MedicationsPage (isPro)
+  bool get isPro => subscriptionPlan == 'pro' || subscriptionPlan == 'premium';
 
   // --- GETTERS DE LÓGICA DE NEGOCIO ---
 
   String get fullName => '$firstName $lastName'.trim();
   String get displayName => username.isNotEmpty ? username : firstName;
   
-  // Soporte VIP para planes específicos
   bool get hasVipSupport => subscriptionPlan == 'basico' || subscriptionPlan == 'premium';
   
-  // Determina si puede escanear
-  bool get hasScansAvailable => subscriptionPlan == 'premium' || monthlyScans > 0;
+  bool get hasScansAvailable => isPro || monthlyScans > 0;
 
-  // Límites mensuales según el plan
   int get maxScansByPlan {
     switch (subscriptionPlan) {
       case 'basico': return 15;
-      case 'premium': return 999999; // Escaneos ilimitados
-      default: return 10; // Plan Free
+      case 'premium': return 999999; 
+      case 'pro': return 999999;
+      default: return 10; 
     }
   }
 
@@ -68,6 +74,14 @@ class UserProfile {
     final updatedAtRaw = json['updatedAt'];
     final lastResetRaw = json['lastReset'];
 
+    // Lógica para leer si el campo viene como 'monthlyScans' o 'scansRemaining'
+    int scans = 10;
+    if (json['monthlyScans'] != null) {
+      scans = (json['monthlyScans'] as num).toInt();
+    } else if (json['scansRemaining'] != null) {
+      scans = (json['scansRemaining'] as num).toInt();
+    }
+
     return UserProfile(
       uid: (json['uid'] ?? '').toString(),
       username: (json['username'] ?? '').toString(),
@@ -78,9 +92,7 @@ class UserProfile {
       createdAt: createdAtRaw is Timestamp ? createdAtRaw.toDate() : DateTime.now(),
       updatedAt: updatedAtRaw is Timestamp ? updatedAtRaw.toDate() : DateTime.now(),
       subscriptionPlan: (json['subscriptionPlan'] ?? 'free').toString(),
-      monthlyScans: json['monthlyScans'] is num 
-          ? (json['monthlyScans'] as num).toInt() 
-          : (json['scansRemaining'] ?? 10), // Fallback por si en Firebase aún se llama scansRemaining
+      monthlyScans: scans,
       lastReset: lastResetRaw is Timestamp ? lastResetRaw.toDate() : null,
     );
   }
@@ -96,6 +108,7 @@ class UserProfile {
     DateTime? updatedAt,
     String? subscriptionPlan,
     int? monthlyScans,
+    int? scansRemaining, // Aceptamos ambos en copyWith para evitar errores en AuthController
     DateTime? lastReset,
   }) => UserProfile(
     uid: uid ?? this.uid,
@@ -107,7 +120,7 @@ class UserProfile {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
-    monthlyScans: monthlyScans ?? this.monthlyScans,
+    monthlyScans: monthlyScans ?? scansRemaining ?? this.monthlyScans,
     lastReset: lastReset ?? this.lastReset,
   );
 }
