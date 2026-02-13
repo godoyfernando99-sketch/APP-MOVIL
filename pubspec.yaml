@@ -5,7 +5,8 @@ publish_to: "none"
 version: 1.0.0+2
 
 environment:
-  sdk: ^3.6.0
+  # Ampliamos el rango para evitar conflictos de constantes del SDK 3.6
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -22,8 +23,8 @@ dependencies:
 
   # Interfaz y Navegación
   cupertino_icons: ^1.0.8
-  # Forzamos la versión exacta que soluciona el problema de FontWeight
-  google_fonts: 6.2.1
+  # Bajamos a la 6.1.0 que no presenta el error de FontWeight en compilación release
+  google_fonts: 6.1.0
   go_router: ^16.2.0
   provider: ^6.1.2
   
@@ -42,9 +43,9 @@ dependencies:
   in_app_purchase_android: ^0.4.0+5
   in_app_purchase_storekit: ^0.4.4
 
-# ESTA SECCIÓN ES LA QUE SOLUCIONARÁ EL ERROR EN GITHUB
+# FORZAMOS la versión estable para ignorar cualquier cache corrupto en GitHub
 dependency_overrides:
-  google_fonts: 6.2.1
+  google_fonts: 6.1.0
 
 dev_dependencies:
   flutter_test:
