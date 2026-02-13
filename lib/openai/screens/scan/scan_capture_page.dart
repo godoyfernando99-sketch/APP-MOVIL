@@ -25,12 +25,54 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   bool _isProcessing = false;
   final ImagePicker _picker = ImagePicker();
 
-  Future<void> _takePhoto() async {
+  // Función principal modificada para ofrecer ambas opciones
+  Future<void> _pickImageSource() async {
     if (_photos.length >= 3) return;
 
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey[900],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text(
+                "Seleccionar foto del animal",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.greenAccent),
+              title: const Text("Usar Cámara", style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _processPicker(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.greenAccent),
+              title: const Text("Elegir de Galería", style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _processPicker(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Lógica de captura y conversión a bytes
+  Future<void> _processPicker(ImageSource source) async {
     final XFile? image = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 70,
+      source: source,
+      imageQuality: 85, // Mayor calidad para mejorar detección de IA
     );
 
     if (image != null) {
@@ -71,10 +113,10 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   Widget build(BuildContext context) {
     return FarmBackgroundScaffold(
       title: 'Captura de Fotos',
-      backgroundColor: Colors.transparent, // Permite ver la imagen de fondo
+      backgroundColor: Colors.transparent,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3), // Filtro para legibilidad
+          color: Colors.black.withOpacity(0.3),
         ),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
@@ -100,7 +142,8 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                   itemBuilder: (context, index) {
                     final hasPhoto = index < _photos.length;
                     return GestureDetector(
-                      onTap: hasPhoto ? null : _takePhoto,
+                      // AQUÍ se llama a la nueva función que da a elegir
+                      onTap: hasPhoto ? null : _pickImageSource, 
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.black45,
@@ -120,7 +163,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                                 children: [
                                   Icon(Icons.add_a_photo_rounded, color: Colors.white70, size: 45),
                                   SizedBox(height: 8),
-                                  Text("Foto", style: TextStyle(color: Colors.white60)),
+                                  Text("Agregar", style: TextStyle(color: Colors.white60)),
                                 ],
                               ),
                       ),
