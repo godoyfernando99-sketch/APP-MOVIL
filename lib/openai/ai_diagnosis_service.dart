@@ -17,7 +17,7 @@ class AiDiagnosisService {
     
     final String apiKey = OpenAiConfig.apiKey;
     // URL específica para la versión estable
-    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey');
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
 
     try {
       // Simplificamos la estructura de las partes
