@@ -16,53 +16,58 @@ class AiDiagnosisService {
   }) async {
     
     final String apiKey = OpenAiConfig.apiKey;
-    final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
+    // URL específica para la versión estable
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey');
 
     try {
-      List<Map<String, dynamic>> imageParts = photos.map((bytes) => {
-        "inline_data": {"mime_type": "image/jpeg", "data": base64Encode(bytes)}
-      }).toList();
+      // Simplificamos la estructura de las partes
+      final List<Map<String, dynamic>> parts = [];
+      
+      // 1. Añadimos el texto primero
+      parts.add({"text": _buildPrompt(animalCategory)});
+      
+      // 2. Añadimos las imágenes
+      for (var photo in photos) {
+        parts.add({
+          "inline_data": {
+            "mime_type": "image/jpeg",
+            "data": base64Encode(photo)
+          }
+        });
+      }
 
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          "contents": [{"parts": [{"text": _buildPrompt(animalCategory)}, ...imageParts]}],
+          "contents": [{"parts": parts}],
           "generationConfig": {
-            "temperature": 0.1, 
+            "temperature": 0.2,
+            "topP": 0.8,
+            "topK": 40,
             "responseMimeType": "application/json"
           }
         }),
-      ).timeout(const Duration(seconds: 40));
+      ).timeout(const Duration(seconds: 30));
 
-      if (response.statusCode != 200) throw 'Error de Google: ${response.statusCode}';
+      if (response.statusCode != 200) {
+        // Esto nos dirá exactamente qué dice Google en el cuerpo del error 400
+        print("Cuerpo del error de Google: ${response.body}");
+        throw 'Error de Google: ${response.statusCode} - Revisa la consola para detalles.';
+      }
 
       final data = jsonDecode(response.body);
+      final rawText = data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
       
-      // Verificación de seguridad por si Google bloquea la imagen
-      if (data['candidates'] == null || data['candidates'].isEmpty) {
-        throw 'Google bloqueó la imagen por seguridad o falta de claridad.';
-      }
+      Map<String, dynamic> aiJson = jsonDecode(rawText.trim().replaceAll('```json', '').replaceAll('```', ''));
 
-      String rawText = data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
-      
-      debugPrint('--- RESPUESTA CRUDA DE LA IA ---');
-      debugPrint(rawText);
-
-      // Limpieza de JSON
-      String cleanJson = rawText.trim().replaceAll('```json', '').replaceAll('```', '');
-      Map<String, dynamic> aiJson = jsonDecode(cleanJson);
-
-      // VALIDACIÓN CRÍTICA: ¿Es realmente un animal?
-      if (aiJson['is_animal'] == false) {
-        throw 'VALIDATION_ERROR'; // Esto lo atrapará la ScanPage que arreglamos antes
-      }
+      // Validación de seguridad
+      if (aiJson['is_animal'] == false) throw 'VALIDATION_ERROR';
 
       final now = DateTime.now();
-
       return ScanResult(
         id: now.millisecondsSinceEpoch.toString(),
-        ownerId: 'user_test', 
+        ownerId: 'user_test',
         createdAt: now,
         updatedAt: now,
         animalId: animalId,
@@ -70,37 +75,26 @@ class AiDiagnosisService {
         mode: mode,
         microchipNumber: microchipNumber,
         photosBase64: photos.map((p) => base64Encode(p)).toList(),
-        healthStatus: (aiJson['healthStatus'] ?? 'regular').toString(),
-        detectedBreed: (aiJson['detectedBreed'] ?? 'Desconocida').toString(),
-        detectedSpecies: (aiJson['detectedSpecies'] ?? animalCategory).toString(),
-        diseaseName: aiJson['diseaseName']?.toString(),
-        medicationName: aiJson['medicationName']?.toString(),
-        medicationDose: aiJson['medicationDose']?.toString(),
+        healthStatus: aiJson['healthStatus'] ?? 'regular',
+        detectedBreed: aiJson['detectedBreed'] ?? 'Desconocida',
+        detectedSpecies: aiJson['detectedSpecies'] ?? animalCategory,
+        diseaseName: aiJson['diseaseName'],
+        medicationName: aiJson['medicationName'],
+        medicationDose: aiJson['medicationDose'],
         isPregnant: aiJson['isPregnant'] == true,
-        pregnancyWeeks: int.tryParse(aiJson['pregnancyWeeks']?.toString() ?? ''),
-        foodRecommendation: aiJson['foodRecommendation']?.toString() ?? 'Consultar veterinario',
-        observations: aiJson['observations']?.toString() ?? 'Análisis completado.',
+        foodRecommendation: aiJson['foodRecommendation'] ?? 'Consultar veterinario',
+        observations: aiJson['observations'] ?? 'Análisis completado.',
       );
 
     } catch (e) {
-      debugPrint('🚨 ERROR EN SERVICIO: $e');
-      if (e.toString().contains('VALIDATION_ERROR')) {
-        throw 'VALIDATION_ERROR';
-      }
-      throw 'Error: ${e.toString().split('\n')[0]}'; 
+      debugPrint('🚨 ERROR: $e');
+      throw e.toString();
     }
   }
 
   String _buildPrompt(String category) {
-    return "Eres un experto veterinario. Analiza las fotos de este $category e identifica: "
-           "1. Si hay un animal presente (is_animal: true/false). "
-           "2. Especie y Raza. "
-           "3. Estado de salud (bueno, regular, critico). "
-           "4. Si detectas enfermedades, indica nombre y posible medicación/dosis. "
-           "5. Recomendación alimenticia. "
-           "Responde ESTRICTAMENTE en este formato JSON: "
-           '{"is_animal":true,"detectedSpecies":"string","detectedBreed":"string","healthStatus":"string",'
-           '"diseaseName":"string","medicationName":"string","medicationDose":"string","isPregnant":false,"pregnancyWeeks":null,'
-           '"foodRecommendation":"string","observations":"string"}';
+    return "Analiza las fotos de este $category. Responde SOLO en JSON con esta estructura: "
+           '{"is_animal":true,"detectedSpecies":"string","detectedBreed":"string","healthStatus":"bueno/regular/critico",'
+           '"diseaseName":"string","medicationName":"string","medicationDose":"string","isPregnant":false,"foodRecommendation":"string","observations":"string"}';
   }
 }
