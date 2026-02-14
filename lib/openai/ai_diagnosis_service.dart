@@ -15,14 +15,11 @@ class AiDiagnosisService {
     required List<Uint8List> photos,
   }) async {
     
-    // 1. Verificación de Seguridad
     if (!OpenAiConfig.isConfigured) {
-      throw Exception('La API Key no está configurada correctamente en OpenAiConfig');
+      throw Exception('API Key no configurada');
     }
 
     final String apiKey = OpenAiConfig.apiKey;
-    
-    // --- CORRECCIÓN: URL actualizada a la versión estable v1 ---
     final url = Uri.parse(
       'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey'
     );
@@ -48,32 +45,32 @@ class AiDiagnosisService {
             ]
           }],
           "generationConfig": {
-            "temperature": 0.2,
-            "maxOutputTokens": 2048,
+            "temperature": 0.1, // Bajamos la temperatura para que sea más preciso
+            "maxOutputTokens": 1000,
             "responseMimeType": "application/json"
           }
         }),
-      ).timeout(const Duration(seconds: 45));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Verificación de estructura de respuesta de Google
         if (data['candidates'] == null || data['candidates'].isEmpty) {
-          throw Exception('La IA no devolvió candidatos. Verifica el contenido de la imagen.');
+          throw Exception('La IA no devolvió resultados.');
         }
 
         String rawText = data['candidates'][0]['content']['parts'][0]['text'];
         
-        // Limpieza de JSON por si la IA incluye bloques de código Markdown
-        String cleanJson = rawText;
-        if (rawText.contains('```')) {
-          cleanJson = rawText.split('```')[1].replaceFirst('json', '').trim();
+        // --- LIMPIEZA EXTREMA DEL JSON ---
+        // Eliminamos posibles bloques de código markdown y espacios en blanco
+        String cleanJson = rawText.trim();
+        if (cleanJson.contains('```')) {
+          cleanJson = cleanJson.split('```').firstWhere((element) => element.contains('{'));
+          cleanJson = cleanJson.replaceFirst('json', '').trim();
         }
 
         final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
 
-        // --- VALIDACIÓN DE SEGURIDAD ESTRICTA ---
         if (aiJson['is_animal'] == false) {
           throw Exception('VALIDATION_ERROR: Por favor, coloca una fotografía de un animal.');
         }
@@ -92,8 +89,8 @@ class AiDiagnosisService {
           microchipNumber: microchipNumber,
           photosBase64: photoB64,
           healthStatus: aiJson['healthStatus']?.toString().toLowerCase() ?? 'regular',
-          detectedBreed: aiJson['detectedBreed']?.toString() ?? 'Raza no identificada',
-          detectedSpecies: aiJson['detectedSpecies']?.toString() ?? 'Especie no identificada',
+          detectedBreed: aiJson['detectedBreed']?.toString() ?? 'No identificada',
+          detectedSpecies: aiJson['detectedSpecies']?.toString() ?? 'No identificada',
           diseaseName: aiJson['diseaseName']?.toString(),
           medicationName: aiJson['medicationName']?.toString(),
           medicationDose: aiJson['medicationDose']?.toString(),
@@ -103,39 +100,39 @@ class AiDiagnosisService {
           observations: aiJson['observations']?.toString(),
         );
       } else {
-        // Esto ayudará a diagnosticar si el 404 persiste por otra razón
-        throw Exception('Error de Google Gemini (${response.statusCode}): ${response.body}');
+        throw Exception('Error del servidor (${response.statusCode})');
       }
     } catch (e) {
-      debugPrint('🚨 ERROR EN SERVICIO: $e');
+      debugPrint('🚨 ERROR DETALLADO: $e');
+      // Si el error es de JSON, lanzamos un mensaje más claro
+      if (e is FormatException) {
+        throw Exception('Error de formato: La IA envió datos inválidos.');
+      }
       rethrow; 
     }
   }
 
   String _buildPrompt(String category) {
     return """
-    Eres un experto en visión veterinaria. Analiza las imágenes adjuntas con rigor científico.
+    Eres un experto veterinario. Analiza la imagen.
+    Responde ESTRICTAMENTE en formato JSON plano, sin bloques de código, sin markdown y sin texto extra.
     
-    REGLA DE ORO DE SEGURIDAD:
-    Si la imagen muestra una persona, un objeto inanimado, comida, o cualquier cosa que NO sea un animal, debes responder estrictamente con {"is_animal": false}.
-
-    Si es un animal, responde en formato JSON con la siguiente estructura:
+    Estructura requerida:
     {
-      "is_animal": true,
-      "detectedSpecies": "Especie detectada",
-      "detectedBreed": "Raza detectada",
+      "is_animal": true/false,
+      "detectedSpecies": "string",
+      "detectedBreed": "string",
       "healthStatus": "bueno/regular/critico",
-      "diseaseName": "Nombre de posible patología (si aplica)",
-      "medicationName": "Principio activo recomendado",
-      "medicationDose": "Dosis sugerida según peso visual estimado",
-      "isPregnant": true/false,
-      "pregnancyWeeks": número o null,
-      "foodRecommendation": "Tipo de dieta sugerida",
-      "observations": "Resumen profesional de lo observado"
+      "diseaseName": "string o null",
+      "medicationName": "string o null",
+      "medicationDose": "string o null",
+      "isPregnant": false,
+      "pregnancyWeeks": null,
+      "foodRecommendation": "string",
+      "observations": "string"
     }
 
-    Contexto del animal: $category.
-    Responde ÚNICAMENTE el JSON puro.
+    Contexto: $category.
     """;
   }
 }
