@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-// --- IMPORTS RELATIVOS CORREGIDOS ---
 import '../../../app/auth/auth_controller.dart'; 
 import '../../../app/history/history_controller.dart';
 import '../../../app/history/scan_models.dart';
@@ -111,22 +110,33 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
 
   @override
   Widget build(BuildContext context) {
+    // Si el payload es un error de validación
     if (widget.payload is String && widget.payload.toString().contains('VALIDATION_ERROR')) {
       return _buildErrorState();
     }
 
+    // Si el payload no es un ScanResult, mostramos error genérico en lugar de crashear
     if (widget.payload is! ScanResult) {
-      return const Scaffold(body: Center(child: Text("No hay datos")));
+      return _buildGeneralErrorState();
     }
 
     final result = widget.payload as ScanResult;
-    final manualAnimal = AnimalsCatalog.byId(result.animalId);
-    final String displayBreed = result.detectedBreed ?? manualAnimal.name;
-    final String health = result.healthStatus.toLowerCase();
     
-    final Color statusColor = health.contains('buen') 
-        ? Colors.greenAccent 
-        : (health.contains('mal') || health.contains('crit') ? Colors.redAccent : Colors.orangeAccent);
+    // CORRECCIÓN SEGURA DE TEXTO
+    final String health = (result.healthStatus).toString().toLowerCase();
+    final String displayBreed = result.detectedBreed ?? "No identificada";
+    
+    // Lógica de color mejorada para evitar fallos
+    Color statusColor = Colors.orangeAccent;
+    IconData statusIcon = Icons.warning;
+
+    if (health.contains('buen')) {
+      statusColor = Colors.greenAccent;
+      statusIcon = Icons.check_circle;
+    } else if (health.contains('mal') || health.contains('crit') || health.contains('enfer')) {
+      statusColor = Colors.redAccent;
+      statusIcon = Icons.error;
+    }
 
     return FarmBackgroundScaffold(
       title: 'RESULTADO IA',
@@ -141,22 +151,24 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
           ),
           child: Column(
             children: [
-              Icon(health.contains('buen') ? Icons.check_circle : Icons.warning, color: statusColor, size: 70),
+              Icon(statusIcon, color: statusColor, size: 70),
               const SizedBox(height: 10),
               Text(result.healthStatus.toUpperCase(), 
                 style: TextStyle(color: statusColor, fontSize: 24, fontWeight: FontWeight.bold)),
               const Divider(color: Colors.white24, height: 40),
               
-              _buildResultRow('Especie/Raza:', displayBreed, Icons.pets),
+              _buildResultRow('Especie:', result.detectedSpecies ?? 'Animal', Icons.pets),
+              _buildResultRow('Raza:', displayBreed, Icons.Category),
               
               if (result.isPregnant == true)
-                _buildResultRow('Gestación:', '${result.pregnancyWeeks} Sem', Icons.favorite, valueColor: Colors.pinkAccent),
+                _buildResultRow('Gestación:', '${result.pregnancyWeeks ?? 0} Sem', Icons.favorite, valueColor: Colors.pinkAccent),
               
               _buildResultRow('Enfermedad:', result.diseaseName ?? 'Ninguna', Icons.bug_report),
               _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize),
               
               const SizedBox(height: 20),
               Container(
+                width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.05),
@@ -188,11 +200,10 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                       style: ElevatedButton.styleFrom(
                         backgroundColor: statusColor.withOpacity(0.8),
                         foregroundColor: Colors.black,
-                        // CORRECCIÓN AQUÍ: fontWeight va dentro de textStyle
                         textStyle: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       child: _isSaving 
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) 
                         : const Text("FINALIZAR"),
                     ),
                   ),
@@ -205,9 +216,33 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildGeneralErrorState() {
     return FarmBackgroundScaffold(
       title: 'ERROR',
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.orangeAccent, size: 80),
+            const SizedBox(height: 16),
+            const Text("Error de interpretación", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 40),
+              child: Text("La IA respondió pero los datos no son compatibles. Intenta con otra foto.", 
+                textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(onPressed: () => context.pop(), child: const Text("REINTENTAR"))
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return FarmBackgroundScaffold(
+      title: 'AVISO',
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -216,7 +251,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
             const SizedBox(height: 16),
             const Text("No se detectó un animal", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text("Intenta tomar la foto más cerca.", style: TextStyle(color: Colors.white70)),
+            const Text("Asegúrate de que el animal se vea claramente.", style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 24),
             ElevatedButton(onPressed: () => context.pop(), child: const Text("REINTENTAR"))
           ],
@@ -234,7 +269,12 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
           const SizedBox(width: 10),
           Text(label, style: const TextStyle(color: Colors.white60)),
           const Spacer(),
-          Text(value, style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold)),
+          Expanded(
+            child: Text(value, 
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
