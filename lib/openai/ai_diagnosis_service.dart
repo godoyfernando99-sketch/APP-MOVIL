@@ -16,7 +16,7 @@ class AiDiagnosisService {
   }) async {
     final String apiKey = OpenAiConfig.apiKey;
     // Usamos el modelo v1beta que suele ser más permisivo con los filtros en producción
-    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey');
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
 
     try {
       final Uint8List photoToProcess = photos.first;
