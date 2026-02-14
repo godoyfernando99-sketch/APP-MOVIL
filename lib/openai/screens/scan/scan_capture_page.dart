@@ -68,18 +68,22 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   }
 
   Future<void> _processPicker(ImageSource source) async {
-    final XFile? image = await _picker.pickImage(
-      source: source,
-      imageQuality: 85, 
-    );
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 70, // Bajamos un poco la calidad para que la API responda más rápido
+        maxWidth: 1024,   // Limitamos el tamaño para evitar errores de memoria
+      );
 
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      setState(() => _photos.add(bytes));
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() => _photos.add(bytes));
+      }
+    } catch (e) {
+      debugPrint("Error al capturar imagen: $e");
     }
   }
 
-  // FUNCIÓN DE DIAGNÓSTICO CORREGIDA CON SNACKBAR DE VALIDACIÓN
   Future<void> _processDiagnosis() async {
     if (_photos.isEmpty) return;
 
@@ -87,34 +91,41 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
 
     try {
       const service = AiDiagnosisService();
+      
+      // LOG PARA DEPURACIÓN
+      debugPrint("Iniciando diagnóstico para animalId: ${widget.animalId} en modo: ${widget.mode}");
+
       final result = await service.diagnose(
         animalId: widget.animalId,
-        animalCategory: 'vaca', // O la categoría que corresponda
+        animalCategory: widget.animalId, // Usamos el animalId como categoría para que sea más preciso
         mode: widget.mode,
         photos: _photos,
       );
 
       if (mounted) {
+        // Si llegamos aquí, el resultado es exitoso
         context.push(AppRoutes.scanResult, extra: result);
       }
     } catch (e) {
+      debugPrint("ERROR CRÍTICO EN DIAGNÓSTICO: $e"); // ESTO SALDRÁ EN TUS LOGS
+      
       if (mounted) {
-        String errorMessage = "Error en el análisis";
+        String errorMessage = "Error: ${e.toString()}"; // Mostramos el error real para saber qué pasa
         
-        // Capturamos el error de validación de humano/objeto que pusimos en el servicio
         if (e.toString().contains('VALIDATION_ERROR')) {
-          errorMessage = "⚠️ Por favor, coloca una fotografía de un animal.";
+          errorMessage = "⚠️ La IA no detectó un animal claro en la imagen.";
         } else if (e.toString().contains('404')) {
-          errorMessage = "Error de conexión (404). Verifica el modelo en el servicio.";
+          errorMessage = "Error de conexión con el modelo de IA (404).";
+        } else if (e.toString().contains('429')) {
+          errorMessage = "Has agotado el límite de intentos, espera un momento.";
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: Text(errorMessage, style: const TextStyle(color: Colors.white, fontSize: 12)),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 6), // Más tiempo para leer el error
           ),
         );
       }
@@ -127,110 +138,99 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   Widget build(BuildContext context) {
     return FarmBackgroundScaffold(
       title: 'Captura de Fotos',
-      backgroundColor: Colors.transparent,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              Text(
-                "Captura hasta 3 fotos del animal",
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 30),
-              Expanded(
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 15,
-                    mainAxisSpacing: 15,
-                  ),
-                  itemCount: 3,
-                  itemBuilder: (context, index) {
-                    final hasPhoto = index < _photos.length;
-                    return GestureDetector(
-                      onTap: hasPhoto ? null : _pickImageSource, 
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black45,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: hasPhoto ? Colors.greenAccent : Colors.white30,
-                            width: 2,
-                          ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Text(
+              "Captura hasta 3 fotos del animal",
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 30),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 15,
+                  mainAxisSpacing: 15,
+                ),
+                itemCount: 3,
+                itemBuilder: (context, index) {
+                  final hasPhoto = index < _photos.length;
+                  return GestureDetector(
+                    onTap: hasPhoto ? null : _pickImageSource, 
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: hasPhoto ? Colors.greenAccent : Colors.white30,
+                          width: 2,
                         ),
-                        child: hasPhoto
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(18),
-                                child: Stack(
-                                  children: [
-                                    Positioned.fill(child: Image.memory(_photos[index], fit: BoxFit.cover)),
-                                    Positioned(
-                                      top: 5,
-                                      right: 5,
-                                      child: GestureDetector(
-                                        onTap: () => setState(() => _photos.removeAt(index)),
-                                        child: const CircleAvatar(
-                                          radius: 12,
-                                          backgroundColor: Colors.red,
-                                          child: Icon(Icons.close, size: 15, color: Colors.white),
-                                        ),
-                                      ),
-                                    )
-                                  ],
-                                ),
-                              )
-                            : const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                      ),
+                      child: hasPhoto
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: Stack(
                                 children: [
-                                  Icon(Icons.add_a_photo_rounded, color: Colors.white70, size: 45),
-                                  SizedBox(height: 8),
-                                  Text("Agregar", style: TextStyle(color: Colors.white60)),
+                                  Positioned.fill(child: Image.memory(_photos[index], fit: BoxFit.cover)),
+                                  Positioned(
+                                    top: 5,
+                                    right: 5,
+                                    child: GestureDetector(
+                                      onTap: () => setState(() => _photos.removeAt(index)),
+                                      child: const CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor: Colors.red,
+                                        child: Icon(Icons.close, size: 15, color: Colors.white),
+                                      ),
+                                    ),
+                                  )
                                 ],
                               ),
-                      ),
-                    );
-                  },
-                ),
+                            )
+                          : const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_a_photo_rounded, color: Colors.white70, size: 45),
+                                SizedBox(height: 8),
+                                Text("Agregar", style: TextStyle(color: Colors.white60)),
+                              ],
+                            ),
+                    ),
+                  );
+                },
               ),
-              const SizedBox(height: 20),
-              if (_isProcessing)
-                const Column(
-                  children: [
-                    CircularProgressIndicator(color: Colors.greenAccent),
-                    SizedBox(height: 10),
-                    Text("Analizando con IA...", style: TextStyle(color: Colors.white)),
-                  ],
-                )
-              else
-                SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: ElevatedButton(
-                    onPressed: _photos.isNotEmpty ? _processDiagnosis : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      foregroundColor: Colors.white,
-                      elevation: 8,
-                      disabledBackgroundColor: Colors.white10,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    ),
-                    child: const Text(
-                      "ANALIZAR CON IA",
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-                    ),
+            ),
+            const SizedBox(height: 20),
+            if (_isProcessing)
+              const Column(
+                children: [
+                  CircularProgressIndicator(color: Colors.greenAccent),
+                  SizedBox(height: 10),
+                  Text("Analizando con IA...", style: TextStyle(color: Colors.white)),
+                ],
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: _photos.isNotEmpty ? _processDiagnosis : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    disabledBackgroundColor: Colors.white10,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                  child: const Text(
+                    "ANALIZAR CON IA",
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.white),
                   ),
                 ),
-              const SizedBox(height: 30),
-            ],
-          ),
+              ),
+            const SizedBox(height: 30),
+          ],
         ),
       ),
     );
