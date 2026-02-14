@@ -17,29 +17,30 @@ class AiDiagnosisService {
     
     final String apiKey = OpenAiConfig.apiKey;
     
-    // URL ESTABLE v1 - Confirmada sin restricciones en tu consola
+    // URL ESTABLE v1
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
 
     try {
-      // ESTRUCTURA BLINDADA: Organizamos texto e imágenes en el orden exacto que pide Gemini
+      // AJUSTE DE EMERGENCIA: Seleccionamos solo la primera foto para asegurar que el peso sea mínimo
+      // Esto evita el Error 400 por exceso de bytes en la solicitud.
+      final Uint8List photoToProcess = photos.first;
+
       final Map<String, dynamic> requestBody = {
         "contents": [
           {
             "parts": [
               {"text": _buildPrompt(animalCategory)},
-              ...photos.map((photo) => {
+              {
                 "inline_data": {
                   "mime_type": "image/jpeg",
-                  "data": base64Encode(photo)
+                  "data": base64Encode(photoToProcess)
                 }
-              }).toList(),
+              },
             ]
           }
         ],
         "generationConfig": {
-          "temperature": 0.2,
-          "topP": 0.8,
-          "topK": 40,
+          "temperature": 0.1, // Reducido para máxima precisión
           "responseMimeType": "application/json"
         }
       };
@@ -48,18 +49,18 @@ class AiDiagnosisService {
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 25));
 
-      // Verificación de estado con log detallado
+      // Verificación de estado con log detallado para diagnóstico
       if (response.statusCode != 200) {
-        debugPrint("🚨 ERROR GOOGLE (${response.statusCode}): ${response.body}");
-        throw 'Error ${response.statusCode}: El servidor de Google no pudo procesar la solicitud.';
+        debugPrint("🚨 DETALLE DEL ERROR: ${response.body}");
+        throw 'Error ${response.statusCode}: El servidor no pudo procesar la imagen. Intenta con una foto más ligera.';
       }
 
       final data = jsonDecode(response.body);
       
       if (data['candidates'] == null || data['candidates'].isEmpty) {
-        throw 'La IA no devolvió ninguna respuesta. Intenta con otra foto.';
+        throw 'La IA no devolvió respuesta. Por favor, reintenta.';
       }
 
       // Limpieza de JSON robusta
@@ -82,7 +83,7 @@ class AiDiagnosisService {
         animalCategory: animalCategory,
         mode: mode,
         microchipNumber: microchipNumber,
-        photosBase64: photos.map((p) => base64Encode(p)).toList(),
+        photosBase64: [base64Encode(photoToProcess)], // Guardamos solo la foto analizada
         healthStatus: aiJson['healthStatus'] ?? 'regular',
         detectedBreed: aiJson['detectedBreed'] ?? 'Desconocida',
         detectedSpecies: aiJson['detectedSpecies'] ?? animalCategory,
@@ -95,13 +96,13 @@ class AiDiagnosisService {
       );
 
     } catch (e) {
-      debugPrint('🚨 ERROR CRÍTICO: $e');
+      debugPrint('🚨 ERROR EN SERVICIO: $e');
       rethrow; 
     }
   }
 
   String _buildPrompt(String category) {
-    return "Actúa como un veterinario experto. Analiza las fotos de este $category. "
+    return "Actúa como un veterinario experto. Analiza la foto de este $category. "
            "Genera un diagnóstico de salud y raza. "
            "Responde ÚNICAMENTE en formato JSON plano con esta estructura exacta: "
            '{"is_animal":true,"detectedSpecies":"string","detectedBreed":"string","healthStatus":"bueno/regular/critico",'
