@@ -20,6 +20,7 @@ class AiDiagnosisService {
     }
 
     final String apiKey = OpenAiConfig.apiKey;
+    // Usamos v1 que es la estable
     final url = Uri.parse(
       'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey'
     );
@@ -45,39 +46,36 @@ class AiDiagnosisService {
             ]
           }],
           "generationConfig": {
-            "temperature": 0.1, // Bajamos la temperatura para que sea más preciso
-            "maxOutputTokens": 1000,
+            "temperature": 0.1,
             "responseMimeType": "application/json"
           }
         }),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 40));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        if (data['candidates'] == null || data['candidates'].isEmpty) {
-          throw Exception('La IA no devolvió resultados.');
-        }
-
-        String rawText = data['candidates'][0]['content']['parts'][0]['text'];
+        // Extraer el texto de forma segura
+        String rawText = data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
         
-        // --- LIMPIEZA EXTREMA DEL JSON ---
-        // Eliminamos posibles bloques de código markdown y espacios en blanco
+        // Limpiar el texto por si vienen comillas o bloques de código
         String cleanJson = rawText.trim();
         if (cleanJson.contains('```')) {
-          cleanJson = cleanJson.split('```').firstWhere((element) => element.contains('{'));
-          cleanJson = cleanJson.replaceFirst('json', '').trim();
+          cleanJson = cleanJson.split('```').firstWhere((s) => s.contains('{'), orElse: () => cleanJson);
+          cleanJson = cleanJson.replaceAll('json', '').trim();
         }
 
         final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
 
+        // --- VALIDACIÓN DE ANIMAL ---
         if (aiJson['is_animal'] == false) {
-          throw Exception('VALIDATION_ERROR: Por favor, coloca una fotografía de un animal.');
+          throw Exception('VALIDATION_ERROR: No se detectó un animal en la imagen.');
         }
 
         final photoB64 = photos.map((p) => base64Encode(p)).toList();
         final now = DateTime.now();
 
+        // --- MAPEO ULTRA-SEGURO (Evita que la app explote si falta un campo) ---
         return ScanResult(
           id: now.millisecondsSinceEpoch.toString(),
           ownerId: '', 
@@ -88,51 +86,49 @@ class AiDiagnosisService {
           mode: mode,
           microchipNumber: microchipNumber,
           photosBase64: photoB64,
-          healthStatus: aiJson['healthStatus']?.toString().toLowerCase() ?? 'regular',
-          detectedBreed: aiJson['detectedBreed']?.toString() ?? 'No identificada',
-          detectedSpecies: aiJson['detectedSpecies']?.toString() ?? 'No identificada',
-          diseaseName: aiJson['diseaseName']?.toString(),
-          medicationName: aiJson['medicationName']?.toString(),
-          medicationDose: aiJson['medicationDose']?.toString(),
+          healthStatus: (aiJson['healthStatus'] ?? 'regular').toString().toLowerCase(),
+          detectedBreed: (aiJson['detectedBreed'] ?? 'No identificada').toString(),
+          detectedSpecies: (aiJson['detectedSpecies'] ?? 'No identificada').toString(),
+          diseaseName: aiJson['diseaseName']?.toString() ?? 'Ninguna detectada',
+          medicationName: aiJson['medicationName']?.toString() ?? 'N/A',
+          medicationDose: aiJson['medicationDose']?.toString() ?? 'N/A',
           isPregnant: aiJson['isPregnant'] == true,
-          pregnancyWeeks: (aiJson['pregnancyWeeks'] as num?)?.toInt(),
-          foodRecommendation: aiJson['foodRecommendation']?.toString(),
-          observations: aiJson['observations']?.toString(),
+          pregnancyWeeks: int.tryParse(aiJson['pregnancyWeeks']?.toString() ?? '0') ?? 0,
+          foodRecommendation: aiJson['foodRecommendation']?.toString() ?? 'Dieta balanceada',
+          observations: aiJson['observations']?.toString() ?? 'Sin observaciones adicionales',
         );
       } else {
-        throw Exception('Error del servidor (${response.statusCode})');
+        throw Exception('Error del servidor Google: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('🚨 ERROR DETALLADO: $e');
-      // Si el error es de JSON, lanzamos un mensaje más claro
-      if (e is FormatException) {
-        throw Exception('Error de formato: La IA envió datos inválidos.');
+      debugPrint('🚨 ERROR CRÍTICO: $e');
+      // Esto es lo que ves en el SnackBar rojo
+      if (e.toString().contains('VALIDATION_ERROR')) {
+        throw e.toString().replaceAll('Exception: ', '');
       }
-      rethrow; 
+      throw 'Error de análisis: Verifica la imagen e intenta de nuevo.';
     }
   }
 
   String _buildPrompt(String category) {
     return """
-    Eres un experto veterinario. Analiza la imagen.
-    Responde ESTRICTAMENTE en formato JSON plano, sin bloques de código, sin markdown y sin texto extra.
+    Eres un experto veterinario. Analiza la imagen y responde SOLO en JSON.
+    Contexto: $category
     
-    Estructura requerida:
+    Estructura (rellena con "N/A" si no aplica):
     {
-      "is_animal": true/false,
-      "detectedSpecies": "string",
-      "detectedBreed": "string",
+      "is_animal": true,
+      "detectedSpecies": "especie",
+      "detectedBreed": "raza",
       "healthStatus": "bueno/regular/critico",
-      "diseaseName": "string o null",
-      "medicationName": "string o null",
-      "medicationDose": "string o null",
+      "diseaseName": "nombre o N/A",
+      "medicationName": "nombre o N/A",
+      "medicationDose": "dosis o N/A",
       "isPregnant": false,
-      "pregnancyWeeks": null,
-      "foodRecommendation": "string",
-      "observations": "string"
+      "pregnancyWeeks": 0,
+      "foodRecommendation": "recomendación",
+      "observations": "resumen"
     }
-
-    Contexto: $category.
     """;
   }
 }
