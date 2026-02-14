@@ -30,96 +30,73 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(
-              title: Text(
-                "Seleccionar foto del animal",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.9),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              const Text("Subir Foto", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.greenAccent),
+                title: const Text("Cámara", style: TextStyle(color: Colors.white)),
+                onTap: () { Navigator.pop(context); _processPicker(ImageSource.camera); },
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.greenAccent),
-              title: const Text("Usar Cámara", style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                _processPicker(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: Colors.greenAccent),
-              title: const Text("Elegir de Galería", style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                _processPicker(ImageSource.gallery);
-              },
-            ),
-            const SizedBox(height: 10),
-          ],
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.greenAccent),
+                title: const Text("Galería", style: TextStyle(color: Colors.white)),
+                onTap: () { Navigator.pop(context); _processPicker(ImageSource.gallery); },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // OPTIMIZACIÓN EXTREMA: Para evitar Error 400 de Google
   Future<void> _processPicker(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        imageQuality: 30, // Calidad baja (suficiente para IA)
-        maxWidth: 500,    // Tamaño reducido para paquete de datos ligero
-        maxHeight: 500,
+        imageQuality: 35, // Peso pluma
+        maxWidth: 512,
+        maxHeight: 512,
       );
 
       if (image != null) {
         final bytes = await image.readAsBytes();
-        debugPrint("PESO DE IMAGEN: ${bytes.lengthInBytes / 1024} KB");
         setState(() => _photos.add(bytes));
       }
     } catch (e) {
-      debugPrint("Error al capturar imagen: $e");
+      debugPrint("Error: $e");
     }
   }
 
   Future<void> _processDiagnosis() async {
     if (_photos.isEmpty) return;
-
     setState(() => _isProcessing = true);
 
     try {
       const service = AiDiagnosisService();
-      
       final result = await service.diagnose(
         animalId: widget.animalId,
-        animalCategory: widget.animalId, 
+        animalCategory: widget.animalId, // Enviamos el nombre directo (Perro, Vaca, etc)
         mode: widget.mode,
         photos: _photos,
       );
 
-      if (mounted) {
-        context.push(AppRoutes.scanResult, extra: result);
-      }
+      if (mounted) context.push(AppRoutes.scanResult, extra: result);
     } catch (e) {
-      debugPrint("ERROR CRÍTICO: $e");
-      
       if (mounted) {
-        String errorMessage = "Error: La imagen sigue siendo rechazada por el servidor.";
-        
-        if (e.toString().contains('400')) {
-          errorMessage = "Error 400: Intenta con una foto más simple o de frente.";
-        } else if (e.toString().contains('429')) {
-          errorMessage = "Muchos intentos. Espera 1 minuto.";
-        }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage, style: const TextStyle(color: Colors.white)),
+            content: Text("IA: $e"),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
@@ -133,67 +110,43 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   @override
   Widget build(BuildContext context) {
     return FarmBackgroundScaffold(
-      title: 'Captura de Fotos',
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
+      title: 'Captura',
+      child: Container(
+        color: Colors.transparent, // Asegura que el fondo sea visible
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            const SizedBox(height: 10),
-            const Text(
-              "Captura la foto para el diagnóstico",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            const SizedBox(height: 20),
+            Text(
+              "Foto de tu ${widget.animalId}",
+              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, shadows: [Shadow(blurRadius: 10, color: Colors.black)]),
             ),
             const SizedBox(height: 30),
             Expanded(
               child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                ),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 15, mainAxisSpacing: 15),
                 itemCount: 3,
                 itemBuilder: (context, index) {
                   final hasPhoto = index < _photos.length;
                   return GestureDetector(
-                    onTap: hasPhoto ? null : _pickImageSource, 
+                    onTap: hasPhoto ? null : _pickImageSource,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black45,
+                        color: Colors.black26,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: hasPhoto ? Colors.greenAccent : Colors.white30,
-                          width: 2,
-                        ),
+                        border: Border.all(color: hasPhoto ? Colors.greenAccent : Colors.white24),
                       ),
-                      child: hasPhoto
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: Stack(
-                                children: [
-                                  Positioned.fill(child: Image.memory(_photos[index], fit: BoxFit.cover)),
-                                  Positioned(
-                                    top: 5,
-                                    right: 5,
-                                    child: GestureDetector(
-                                      onTap: () => setState(() => _photos.removeAt(index)),
-                                      child: const CircleAvatar(
-                                        radius: 12,
-                                        backgroundColor: Colors.red,
-                                        child: Icon(Icons.close, size: 15, color: Colors.white),
-                                      ),
-                                    ),
-                                  )
-                                ],
-                              ),
-                            )
-                          : const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                      child: hasPhoto 
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: Stack(
                               children: [
-                                Icon(Icons.add_a_photo_rounded, color: Colors.white70, size: 45),
-                                SizedBox(height: 8),
-                                Text("Agregar", style: TextStyle(color: Colors.white60)),
+                                Positioned.fill(child: Image.memory(_photos[index], fit: BoxFit.cover)),
+                                Positioned(top: 5, right: 5, child: GestureDetector(onTap: () => setState(() => _photos.removeAt(index)), child: const CircleAvatar(radius: 12, backgroundColor: Colors.red, child: Icon(Icons.close, size: 15, color: Colors.white)))),
                               ],
                             ),
+                          )
+                        : const Icon(Icons.add_a_photo, color: Colors.white54, size: 40),
                     ),
                   );
                 },
@@ -201,31 +154,23 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
             ),
             const SizedBox(height: 20),
             if (_isProcessing)
-              const Column(
-                children: [
-                  CircularProgressIndicator(color: Colors.greenAccent),
-                  SizedBox(height: 10),
-                  Text("Analizando con IA...", style: TextStyle(color: Colors.white)),
-                ],
-              )
+              const CircularProgressIndicator(color: Colors.greenAccent)
             else
-              SizedBox(
+              Container(
                 width: double.infinity,
                 height: 60,
+                margin: const EdgeInsets.only(bottom: 40),
                 child: ElevatedButton(
                   onPressed: _photos.isNotEmpty ? _processDiagnosis : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade600,
+                    backgroundColor: Colors.green.shade800.withOpacity(0.85),
                     disabledBackgroundColor: Colors.white10,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    elevation: 0,
                   ),
-                  child: const Text(
-                    "ANALIZAR CON IA",
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.white),
-                  ),
+                  child: const Text("ANALIZAR AHORA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
                 ),
               ),
-            const SizedBox(height: 30),
           ],
         ),
       ),
