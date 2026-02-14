@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // Asegúrate de tener esta dependencia
+import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:intl/intl.dart';
+import 'package:scanneranimal/openai/openai_config.dart'; // Importamos tu API Key
 
 class VipSupportPage extends StatefulWidget {
   const VipSupportPage({super.key});
@@ -14,41 +17,76 @@ class VipSupportPage extends StatefulWidget {
 class _VipSupportPageState extends State<VipSupportPage> {
   final TextEditingController _messageController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  bool _isTyping = false; // Para mostrar que el Dr. está pensando
   
-  // Lista de mensajes (ahora soporta imágenes opcionales)
   final List<Map<String, dynamic>> _messages = [
     {
       'isMe': false,
-      'text': '¡Hola! Soy el Dr. Julián, tu asistente veterinario VIP. 🐾 Estoy aquí para ayudarte. Puedes enviarme una foto de cualquier síntoma para darte una orientación rápida. ¿En qué puedo ayudarte hoy?',
+      'text': '¡Hola! Soy el Dr. Julián, tu asistente veterinario VIP. 🐾 Estoy listo para ayudarte. ¿Qué animalito te preocupa hoy?',
       'time': DateFormat('hh:mm a').format(DateTime.now()),
       'image': null,
     },
   ];
 
-  // Función para enviar mensaje de texto
+  // FUNCIÓN PRINCIPAL PARA HABLAR CON GEMINI
+  Future<void> _getAiResponse(String userText, File? imageFile) async {
+    setState(() => _isTyping = true);
+    
+    final String apiKey = OpenAiConfig.apiKey;
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey');
+
+    try {
+      List<Map<String, dynamic>> parts = [
+        {"text": "Eres el Dr. Julián, un veterinario experto y empático. Responde de forma concisa y profesional a la siguiente consulta del dueño de una mascota: $userText"}
+      ];
+
+      if (imageFile != null) {
+        final bytes = await imageFile.readAsBytes();
+        parts.add({
+          "inline_data": {
+            "mime_type": "image/jpeg",
+            "data": base64Encode(bytes)
+          }
+        });
+      }
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "contents": [{"parts": parts}],
+          "generationConfig": {"temperature": 0.7}
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final aiText = data['candidates'][0]['content']['parts'][0]['text'];
+        _addMessage(false, aiText.trim(), null);
+      } else {
+        _addMessage(false, "Lo siento, tuve un problema de conexión. ¿Podrías intentar de nuevo? (Error ${response.statusCode})", null);
+      }
+    } catch (e) {
+      _addMessage(false, "Error: No pude conectar con el servidor. Revisa tu internet.", null);
+    } finally {
+      setState(() => _isTyping = false);
+    }
+  }
+
   void _sendMessage() {
     if (_messageController.text.trim().isEmpty) return;
-
     final userText = _messageController.text;
     _addMessage(true, userText, null);
     _messageController.clear();
-
-    // Simular respuesta del Dr. Julián después de 1 segundo
-    Future.delayed(const Duration(seconds: 1), () {
-      _addMessage(false, "Entiendo. Estoy analizando tu consulta sobre '$userText'. ¿Podrías darme más detalles o enviarme una foto?", null);
-    });
+    _getAiResponse(userText, null); // Llama a la IA
   }
 
-  // Función para enviar imagen
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      _addMessage(true, "He enviado una foto para revisión.", File(image.path));
-      
-      // Respuesta automática al recibir imagen
-      Future.delayed(const Duration(seconds: 2), () {
-        _addMessage(false, "Gracias por la imagen. La estoy revisando detalladamente...", null);
-      });
+      File imageFile = File(image.path);
+      _addMessage(true, "Te envío esta foto para que la revises.", imageFile);
+      _getAiResponse("Analiza esta imagen de mi mascota.", imageFile); // Llama a la IA con la foto
     }
   }
 
@@ -68,9 +106,9 @@ class _VipSupportPageState extends State<VipSupportPage> {
     return FarmBackgroundScaffold(
       title: 'SOPORTE VETERINARIO VIP',
       actions: [
+        if (_isTyping) const Center(child: Text("Escribiendo...  ", style: TextStyle(fontSize: 10, color: Colors.amber))),
         const Icon(Icons.circle, color: Colors.greenAccent, size: 12),
         const SizedBox(width: 8),
-        const Center(child: Text("EN LÍNEA  ", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
       ],
       child: Column(
         children: [
@@ -78,15 +116,12 @@ class _VipSupportPageState extends State<VipSupportPage> {
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _ChatBubble(
-                  isMe: msg['isMe'],
-                  text: msg['text'],
-                  time: msg['time'],
-                  image: msg['image'],
-                );
-              },
+              itemBuilder: (context, index) => _ChatBubble(
+                isMe: _messages[index]['isMe'],
+                text: _messages[index]['text'],
+                time: _messages[index]['time'],
+                image: _messages[index]['image'],
+              ),
             ),
           ),
           _buildInputArea(),
@@ -99,7 +134,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.8),
+        color: Colors.black.withOpacity(0.85),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
@@ -107,7 +142,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
           children: [
             IconButton(
               icon: const Icon(Icons.add_photo_alternate_rounded, color: Colors.amber),
-              onPressed: _pickImage, // AHORA SÍ TIENE FUNCIÓN
+              onPressed: _isTyping ? null : _pickImage,
             ),
             Expanded(
               child: TextField(
@@ -118,11 +153,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
                   hintStyle: const TextStyle(color: Colors.white38),
                   filled: true,
                   fillColor: Colors.white10,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
-                    borderSide: BorderSide.none,
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(25), borderSide: BorderSide.none),
                 ),
                 onSubmitted: (_) => _sendMessage(),
               ),
@@ -132,7 +163,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
               backgroundColor: Colors.amber.shade700,
               child: IconButton(
                 icon: const Icon(Icons.send_rounded, color: Colors.black),
-                onPressed: _sendMessage,
+                onPressed: _isTyping ? null : _sendMessage,
               ),
             ),
           ],
@@ -142,6 +173,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
   }
 }
 
+// El widget _ChatBubble se mantiene igual al que ya tenías
 class _ChatBubble extends StatelessWidget {
   final bool isMe;
   final String text;
@@ -171,11 +203,13 @@ class _ChatBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (image != null) 
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.file(image!, fit: BoxFit.cover),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(image!, fit: BoxFit.cover),
+                ),
               ),
-            if (image != null) const SizedBox(height: 8),
             Text(text, style: const TextStyle(color: Colors.white, fontSize: 15)),
             const SizedBox(height: 4),
             Text(time, style: const TextStyle(color: Colors.white54, fontSize: 10)),
