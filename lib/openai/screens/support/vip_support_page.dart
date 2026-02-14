@@ -19,7 +19,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
   final List<Map<String, dynamic>> _messages = [
     {
       'isMe': false,
-      'text': '¡Hola! Bienvenido al soporte VIP. Soy el Dr. Julián, ¿en qué puedo ayudarte hoy?',
+      'text': '¡Hola! Soy el Dr. Julián, tu asistente veterinario VIP. 🐾 Estoy aquí para ayudarte. Puedes enviarme una foto de cualquier síntoma para darte una orientación rápida. ¿En qué puedo ayudarte hoy?',
       'time': DateFormat('hh:mm a').format(DateTime.now()),
       'image': null,
     },
