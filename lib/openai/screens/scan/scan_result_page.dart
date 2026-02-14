@@ -158,7 +158,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
               const Divider(color: Colors.white24, height: 40),
               
               _buildResultRow('Especie:', result.detectedSpecies ?? 'Animal', Icons.pets),
-              _buildResultRow('Raza:', displayBreed, Icons.Category),
+              _buildResultRow('Raza:', displayBreed, Icons.category),
               
               if (result.isPregnant == true)
                 _buildResultRow('Gestación:', '${result.pregnancyWeeks ?? 0} Sem', Icons.favorite, valueColor: Colors.pinkAccent),
