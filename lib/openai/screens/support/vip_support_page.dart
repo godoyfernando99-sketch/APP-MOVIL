@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:intl/intl.dart';
-import 'package:scanneranimal/openai/openai_config.dart'; // Importamos tu API Key
+import 'package:scanneranimal/openai/openai_config.dart';
 
 class VipSupportPage extends StatefulWidget {
   const VipSupportPage({super.key});
@@ -16,8 +16,9 @@ class VipSupportPage extends StatefulWidget {
 
 class _VipSupportPageState extends State<VipSupportPage> {
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController(); // Para auto-scroll
   final ImagePicker _picker = ImagePicker();
-  bool _isTyping = false; // Para mostrar que el Dr. está pensando
+  bool _isTyping = false;
   
   final List<Map<String, dynamic>> _messages = [
     {
@@ -28,16 +29,29 @@ class _VipSupportPageState extends State<VipSupportPage> {
     },
   ];
 
-  // FUNCIÓN PRINCIPAL PARA HABLAR CON GEMINI
+  // Desplazar hacia abajo al recibir/enviar mensaje
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   Future<void> _getAiResponse(String userText, File? imageFile) async {
     setState(() => _isTyping = true);
+    _scrollToBottom();
     
     final String apiKey = OpenAiConfig.apiKey;
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
 
     try {
-      List<Map<String, dynamic>> parts = [
-        {"text": "Eres el Dr. Julián, un veterinario experto y empático. Responde de forma concisa y profesional a la siguiente consulta del dueño de una mascota: $userText"}
+      final List<Map<String, dynamic>> parts = [
+        {"text": "Eres el Dr. Julián, un veterinario experto y empático. Responde de forma concisa a: $userText"}
       ];
 
       if (imageFile != null) {
@@ -55,7 +69,10 @@ class _VipSupportPageState extends State<VipSupportPage> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "contents": [{"parts": parts}],
-          "generationConfig": {"temperature": 0.7}
+          "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 400,
+          }
         }),
       );
 
@@ -64,12 +81,13 @@ class _VipSupportPageState extends State<VipSupportPage> {
         final aiText = data['candidates'][0]['content']['parts'][0]['text'];
         _addMessage(false, aiText.trim(), null);
       } else {
-        _addMessage(false, "Lo siento, tuve un problema de conexión. ¿Podrías intentar de nuevo? (Error ${response.statusCode})", null);
+        _addMessage(false, "Lo siento, hubo un error de red. (Código: ${response.statusCode})", null);
       }
     } catch (e) {
-      _addMessage(false, "Error: No pude conectar con el servidor. Revisa tu internet.", null);
+      _addMessage(false, "No pude conectar con el asistente. Revisa tu internet.", null);
     } finally {
-      setState(() => _isTyping = false);
+      if (mounted) setState(() => _isTyping = false);
+      _scrollToBottom();
     }
   }
 
@@ -78,15 +96,15 @@ class _VipSupportPageState extends State<VipSupportPage> {
     final userText = _messageController.text;
     _addMessage(true, userText, null);
     _messageController.clear();
-    _getAiResponse(userText, null); // Llama a la IA
+    _getAiResponse(userText, null);
   }
 
   Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (image != null) {
       File imageFile = File(image.path);
-      _addMessage(true, "Te envío esta foto para que la revises.", imageFile);
-      _getAiResponse("Analiza esta imagen de mi mascota.", imageFile); // Llama a la IA con la foto
+      _addMessage(true, "He subido una foto para consulta.", imageFile);
+      _getAiResponse("Analiza esta imagen y dime si ves algo inusual.", imageFile);
     }
   }
 
@@ -99,6 +117,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
         'image': image,
       });
     });
+    _scrollToBottom();
   }
 
   @override
@@ -106,7 +125,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
     return FarmBackgroundScaffold(
       title: 'SOPORTE VETERINARIO VIP',
       actions: [
-        if (_isTyping) const Center(child: Text("Escribiendo...  ", style: TextStyle(fontSize: 10, color: Colors.amber))),
+        if (_isTyping) const Center(child: Text("ESCRIBIENDO...  ", style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold))),
         const Icon(Icons.circle, color: Colors.greenAccent, size: 12),
         const SizedBox(width: 8),
       ],
@@ -114,6 +133,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
         children: [
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.all(16),
               itemCount: _messages.length,
               itemBuilder: (context, index) => _ChatBubble(
@@ -132,7 +152,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
 
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.85),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -149,10 +169,11 @@ class _VipSupportPageState extends State<VipSupportPage> {
                 controller: _messageController,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: "Escribe tu consulta...",
-                  hintStyle: const TextStyle(color: Colors.white38),
+                  hintText: "Tu consulta VIP...",
+                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
                   filled: true,
                   fillColor: Colors.white10,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(25), borderSide: BorderSide.none),
                 ),
                 onSubmitted: (_) => _sendMessage(),
@@ -160,7 +181,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
             ),
             const SizedBox(width: 8),
             CircleAvatar(
-              backgroundColor: Colors.amber.shade700,
+              backgroundColor: _isTyping ? Colors.grey : Colors.amber.shade700,
               child: IconButton(
                 icon: const Icon(Icons.send_rounded, color: Colors.black),
                 onPressed: _isTyping ? null : _sendMessage,
@@ -173,7 +194,6 @@ class _VipSupportPageState extends State<VipSupportPage> {
   }
 }
 
-// El widget _ChatBubble se mantiene igual al que ya tenías
 class _ChatBubble extends StatelessWidget {
   final bool isMe;
   final String text;
@@ -189,9 +209,9 @@ class _ChatBubble extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.all(14),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
         decoration: BoxDecoration(
-          color: isMe ? Colors.blueAccent.withOpacity(0.8) : Colors.grey[800]?.withOpacity(0.9),
+          color: isMe ? Colors.blueAccent.withOpacity(0.9) : Colors.grey[850]!.withOpacity(0.95),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -203,16 +223,25 @@ class _ChatBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (image != null) 
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   child: Image.file(image!, fit: BoxFit.cover),
                 ),
               ),
-            Text(text, style: const TextStyle(color: Colors.white, fontSize: 15)),
-            const SizedBox(height: 4),
-            Text(time, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+            Text(text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(time, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  const Icon(Icons.done_all, size: 12, color: Colors.white38),
+                ]
+              ],
+            ),
           ],
         ),
       ),
