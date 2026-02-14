@@ -16,17 +16,14 @@ class AiDiagnosisService {
   }) async {
     
     final String apiKey = OpenAiConfig.apiKey;
-    // URL específica para la versión estable
+    
+    // CAMBIO 1: Usamos v1beta que es más flexible para el modelo Flash
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
 
     try {
-      // Simplificamos la estructura de las partes
       final List<Map<String, dynamic>> parts = [];
-      
-      // 1. Añadimos el texto primero
       parts.add({"text": _buildPrompt(animalCategory)});
       
-      // 2. Añadimos las imágenes
       for (var photo in photos) {
         parts.add({
           "inline_data": {
@@ -42,26 +39,32 @@ class AiDiagnosisService {
         body: jsonEncode({
           "contents": [{"parts": parts}],
           "generationConfig": {
-            "temperature": 0.2,
-            "topP": 0.8,
-            "topK": 40,
+            "temperature": 0.1, // Bajamos a 0.1 para que sea más preciso y no alucine
             "responseMimeType": "application/json"
           }
         }),
       ).timeout(const Duration(seconds: 30));
 
+      // CAMBIO 2: Si da 404 o 400, lanzamos un mensaje que explique el porqué
       if (response.statusCode != 200) {
-        // Esto nos dirá exactamente qué dice Google en el cuerpo del error 400
-        print("Cuerpo del error de Google: ${response.body}");
-        throw 'Error de Google: ${response.statusCode} - Revisa la consola para detalles.';
+        debugPrint("Cuerpo del error de Google: ${response.body}");
+        if (response.statusCode == 404) {
+          throw 'Error 404: Google no encuentra el modelo. Verifica que la API de Gemini esté habilitada.';
+        }
+        throw 'Error ${response.statusCode}: Verifica tu conexión y la API Key.';
       }
 
       final data = jsonDecode(response.body);
+      
+      // CAMBIO 3: Validación de candidatos para evitar errores de null
+      if (data['candidates'] == null || data['candidates'].isEmpty) {
+        throw 'La IA no devolvió resultados. Intenta con otra foto.';
+      }
+
       final rawText = data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
       
       Map<String, dynamic> aiJson = jsonDecode(rawText.trim().replaceAll('```json', '').replaceAll('```', ''));
 
-      // Validación de seguridad
       if (aiJson['is_animal'] == false) throw 'VALIDATION_ERROR';
 
       final now = DateTime.now();
@@ -88,12 +91,12 @@ class AiDiagnosisService {
 
     } catch (e) {
       debugPrint('🚨 ERROR: $e');
-      throw e.toString();
+      rethrow; // Usamos rethrow para que la ScanPage capture el mensaje exacto
     }
   }
 
   String _buildPrompt(String category) {
-    return "Analiza las fotos de este $category. Responde SOLO en JSON con esta estructura: "
+    return "Analiza las fotos de este $category. Responde SOLO en JSON plano: "
            '{"is_animal":true,"detectedSpecies":"string","detectedBreed":"string","healthStatus":"bueno/regular/critico",'
            '"diseaseName":"string","medicationName":"string","medicationDose":"string","isPregnant":false,"foodRecommendation":"string","observations":"string"}';
   }
