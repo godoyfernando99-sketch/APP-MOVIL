@@ -67,18 +67,19 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
     );
   }
 
-  // CAMBIO CLAVE AQUÍ: Optimización de peso de imagen
+  // OPTIMIZACIÓN EXTREMA: Para evitar Error 400 de Google
   Future<void> _processPicker(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        imageQuality: 70, // Calidad optimizada
-        maxWidth: 800,    // Reducimos el ancho máximo de 1024 a 800
-        maxHeight: 800,   // Reducimos el alto máximo para asegurar ligereza
+        imageQuality: 30, // Calidad baja (suficiente para IA)
+        maxWidth: 500,    // Tamaño reducido para paquete de datos ligero
+        maxHeight: 500,
       );
 
       if (image != null) {
         final bytes = await image.readAsBytes();
+        debugPrint("PESO DE IMAGEN: ${bytes.lengthInBytes / 1024} KB");
         setState(() => _photos.add(bytes));
       }
     } catch (e) {
@@ -94,8 +95,6 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
     try {
       const service = AiDiagnosisService();
       
-      debugPrint("Iniciando diagnóstico para animalId: ${widget.animalId} en modo: ${widget.mode}");
-
       final result = await service.diagnose(
         animalId: widget.animalId,
         animalCategory: widget.animalId, 
@@ -107,27 +106,22 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
         context.push(AppRoutes.scanResult, extra: result);
       }
     } catch (e) {
-      debugPrint("ERROR CRÍTICO EN DIAGNÓSTICO: $e");
+      debugPrint("ERROR CRÍTICO: $e");
       
       if (mounted) {
-        String errorMessage = "Error: ${e.toString()}"; 
+        String errorMessage = "Error: La imagen sigue siendo rechazada por el servidor.";
         
-        if (e.toString().contains('VALIDATION_ERROR')) {
-          errorMessage = "⚠️ La IA no detectó un animal claro en la imagen.";
-        } else if (e.toString().contains('404')) {
-          errorMessage = "Error de conexión con el modelo de IA (404).";
-        } else if (e.toString().contains('400')) {
-          errorMessage = "Error 400: La imagen es muy pesada o el formato no es compatible.";
+        if (e.toString().contains('400')) {
+          errorMessage = "Error 400: Intenta con una foto más simple o de frente.";
         } else if (e.toString().contains('429')) {
-          errorMessage = "Has agotado el límite de intentos, espera un momento.";
+          errorMessage = "Muchos intentos. Espera 1 minuto.";
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage, style: const TextStyle(color: Colors.white, fontSize: 12)),
+            content: Text(errorMessage, style: const TextStyle(color: Colors.white)),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 6),
           ),
         );
       }
@@ -146,7 +140,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
           children: [
             const SizedBox(height: 10),
             const Text(
-              "Captura hasta 3 fotos del animal",
+              "Captura la foto para el diagnóstico",
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 30),
