@@ -17,59 +17,58 @@ class AiDiagnosisService {
     
     final String apiKey = OpenAiConfig.apiKey;
     
-    // URL ESTABLE: Es la que mejor funciona tras configurar el consentimiento de OAuth
+    // URL ESTABLE v1 - Confirmada sin restricciones en tu consola
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
 
     try {
-      final List<Map<String, dynamic>> parts = [];
-      
-      // 1. Agregamos el texto de instrucción
-      parts.add({"text": _buildPrompt(animalCategory)});
-      
-      // 2. Agregamos todas las fotos capturadas
-      for (var photo in photos) {
-        parts.add({
-          "inline_data": {
-            "mime_type": "image/jpeg",
-            "data": base64Encode(photo)
+      // ESTRUCTURA BLINDADA: Organizamos texto e imágenes en el orden exacto que pide Gemini
+      final Map<String, dynamic> requestBody = {
+        "contents": [
+          {
+            "parts": [
+              {"text": _buildPrompt(animalCategory)},
+              ...photos.map((photo) => {
+                "inline_data": {
+                  "mime_type": "image/jpeg",
+                  "data": base64Encode(photo)
+                }
+              }).toList(),
+            ]
           }
-        });
-      }
+        ],
+        "generationConfig": {
+          "temperature": 0.2,
+          "topP": 0.8,
+          "topK": 40,
+          "responseMimeType": "application/json"
+        }
+      };
 
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "contents": [{"parts": parts}],
-          "generationConfig": {
-            "temperature": 0.1,
-            "responseMimeType": "application/json"
-          }
-        }),
+        body: jsonEncode(requestBody),
       ).timeout(const Duration(seconds: 30));
 
-      // Verificación de estado
+      // Verificación de estado con log detallado
       if (response.statusCode != 200) {
         debugPrint("🚨 ERROR GOOGLE (${response.statusCode}): ${response.body}");
-        if (response.statusCode == 404) {
-          throw 'Error 404: No se encuentra el modelo. Verifica que la API de Gemini esté habilitada en v1.';
-        }
-        throw 'Error ${response.statusCode}: El servidor de Google rechazó la petición.';
+        throw 'Error ${response.statusCode}: El servidor de Google no pudo procesar la solicitud.';
       }
 
       final data = jsonDecode(response.body);
       
       if (data['candidates'] == null || data['candidates'].isEmpty) {
-        throw 'La IA no pudo procesar la imagen. Intenta que la foto sea más clara.';
+        throw 'La IA no devolvió ninguna respuesta. Intenta con otra foto.';
       }
 
-      // Extraemos y limpiamos el texto para asegurar que sea un JSON válido
+      // Limpieza de JSON robusta
       String rawText = data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
       rawText = rawText.trim().replaceAll('```json', '').replaceAll('```', '');
       
       final Map<String, dynamic> aiJson = jsonDecode(rawText);
 
-      // Validación de si es un animal
+      // Validación de contenido
       if (aiJson['is_animal'] == false) throw 'No se detectó un animal en la imagen.';
 
       final now = DateTime.now();
@@ -96,14 +95,15 @@ class AiDiagnosisService {
       );
 
     } catch (e) {
-      debugPrint('🚨 ERROR EN SERVICIO: $e');
+      debugPrint('🚨 ERROR CRÍTICO: $e');
       rethrow; 
     }
   }
 
   String _buildPrompt(String category) {
     return "Actúa como un veterinario experto. Analiza las fotos de este $category. "
-           "Responde ÚNICAMENTE en formato JSON plano con esta estructura: "
+           "Genera un diagnóstico de salud y raza. "
+           "Responde ÚNICAMENTE en formato JSON plano con esta estructura exacta: "
            '{"is_animal":true,"detectedSpecies":"string","detectedBreed":"string","healthStatus":"bueno/regular/critico",'
            '"diseaseName":"string","medicationName":"string","medicationDose":"string","isPregnant":false,"foodRecommendation":"string","observations":"string"}';
   }
