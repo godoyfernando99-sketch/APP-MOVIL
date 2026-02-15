@@ -14,8 +14,7 @@ class AiDiagnosisService {
     required List<Uint8List> photos,
   }) async {
     try {
-      // 1. Inicializamos el modelo de Vertex AI. 
-      // No necesitamos API Key aquí porque Firebase usa la configuración de tu google-services.json
+      // 1. Inicializamos el modelo
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-1.5-flash',
         generationConfig: GenerationConfig(
@@ -24,13 +23,14 @@ class AiDiagnosisService {
         ),
       );
 
-      // 2. Preparamos el contenido (Texto + Imagen)
+      // 2. Preparamos el contenido
       final prompt = "Analiza la salud de este $animalCategory. "
           "Responde estrictamente en formato JSON con los campos: "
           "healthStatus (bueno/regular/critico), detectedBreed, diseaseName, "
           "medicationName, medicationDose, foodRecommendation, observations.";
       
-      final imagePart = DataPart('image/jpeg', photos.first);
+      // CORRECCIÓN AQUÍ: Usamos InlineDataPart que es más robusto para bytes directos
+      final imagePart = InlineDataPart('image/jpeg', photos.first);
 
       // 3. Generamos el contenido
       final response = await model.generateContent([
@@ -40,13 +40,11 @@ class AiDiagnosisService {
       final String? rawText = response.text;
       if (rawText == null) throw 'La IA no devolvió ninguna respuesta.';
 
-      // Limpiamos el texto por si incluye decoradores de markdown
       final cleanJson = rawText.trim().replaceAll('```json', '').replaceAll('```', '');
       final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
       
       final now = DateTime.now();
 
-      // 4. Retornamos el resultado mapeado a tu modelo ScanResult
       return ScanResult(
         id: now.millisecondsSinceEpoch.toString(),
         ownerId: 'user_test',
@@ -68,7 +66,6 @@ class AiDiagnosisService {
         observations: aiJson['observations'] ?? 'Análisis realizado con Vertex AI.',
       );
     } catch (e) {
-      // Si hay un error de "Permission Denied", es porque falta habilitar la API en la consola
       print('🚨 ERROR EN VERTEX AI: $e');
       rethrow;
     }
