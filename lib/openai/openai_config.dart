@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 class OpenAiConfig {
   // Tu llave de Google Gemini
-  static const String apiKey = 'AIzaSyConmf0PN79jBFkNkHZRKMym2KcTNPI4gI';
+  static const String apiKey = 'AIzaSyDTO3kzm9u7bOMHvuDEhujs9fVDZFc9xvs';
 
   // Verifica que la llave esté puesta y tenga el formato correcto de Google
   static bool get isConfigured => apiKey.isNotEmpty && apiKey.startsWith('AIza');
