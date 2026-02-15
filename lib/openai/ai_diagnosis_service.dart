@@ -14,7 +14,6 @@ class AiDiagnosisService {
     required List<Uint8List> photos,
   }) async {
     try {
-      // 1. Inicializamos el modelo
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-2.0-flash',
         generationConfig: GenerationConfig(
@@ -23,16 +22,25 @@ class AiDiagnosisService {
         ),
       );
 
-      // 2. Preparamos el contenido
-      final prompt = "Analiza la salud de este $animalCategory. "
-          "Responde estrictamente en formato JSON con los campos: "
-          "healthStatus (bueno/regular/critico), detectedBreed, diseaseName, "
-          "medicationName, medicationDose, foodRecommendation, observations.";
+      // --- PROMPT MEJORADO CON FILTRO ---
+      final prompt = """
+      Eres un experto veterinario. Analiza la imagen y sigue estas reglas:
+      1. Si la imagen NO contiene un animal real (es una persona, un objeto, un logo o algo no relacionado), responde ÚNICAMENTE: {"is_animal": false}
+      2. Si hay un animal, analiza su salud y responde en este formato JSON:
+      {
+        "is_animal": true,
+        "healthStatus": "bueno/regular/critico",
+        "detectedBreed": "raza",
+        "diseaseName": "enfermedad",
+        "medicationName": "medicamento",
+        "medicationDose": "dosis",
+        "foodRecommendation": "comida",
+        "observations": "observaciones"
+      }
+      """;
       
-      // CORRECCIÓN AQUÍ: Usamos InlineDataPart que es más robusto para bytes directos
       final imagePart = InlineDataPart('image/jpeg', photos.first);
 
-      // 3. Generamos el contenido
       final response = await model.generateContent([
         Content.multi([TextPart(prompt), imagePart])
       ]);
@@ -42,6 +50,11 @@ class AiDiagnosisService {
 
       final cleanJson = rawText.trim().replaceAll('```json', '').replaceAll('```', '');
       final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
+
+      // --- VALIDACIÓN DE ANIMAL ---
+      if (aiJson['is_animal'] == false) {
+        throw 'Esa no es una imagen de un animal. Por favor, coloca la imagen del animal seleccionado.';
+      }
       
       final now = DateTime.now();
 
@@ -67,7 +80,7 @@ class AiDiagnosisService {
       );
     } catch (e) {
       print('🚨 ERROR EN VERTEX AI: $e');
-      rethrow;
+      rethrow; // Este mensaje llegará al SnackBar de tu pantalla de captura
     }
   }
 }
