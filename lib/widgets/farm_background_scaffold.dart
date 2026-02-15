@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:scanneranimal/nav.dart';
 
 class FarmBackgroundScaffold extends StatelessWidget {
@@ -11,7 +10,7 @@ class FarmBackgroundScaffold extends StatelessWidget {
     this.showBack = true,
     this.showHome = true,
     this.actions,
-    this.backgroundColor, // <-- Agregado para resolver el error de compilación
+    this.backgroundColor, 
   });
 
   final String title;
@@ -19,7 +18,7 @@ class FarmBackgroundScaffold extends StatelessWidget {
   final bool showBack;
   final bool showHome;
   final List<Widget>? actions;
-  final Color? backgroundColor; // <-- Definición de la propiedad
+  final Color? backgroundColor; 
 
   static const String _bgAsset =
       'assets/images/farm_animals_pasture_background_photo_green_1769096572851.jpg';
@@ -28,21 +27,26 @@ class FarmBackgroundScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     
-    // Si no se pasa un color, usamos el color de superficie con transparencia por defecto
-    final overlayColor = backgroundColor ?? cs.surface.withValues(alpha: 0.72);
+    // CAMBIO AQUÍ: Bajamos el alpha de 0.72 a 0.20 para que la imagen se vea clara
+    // O usamos Colors.transparent si queremos ver la foto original pura.
+    final overlayColor = backgroundColor ?? Colors.black.withOpacity(0.25);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      // Se define el fondo del Scaffold como transparente para ver la imagen del Stack
       backgroundColor: Colors.transparent, 
       appBar: AppBar(
-        title: Text(title, style: TextStyle(color: cs.onSurface)),
+        // Sombra en el texto para que se lea bien sobre la imagen
+        title: Text(title, style: const TextStyle(
+          color: Colors.white, 
+          fontWeight: FontWeight.bold,
+          shadows: [Shadow(blurRadius: 8, color: Colors.black)]
+        )),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: showBack
             ? IconButton(
                 onPressed: () => context.pop(),
-                icon: Icon(Icons.arrow_back, color: cs.onSurface),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
                 tooltip: 'Back',
               )
             : null,
@@ -50,7 +54,7 @@ class FarmBackgroundScaffold extends StatelessWidget {
           if (showHome)
             IconButton(
               onPressed: () => context.go(AppRoutes.menu),
-              icon: Icon(Icons.home_rounded, color: cs.onSurface),
+              icon: const Icon(Icons.home_rounded, color: Colors.white),
               tooltip: 'Home',
             ),
           ...?actions,
@@ -63,8 +67,7 @@ class FarmBackgroundScaffold extends StatelessWidget {
           // 1. Imagen de fondo
           Image.asset(_bgAsset, fit: BoxFit.cover),
           
-          // 2. Capa de color (Overlay)
-          // Usamos el color configurado para dar el efecto de "cristal"
+          // 2. Capa de color (Overlay) - Ahora más transparente
           Container(color: overlayColor),
           
           // 3. Contenido de la pantalla
