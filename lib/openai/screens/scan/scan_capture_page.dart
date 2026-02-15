@@ -33,15 +33,13 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.9),
+          color: Colors.black.withOpacity(0.85),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
         ),
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 10),
-              const Text("Subir Foto", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.greenAccent),
                 title: const Text("Cámara", style: TextStyle(color: Colors.white)),
@@ -64,7 +62,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        imageQuality: 35, // Peso pluma
+        imageQuality: 35,
         maxWidth: 512,
         maxHeight: 512,
       );
@@ -86,7 +84,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       const service = AiDiagnosisService();
       final result = await service.diagnose(
         animalId: widget.animalId,
-        animalCategory: widget.animalId, // Enviamos el nombre directo (Perro, Vaca, etc)
+        animalCategory: widget.animalId,
         mode: widget.mode,
         photos: _photos,
       );
@@ -95,11 +93,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("IA: $e"),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -109,69 +103,93 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Usamos el Scaffold con fondo transparente para que mande el FarmBackgroundScaffold
     return FarmBackgroundScaffold(
       title: 'Captura',
-      child: Container(
-        color: Colors.transparent, // Asegura que el fondo sea visible
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Text(
-              "Foto de tu ${widget.animalId}",
-              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, shadows: [Shadow(blurRadius: 10, color: Colors.black)]),
-            ),
-            const SizedBox(height: 30),
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 15, mainAxisSpacing: 15),
-                itemCount: 3,
-                itemBuilder: (context, index) {
-                  final hasPhoto = index < _photos.length;
-                  return GestureDetector(
-                    onTap: hasPhoto ? null : _pickImageSource,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black26,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: hasPhoto ? Colors.greenAccent : Colors.white24),
-                      ),
-                      child: hasPhoto 
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
-                            child: Stack(
-                              children: [
-                                Positioned.fill(child: Image.memory(_photos[index], fit: BoxFit.cover)),
-                                Positioned(top: 5, right: 5, child: GestureDetector(onTap: () => setState(() => _photos.removeAt(index)), child: const CircleAvatar(radius: 12, backgroundColor: Colors.red, child: Icon(Icons.close, size: 15, color: Colors.white)))),
-                              ],
-                            ),
-                          )
-                        : const Icon(Icons.add_a_photo, color: Colors.white54, size: 40),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (_isProcessing)
-              const CircularProgressIndicator(color: Colors.greenAccent)
-            else
-              Container(
-                width: double.infinity,
-                height: 60,
-                margin: const EdgeInsets.only(bottom: 40),
-                child: ElevatedButton(
-                  onPressed: _photos.isNotEmpty ? _processDiagnosis : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade800.withOpacity(0.85),
-                    disabledBackgroundColor: Colors.white10,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    elevation: 0,
-                  ),
-                  child: const Text("ANALIZAR AHORA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // CLAVE: Quita la "ventana blanca"
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              Text(
+                "Análisis de ${widget.animalId}",
+                style: const TextStyle(
+                  color: Colors.white, 
+                  fontSize: 22, 
+                  fontWeight: FontWeight.bold,
+                  shadows: [Shadow(blurRadius: 15, color: Colors.black)],
                 ),
               ),
-          ],
+              const SizedBox(height: 30),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, 
+                    crossAxisSpacing: 15, 
+                    mainAxisSpacing: 15
+                  ),
+                  itemCount: 3,
+                  itemBuilder: (context, index) {
+                    final hasPhoto = index < _photos.length;
+                    return GestureDetector(
+                      onTap: hasPhoto ? null : _pickImageSource,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3), // Sutil para ver el fondo
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: hasPhoto ? Colors.greenAccent : Colors.white24, width: 2),
+                        ),
+                        child: hasPhoto 
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(child: Image.memory(_photos[index], fit: BoxFit.cover)),
+                                  Positioned(
+                                    top: 5, right: 5, 
+                                    child: GestureDetector(
+                                      onTap: () => setState(() => _photos.removeAt(index)), 
+                                      child: const CircleAvatar(radius: 12, backgroundColor: Colors.red, child: Icon(Icons.close, size: 15, color: Colors.white))
+                                    )
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const Icon(Icons.add_a_photo, color: Colors.white70, size: 40),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (_isProcessing)
+                const Column(
+                  children: [
+                    CircularProgressIndicator(color: Colors.greenAccent),
+                    SizedBox(height: 10),
+                    Text("IA Analizando...", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ],
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  height: 60,
+                  margin: const EdgeInsets.only(bottom: 40),
+                  child: ElevatedButton(
+                    onPressed: _photos.isNotEmpty ? _processDiagnosis : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      disabledBackgroundColor: Colors.white10,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      elevation: 8, // Sombra para que resalte del fondo
+                    ),
+                    child: const Text("ANALIZAR AHORA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
