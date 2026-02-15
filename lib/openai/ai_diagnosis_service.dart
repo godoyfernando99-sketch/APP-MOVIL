@@ -15,41 +15,33 @@ class AiDiagnosisService {
     required List<Uint8List> photos,
   }) async {
     final String apiKey = OpenAiConfig.apiKey;
-    // Usamos el modelo v1beta que suele ser más permisivo con los filtros en producción
+    
+    // URL ESTABLE V1
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
 
     try {
-      final Uint8List photoToProcess = photos.first;
+      // Tomamos solo la primera foto y la convertimos a Base64 puro
+      final String base64Image = base64Encode(photos.first);
 
       final Map<String, dynamic> requestBody = {
         "contents": [
           {
             "parts": [
-              {"text": _buildPrompt(animalCategory)},
+              {"text": "Analyze this $animalCategory and return a JSON with: healthStatus (good/regular/critical), detectedBreed, diseaseName, medicationName, medicationDose, foodRecommendation, and observations."},
               {
                 "inline_data": {
                   "mime_type": "image/jpeg",
-                  "data": base64Encode(photoToProcess)
+                  "data": base64Image
                 }
-              },
+              }
             ]
           }
         ],
         "generationConfig": {
-          "temperature": 0.2,
-          "topP": 0.8,
-          "topK": 40,
-          "maxOutputTokens": 1000,
+          "temperature": 0.4,
           "responseMimeType": "application/json"
-        },
-        // DESACTIVACIÓN TOTAL DE FILTROS PARA CASOS VETERINARIOS
-        "safetySettings": [
-          {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-          {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-          {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-          {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-          {"category": "HARM_CATEGORY_CIVIC_INTEGRITY", "threshold": "BLOCK_NONE"}
-        ]
+        }
+        // Quitamos los safetySettings por ahora para ver si eso está causando el 400
       };
 
       final response = await http.post(
@@ -59,19 +51,12 @@ class AiDiagnosisService {
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200) {
-        debugPrint("🚨 GOOGLE ERROR: ${response.body}");
-        throw 'Error de servidor (${response.statusCode}). Reintenta.';
+        debugPrint("🚨 ERROR DETALLADO DE GOOGLE: ${response.body}");
+        throw 'Error ${response.statusCode}. El servidor no procesó la imagen.';
       }
 
       final data = jsonDecode(response.body);
-      
-      if (data['candidates'] == null || data['candidates'].isEmpty) {
-        throw 'La IA no pudo procesar esta imagen específica. Intenta con otra toma.';
-      }
-
-      String rawText = data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
-      rawText = rawText.trim().replaceAll('```json', '').replaceAll('```', '');
-      
+      final String rawText = data['candidates'][0]['content']['parts'][0]['text'];
       final Map<String, dynamic> aiJson = jsonDecode(rawText);
       final now = DateTime.now();
 
@@ -83,30 +68,21 @@ class AiDiagnosisService {
         animalId: animalId,
         animalCategory: animalCategory,
         mode: mode,
-        microchipNumber: microchipNumber,
-        photosBase64: [base64Encode(photoToProcess)],
+        photosBase64: [base64Image],
         healthStatus: aiJson['healthStatus'] ?? 'regular',
         detectedBreed: aiJson['detectedBreed'] ?? 'Desconocida',
-        detectedSpecies: aiJson['detectedSpecies'] ?? animalCategory,
+        detectedSpecies: animalCategory,
         diseaseName: aiJson['diseaseName'] ?? 'No detectada',
-        medicationName: aiJson['medicationName'] ?? 'Consulte al veterinario',
-        medicationDose: aiJson['medicationDose'] ?? 'Bajo supervisión',
-        isPregnant: aiJson['isPregnant'] == true,
-        foodRecommendation: aiJson['foodRecommendation'] ?? 'Dieta balanceada',
-        observations: aiJson['observations'] ?? 'Análisis realizado.',
+        medicationName: aiJson['medicationName'] ?? 'N/A',
+        medicationDose: aiJson['medicationDose'] ?? 'N/A',
+        isPregnant: false,
+        foodRecommendation: aiJson['foodRecommendation'] ?? 'Consultar veterinario',
+        observations: aiJson['observations'] ?? 'Análisis completado.',
       );
 
     } catch (e) {
-      debugPrint('🚨 ERROR EN SERVICIO: $e');
+      debugPrint('🚨 FALLO TOTAL: $e');
       rethrow;
     }
-  }
-
-  String _buildPrompt(String category) {
-    return "Eres un experto en salud animal. Analiza este $category. "
-           "Si detectas patologías, descríbelas para fines educativos. "
-           "Responde SIEMPRE en JSON plano con esta estructura: "
-           '{"is_animal":true,"detectedSpecies":"$category","detectedBreed":"string","healthStatus":"bueno/regular/critico",'
-           '"diseaseName":"string","medicationName":"string","medicationDose":"string","isPregnant":false,"foodRecommendation":"string","observations":"string"}';
   }
 }
