@@ -33,7 +33,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.85),
+          color: Colors.black.withOpacity(0.9),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
         ),
         child: SafeArea(
@@ -103,93 +103,111 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Usamos el Scaffold con fondo transparente para que mande el FarmBackgroundScaffold
+    // IMPORTANTE: Quitamos el Scaffold interno que puede estar causando la capa blanca
+    // y dejamos que FarmBackgroundScaffold maneje la estructura.
     return FarmBackgroundScaffold(
       title: 'Captura',
-      child: Scaffold(
-        backgroundColor: Colors.transparent, // CLAVE: Quita la "ventana blanca"
-        body: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              Text(
-                "Análisis de ${widget.animalId}",
-                style: const TextStyle(
-                  color: Colors.white, 
-                  fontSize: 22, 
-                  fontWeight: FontWeight.bold,
-                  shadows: [Shadow(blurRadius: 15, color: Colors.black)],
-                ),
+      child: Container(
+        // Forzamos que este contenedor sea transparente
+        color: Colors.transparent, 
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            Text(
+              "Análisis de ${widget.animalId}",
+              style: const TextStyle(
+                color: Colors.white, 
+                fontSize: 24, 
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(blurRadius: 10, color: Colors.black, offset: Offset(2, 2))
+                ],
               ),
-              const SizedBox(height: 30),
-              Expanded(
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, 
-                    crossAxisSpacing: 15, 
-                    mainAxisSpacing: 15
-                  ),
-                  itemCount: 3,
-                  itemBuilder: (context, index) {
-                    final hasPhoto = index < _photos.length;
-                    return GestureDetector(
-                      onTap: hasPhoto ? null : _pickImageSource,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3), // Sutil para ver el fondo
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: hasPhoto ? Colors.greenAccent : Colors.white24, width: 2),
+            ),
+            const SizedBox(height: 30),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2, 
+                  crossAxisSpacing: 15, 
+                  mainAxisSpacing: 15
+                ),
+                itemCount: 3,
+                itemBuilder: (context, index) {
+                  final hasPhoto = index < _photos.length;
+                  return GestureDetector(
+                    onTap: hasPhoto ? null : _pickImageSource,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        // Fondo oscuro muy sutil para que los iconos resalten sobre la granja
+                        color: Colors.black.withOpacity(0.2), 
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: hasPhoto ? Colors.greenAccent : Colors.white38, 
+                          width: 2
                         ),
-                        child: hasPhoto 
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: Stack(
-                                children: [
-                                  Positioned.fill(child: Image.memory(_photos[index], fit: BoxFit.cover)),
-                                  Positioned(
-                                    top: 5, right: 5, 
-                                    child: GestureDetector(
-                                      onTap: () => setState(() => _photos.removeAt(index)), 
-                                      child: const CircleAvatar(radius: 12, backgroundColor: Colors.red, child: Icon(Icons.close, size: 15, color: Colors.white))
-                                    )
-                                  ),
-                                ],
-                              ),
-                            )
-                          : const Icon(Icons.add_a_photo, color: Colors.white70, size: 40),
                       ),
-                    );
-                  },
-                ),
+                      child: hasPhoto 
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(23),
+                            child: Stack(
+                              children: [
+                                Positioned.fill(child: Image.memory(_photos[index], fit: BoxFit.cover)),
+                                Positioned(
+                                  top: 8, right: 8, 
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _photos.removeAt(index)), 
+                                    child: const CircleAvatar(
+                                      radius: 14, 
+                                      backgroundColor: Colors.red, 
+                                      child: Icon(Icons.close, size: 18, color: Colors.white)
+                                    )
+                                  )
+                                ),
+                              ],
+                            ),
+                          )
+                        : const Icon(Icons.add_a_photo, color: Colors.white, size: 45),
+                    ),
+                  );
+                },
               ),
-              const SizedBox(height: 20),
-              if (_isProcessing)
-                const Column(
-                  children: [
-                    CircularProgressIndicator(color: Colors.greenAccent),
-                    SizedBox(height: 10),
-                    Text("IA Analizando...", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ],
-                )
-              else
-                Container(
+            ),
+            const SizedBox(height: 20),
+            if (_isProcessing)
+              const Column(
+                children: [
+                  CircularProgressIndicator(color: Colors.greenAccent),
+                  SizedBox(height: 15),
+                  Text(
+                    "IA Analizando...", 
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)
+                  ),
+                ],
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(bottom: 40),
+                child: SizedBox(
                   width: double.infinity,
                   height: 60,
-                  margin: const EdgeInsets.only(bottom: 40),
                   child: ElevatedButton(
                     onPressed: _photos.isNotEmpty ? _processDiagnosis : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
+                      backgroundColor: Colors.greenAccent.shade700,
                       disabledBackgroundColor: Colors.white10,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      elevation: 8, // Sombra para que resalte del fondo
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                      elevation: 10,
                     ),
-                    child: const Text("ANALIZAR AHORA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                    child: const Text(
+                      "ANALIZAR AHORA", 
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)
+                    ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
