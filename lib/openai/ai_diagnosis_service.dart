@@ -1,8 +1,7 @@
+import 'dart:typed_data';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:firebase_vertexai/firebase_vertexai.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
-import 'package:scanneranimal/openai/openai_config.dart';
 
 class AiDiagnosisService {
   const AiDiagnosisService();
@@ -14,52 +13,40 @@ class AiDiagnosisService {
     String? microchipNumber,
     required List<Uint8List> photos,
   }) async {
-    final String apiKey = OpenAiConfig.apiKey;
-    
-    // URL ESTABLE V1
-    final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
-
     try {
-      // Tomamos solo la primera foto y la convertimos a Base64 puro
-      final String base64Image = base64Encode(photos.first);
+      // 1. Inicializamos el modelo de Vertex AI. 
+      // No necesitamos API Key aquí porque Firebase usa la configuración de tu google-services.json
+      final model = FirebaseVertexAI.instance.generativeModel(
+        model: 'gemini-1.5-flash',
+        generationConfig: GenerationConfig(
+          responseMimeType: 'application/json',
+          temperature: 0.1,
+        ),
+      );
 
-      final Map<String, dynamic> requestBody = {
-        "contents": [
-          {
-            "parts": [
-              {"text": "Analyze this $animalCategory and return a JSON with: healthStatus (good/regular/critical), detectedBreed, diseaseName, medicationName, medicationDose, foodRecommendation, and observations."},
-              {
-                "inline_data": {
-                  "mime_type": "image/jpeg",
-                  "data": base64Image
-                }
-              }
-            ]
-          }
-        ],
-        "generationConfig": {
-          "temperature": 0.4,
-          "responseMimeType": "application/json"
-        }
-        // Quitamos los safetySettings por ahora para ver si eso está causando el 400
-      };
+      // 2. Preparamos el contenido (Texto + Imagen)
+      final prompt = "Analiza la salud de este $animalCategory. "
+          "Responde estrictamente en formato JSON con los campos: "
+          "healthStatus (bueno/regular/critico), detectedBreed, diseaseName, "
+          "medicationName, medicationDose, foodRecommendation, observations.";
+      
+      final imagePart = DataPart('image/jpeg', photos.first);
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 30));
+      // 3. Generamos el contenido
+      final response = await model.generateContent([
+        Content.multi([TextPart(prompt), imagePart])
+      ]);
 
-      if (response.statusCode != 200) {
-        debugPrint("🚨 ERROR DETALLADO DE GOOGLE: ${response.body}");
-        throw 'Error ${response.statusCode}. El servidor no procesó la imagen.';
-      }
+      final String? rawText = response.text;
+      if (rawText == null) throw 'La IA no devolvió ninguna respuesta.';
 
-      final data = jsonDecode(response.body);
-      final String rawText = data['candidates'][0]['content']['parts'][0]['text'];
-      final Map<String, dynamic> aiJson = jsonDecode(rawText);
+      // Limpiamos el texto por si incluye decoradores de markdown
+      final cleanJson = rawText.trim().replaceAll('```json', '').replaceAll('```', '');
+      final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
+      
       final now = DateTime.now();
 
+      // 4. Retornamos el resultado mapeado a tu modelo ScanResult
       return ScanResult(
         id: now.millisecondsSinceEpoch.toString(),
         ownerId: 'user_test',
@@ -68,7 +55,8 @@ class AiDiagnosisService {
         animalId: animalId,
         animalCategory: animalCategory,
         mode: mode,
-        photosBase64: [base64Image],
+        microchipNumber: microchipNumber,
+        photosBase64: [base64Encode(photos.first)],
         healthStatus: aiJson['healthStatus'] ?? 'regular',
         detectedBreed: aiJson['detectedBreed'] ?? 'Desconocida',
         detectedSpecies: animalCategory,
@@ -77,11 +65,11 @@ class AiDiagnosisService {
         medicationDose: aiJson['medicationDose'] ?? 'N/A',
         isPregnant: false,
         foodRecommendation: aiJson['foodRecommendation'] ?? 'Consultar veterinario',
-        observations: aiJson['observations'] ?? 'Análisis completado.',
+        observations: aiJson['observations'] ?? 'Análisis realizado con Vertex AI.',
       );
-
     } catch (e) {
-      debugPrint('🚨 FALLO TOTAL: $e');
+      // Si hay un error de "Permission Denied", es porque falta habilitar la API en la consola
+      print('🚨 ERROR EN VERTEX AI: $e');
       rethrow;
     }
   }
