@@ -16,7 +16,7 @@ class AiDiagnosisService {
     try {
       // 1. Inicializamos el modelo
       final model = FirebaseVertexAI.instance.generativeModel(
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.0-flash',
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
           temperature: 0.1,
