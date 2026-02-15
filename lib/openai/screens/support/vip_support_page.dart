@@ -62,7 +62,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
 
       if (imageFile != null) {
         final Uint8List imageBytes = await imageFile.readAsBytes();
-        parts.add(DataPart('image/jpeg', imageBytes));
+        parts.add(InlineDataPart('image/jpeg', imageBytes));
       }
 
       content.add(Content.multi(parts));
