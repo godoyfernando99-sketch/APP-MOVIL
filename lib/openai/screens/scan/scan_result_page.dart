@@ -28,11 +28,10 @@ class _ScanResultPageState extends State<ScanResultPage> {
   bool _isSaving = false;
   String? _userObservations;
 
-  /// Genera un PDF profesional con la foto y los datos del diagnóstico
+  /// Genera un PDF profesional con la foto, datos del diagnóstico y Disclaimer
   Future<void> _shareAsProfessionalPDF(ScanResult result, String breedDisplay) async {
     final pdf = pw.Document();
     
-    // Preparar la imagen del animal si existe
     pw.MemoryImage? animalImage;
     if (result.photosBase64.isNotEmpty) {
       try {
@@ -50,7 +49,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Encabezado
+              // Encabezado Profesional
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
@@ -61,14 +60,14 @@ class _ScanResultPageState extends State<ScanResultPage> {
               pw.Divider(thickness: 2, color: PdfColors.blue800),
               pw.SizedBox(height: 20),
 
-              // Ficha del Animal y Foto
+              // Ficha del Animal
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   if (animalImage != null)
                     pw.Container(
-                      width: 150,
-                      height: 150,
+                      width: 130,
+                      height: 130,
                       decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400)),
                       child: pw.Image(animalImage, fit: pw.BoxFit.cover),
                     ),
@@ -77,45 +76,55 @@ class _ScanResultPageState extends State<ScanResultPage> {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text("FICHA DE IDENTIFICACIÓN", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+                        pw.Text("IDENTIFICACIÓN", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
                         pw.SizedBox(height: 5),
                         pw.Text("Especie: ${result.detectedSpecies ?? result.animalCategory}"),
                         pw.Text("Raza: $breedDisplay"),
-                        pw.Text("Estado de Salud: ${result.healthStatus.toUpperCase()}"),
+                        pw.Text("Estado: ${result.healthStatus.toUpperCase()}"),
                         if (result.isPregnant == true)
-                          pw.Text("Gestación: ${result.gestationWeeks ?? 'Detectada'}", style: pw.TextStyle(color: PdfColors.pink)),
+                          pw.Text("Gestación: ${result.gestationWeeks}", style: pw.TextStyle(color: PdfColors.pink700, fontWeight: pw.FontWeight.bold)),
                       ],
                     ),
                   ),
                 ],
               ),
 
-              pw.SizedBox(height: 30),
-              pw.Text("REPORTE VETERINARIO IA", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
-              pw.Divider(),
+              pw.SizedBox(height: 25),
+              pw.Text("TRATAMIENTO Y PRESCRIPCIÓN SUGERIDA", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: PdfColors.blue900)),
+              pw.Divider(color: PdfColors.blue100),
 
-              // Detalles Médicos
-              pw.Bullet(text: "Diagnóstico Estimado: ${result.diseaseName ?? 'Ninguna detectada'}"),
-              pw.Bullet(text: "Medicamento Sugerido: ${result.medicationName ?? 'N/A'}"),
-              pw.Bullet(text: "Dosis recomendada: ${result.medicationDose ?? 'N/A'}"),
-              
-              pw.SizedBox(height: 20),
-              pw.Text("RECOMENDACIONES NUTRICIONALES Y CUIDADOS:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-              pw.Container(
-                padding: const pw.EdgeInsets.all(10),
-                decoration: pw.BoxDecoration(color: PdfColors.grey100),
-                child: pw.Text(result.foodRecommendation ?? "Sin recomendaciones específicas.", textAlign: pw.TextAlign.justify),
-              ),
+              // Detalles Médicos con los nuevos campos
+              pw.SizedBox(height: 10),
+              _pdfRow("Diagnóstico:", result.diseaseName ?? 'Ninguna detectada'),
+              _pdfRow("Medicamento:", result.medicationName ?? 'N/A'),
+              _pdfRow("Dosis Sugerida:", result.medicationDose ?? 'N/A', isBold: true),
+              _pdfRow("Alimentación:", result.foodRecommendation ?? "Sin dieta específica"),
 
               pw.SizedBox(height: 20),
-              pw.Text("NOTAS ADICIONALES:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-              pw.Text(_userObservations ?? result.observations ?? "Sin observaciones adicionales."),
+              pw.Text("NOTAS ADICIONALES:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+              pw.Text(_userObservations ?? result.observations ?? "Sin observaciones."),
 
               pw.Spacer(),
-              pw.Divider(),
-              pw.Center(
-                child: pw.Text("Este reporte es generado por IA y debe ser validado por un veterinario colegiado.", 
-                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+              
+              // DISCLAIMER LEGAL OBLIGATORIO
+              pw.Container(
+                padding: const pw.EdgeInsets.all(8),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.red50,
+                  border: pw.Border.all(color: PdfColors.red900, width: 0.5),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))
+                ),
+                child: pw.Column(
+                  children: [
+                    pw.Text("DESCARGO DE RESPONSABILIDAD LEGAL", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.red900)),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      "Este reporte es una guía informativa generada por IA. Las dosis y medicamentos mencionados son sugerencias referenciales. Es OBLIGATORIO consultar a un veterinario antes de cualquier administración. El usuario asume toda la responsabilidad del uso de esta información.",
+                      textAlign: pw.TextAlign.justify,
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.black),
+                    ),
+                  ],
+                ),
               ),
             ],
           );
@@ -123,13 +132,25 @@ class _ScanResultPageState extends State<ScanResultPage> {
       ),
     );
 
-    // Guardar archivo temporal y compartir
     final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/Reporte_${result.animalId}.pdf');
+    final file = File('${directory.path}/Reporte_${result.id}.pdf');
     await file.writeAsBytes(await pdf.save());
-
-    await Share.shareXFiles([XFile(file.path)], text: 'Comparto reporte veterinario de ScannerAnimal IA.');
+    await Share.shareXFiles([XFile(file.path)], text: 'Reporte Veterinario IA - ScannerAnimal');
   }
+
+  pw.Widget _pdfRow(String label, String value, {bool isBold = false}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        children: [
+          pw.SizedBox(width: 100, child: pw.Text(label, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+          pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 10, fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal))),
+        ],
+      ),
+    );
+  }
+
+  // --- MÉTODOS DE GUARDADO Y DIÁLOGOS (Se mantienen igual) ---
 
   Future<void> _showObservationsAndSave() async {
     if (!mounted || widget.payload is! ScanResult) return;
@@ -254,14 +275,14 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 _buildResultRow('Gestación:', result.gestationWeeks ?? 'Detectada', Icons.favorite, valueColor: Colors.pinkAccent),
               
               _buildResultRow('Enfermedad:', result.diseaseName ?? 'Ninguna', Icons.bug_report),
-              _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize),
+              _buildResultRow('Medicamento:', result.medicationName ?? 'N/A', Icons.medication),
+              _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize, valueColor: Colors.greenAccent),
               
               const SizedBox(height: 20),
               
-              // RECOMENDACIONES CON AUTO-AJUSTE DE TEXTO
               const Align(
                 alignment: Alignment.centerLeft,
-                child: Text("RECOMENDACIÓN:", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+                child: Text("RECOMENDACIÓN NUTRICIONAL:", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
               ),
               const SizedBox(height: 8),
               Container(
@@ -273,9 +294,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 ),
                 child: Text(
                   result.foodRecommendation ?? "Sin recomendaciones adicionales",
-                  textAlign: TextAlign.left,
-                  softWrap: true,
-                  style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic, fontSize: 14, height: 1.4)
+                  style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic, fontSize: 13, height: 1.4)
                 ),
               ),
               
@@ -316,7 +335,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
-  // ... (Resto de métodos _buildGeneralErrorState, _buildErrorState y _buildResultRow iguales) ...
   Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
