@@ -1,11 +1,3 @@
-¡Entiendo! El error es muy claro: al corregir el AuthController para añadir la recuperación de contraseña, eliminamos por accidente dos métodos que otras partes de tu app (como el main.dart y la página de suscripciones) todavía están intentando usar: init() y updateSubscription().
-
-Codemagic no puede terminar el build porque el código tiene "huecos". Vamos a reintegrar esos métodos rápidamente para que la compilación sea exitosa.
-
-🛠️ Corrección de lib/app/auth/auth_controller.dart
-Sustituye el contenido de tu archivo con esta versión que recupera los métodos perdidos:
-
-Dart
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
