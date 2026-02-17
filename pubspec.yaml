@@ -2,8 +2,8 @@ name: scanneranimal
 description: "A new Flutter project."
 publish_to: "none"
 
-# Incrementamos el version code para asegurar que los testers reciban la actualización
-version: 1.0.0+13
+# Incrementamos la versión para asegurar que los cambios se apliquen correctamente
+version: 1.0.0+14
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -29,18 +29,23 @@ dependencies:
   # Cámara y Almacenamiento
   image_picker: ^1.1.2
   shared_preferences: ^2.3.2
+  path_provider: ^2.1.2 # <-- NECESARIO para guardar el PDF temporalmente antes de compartir
   
   # Firebase (Base de datos, Auth e IA)
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.1
   cloud_firestore: ^5.6.1
   google_sign_in: ^6.2.2
-  firebase_vertexai: ^1.1.0  # <--- ESTA ES LA LLAVE DE LA IA PROFESIONAL
+  firebase_vertexai: ^1.1.0
   
   # Pagos y Suscripciones
   in_app_purchase: ^3.2.0
   in_app_purchase_android: ^0.4.0+5
   in_app_purchase_storekit: ^0.4.4
+
+  # GENERACIÓN DE PDF Y FICHA PROFESIONAL (Nuevas)
+  pdf: ^3.10.8
+  printing: ^5.11.0
 
 dev_dependencies:
   flutter_test:
