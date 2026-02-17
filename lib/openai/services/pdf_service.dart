@@ -13,7 +13,7 @@ class PdfService {
     final pdf = pw.Document();
 
     // Imagen de cabecera (Opcional: Si tienes un logo en assets)
-    // final netImage = await spacing.networkImage('URL_DE_TU_LOGO');
+    // final netImage = await spacing.networkImage('assets/icons/logo_app.png');
 
     pdf.addPage(
       pw.MultiPage(
