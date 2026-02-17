@@ -18,39 +18,44 @@ class AiDiagnosisService {
         model: 'gemini-2.0-flash',
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
-          temperature: 0.1, // Baja temperatura para precisión diagnóstica
+          temperature: 0.1, // Precisión máxima
         ),
       );
 
-      // --- PROMPT ULTRA MEJORADO: ESPECIALISTA EN GESTACIÓN ---
+      // --- PROMPT MEJORADO: ESPECIALISTA VETERINARIO Y FARMACOLOGÍA ---
       final prompt = """
-      Eres un experto veterinario especializado en diagnóstico por imagen y obstetricia.
-      Tu tarea es analizar la salud de una hembra de la categoría: $animalCategory.
+      Eres un experto veterinario con especialidad en diagnóstico clínico, obstetricia y farmacología.
+      Tu tarea es analizar la salud de un animal de la categoría: $animalCategory.
 
       REGLAS DE VALIDACIÓN:
-      1. Si la imagen NO es un animal real, responde: {"is_animal": false}
+      1. Si la imagen NO es un animal real o es ilegible, responde: {"is_animal": false}
 
-      REGLAS DE ANÁLISIS:
-      2. Evalúa signos de preñez/embarazo:
-         - En animales de granja (vaca, cabra, oveja): Observa distensión abdominal lateral derecha y desarrollo de la ubre.
-         - En mascotas (perra, gata): Observa crecimiento abdominal y cambios en las mamas.
+      REGLAS DE ANÁLISIS MÉDICO:
+      2. Si detectas una enfermedad (diseaseName), identifica obligatoriamente:
+         - medicationName: Nombre genérico y comercial del medicamento adecuado.
+         - Vía de administración: Especifica claramente si es ORAL o INYECTADO.
+         - medicationDose: Si es inyectado, indica la dosis exacta en mililitros (ml) o centímetros cúbicos (cc) por cada kilogramo de peso del animal (ej. 1ml/10kg). Si es oral, indica mg/kg.
+         - foodRecommendation: Nombre del alimento o dieta clínica específica según la patología y la especie.
       
+      3. Evaluación de Preñez (Gestation):
+         - Identifica desarrollo mamario o distensión abdominal.
+         - gestationWeeks: Indica el tiempo en días o semanas según la especie.
+
       Responde estrictamente en este formato JSON:
       {
         "is_animal": true,
         "healthStatus": "bueno/regular/critico",
-        "detectedBreed": "raza",
+        "detectedBreed": "raza detectada",
         "isPregnant": true/false,
-        "gestationWeeks": "indicar semanas o días aproximados (especificando si son días o semanas) basado en el tamaño fetal visible y desarrollo mamario. Si no hay embarazo, poner N/A",
-        "diseaseName": "enfermedad",
-        "medicationName": "medicamento",
-        "medicationDose": "dosis",
-        "foodRecommendation": "comida",
-        "observations": "Breve nota sobre el estado de gestación y salud general."
+        "gestationWeeks": "X semanas/días o N/A",
+        "diseaseName": "nombre de la enfermedad o 'No detectada'",
+        "medicationName": "nombre del medicamento + vía (ej. Enrofloxacina - Inyectable)",
+        "medicationDose": "Dosis referencial (ej. 0.5ml por cada 10kg)",
+        "foodRecommendation": "dieta específica sugerida",
+        "observations": "Resumen médico incluyendo advertencia de pesar al animal antes de medicar."
       }
       """;
       
-      // CARGAMOS TODAS LAS FOTOS PARA UN ANÁLISIS COMPLETO (Varios ángulos)
       final List<Content> content = [
         Content.multi([
           TextPart(prompt),
@@ -81,7 +86,6 @@ class AiDiagnosisService {
         animalCategory: animalCategory,
         mode: mode,
         microchipNumber: microchipNumber,
-        // Guardamos todas las fotos procesadas
         photosBase64: photos.map((p) => base64Encode(p)).toList(),
         healthStatus: aiJson['healthStatus'] ?? 'regular',
         detectedBreed: aiJson['detectedBreed'] ?? 'Desconocida',
@@ -89,10 +93,9 @@ class AiDiagnosisService {
         diseaseName: aiJson['diseaseName'] ?? 'No detectada',
         medicationName: aiJson['medicationName'] ?? 'N/A',
         medicationDose: aiJson['medicationDose'] ?? 'N/A',
-        // NUEVOS DATOS DE GESTACIÓN
         isPregnant: aiJson['isPregnant'] ?? false,
         gestationWeeks: aiJson['gestationWeeks'] ?? 'N/A', 
-        foodRecommendation: aiJson['foodRecommendation'] ?? 'Consultar veterinario',
+        foodRecommendation: aiJson['foodRecommendation'] ?? 'Consultar dieta con especialista',
         observations: aiJson['observations'] ?? 'Análisis realizado con Vertex AI.',
       );
     } catch (e) {
