@@ -6,7 +6,6 @@ import 'package:scanneranimal/app/app_settings.dart';
 import 'package:scanneranimal/app/auth/auth_controller.dart';
 import 'package:scanneranimal/l10n/app_strings.dart';
 import 'package:scanneranimal/nav.dart';
-import 'package:scanneranimal/theme.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 
 class LoginPage extends StatefulWidget {
@@ -36,24 +35,34 @@ class _LoginPageState extends State<LoginPage> {
         username: _usernameCtrl.text.trim(), password: _passwordCtrl.text);
     if (!mounted) return;
     if (err != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(err),
+        backgroundColor: Colors.redAccent,
+      ));
       return;
     }
     context.go(AppRoutes.welcome);
   }
 
+  /// CORRECCIÓN: Ahora el diálogo ejecuta la petición de Firebase
   Future<void> _forgotPassword() async {
     final emailCtrl = TextEditingController();
-    await showDialog<String?>(
+    final auth = context.read<AuthController>();
+
+    final email = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF121212),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28), side: const BorderSide(color: Colors.white10)),
-        title: const Text('Restablecer Contraseña', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+            side: const BorderSide(color: Colors.white10)),
+        title: const Text('Restablecer Contraseña',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Ingresa tu correo electrónico registrado.', style: TextStyle(color: Colors.white70)),
+            const Text('Ingresa tu correo electrónico registrado.',
+                style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 20),
             TextFormField(
               controller: emailCtrl,
@@ -61,10 +70,13 @@ class _LoginPageState extends State<LoginPage> {
               decoration: InputDecoration(
                 labelText: 'Correo electrónico',
                 labelStyle: const TextStyle(color: Colors.white38),
-                prefixIcon: const Icon(Icons.email_rounded, color: Colors.white54),
+                prefixIcon:
+                    const Icon(Icons.email_rounded, color: Colors.white54),
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.05),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -73,7 +85,8 @@ class _LoginPageState extends State<LoginPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCELAR', style: TextStyle(color: Colors.white38)),
+            child: const Text('CANCELAR',
+                style: TextStyle(color: Colors.white38)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, emailCtrl.text.trim()),
@@ -82,6 +95,27 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     );
+
+    if (email != null && email.isNotEmpty) {
+      final error = await auth.sendPasswordReset(email);
+      if (!mounted) return;
+
+      if (error == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Enlace enviado. Revisa tu correo (y SPAM).'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ $error'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -95,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
       title: 'Scanner Animal',
       showBack: false,
       showHome: false,
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent,
       actions: [
         _LanguagePicker(
             current: settings.locale.languageCode,
@@ -109,11 +143,14 @@ class _LoginPageState extends State<LoginPage> {
             child: Container(
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7), 
+                color: Colors.black.withOpacity(0.85),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(color: Colors.white.withOpacity(0.12)),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10))
                 ],
               ),
               child: Form(
@@ -122,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'assets/icons/logos_app.png',
+                      'assets/icons/logo_app.png', // Corregido el nombre según tu pubspec anterior
                       height: 120,
                       width: 120,
                     ),
@@ -133,19 +170,24 @@ class _LoginPageState extends State<LoginPage> {
                       decoration: InputDecoration(
                         labelText: strings('username'),
                         labelStyle: const TextStyle(color: Colors.white54),
-                        prefixIcon: const Icon(Icons.person_outline_rounded, color: Colors.white70),
+                        prefixIcon: const Icon(Icons.person_outline_rounded,
+                            color: Colors.white70),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.05),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                          borderSide:
+                              BorderSide(color: Colors.white.withOpacity(0.1)),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: t.colorScheme.primary, width: 2),
+                          borderSide: BorderSide(
+                              color: t.colorScheme.primary, width: 2),
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Completa el usuario' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Completa el usuario'
+                          : null,
                       textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 20),
@@ -156,25 +198,33 @@ class _LoginPageState extends State<LoginPage> {
                       decoration: InputDecoration(
                         labelText: strings('password'),
                         labelStyle: const TextStyle(color: Colors.white54),
-                        prefixIcon: const Icon(Icons.lock_outline_rounded, color: Colors.white70),
+                        prefixIcon: const Icon(Icons.lock_outline_rounded,
+                            color: Colors.white70),
                         suffixIcon: IconButton(
                           icon: Icon(
-                              _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                              _obscurePassword
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
                               color: Colors.white38),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
                         ),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.05),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                          borderSide:
+                              BorderSide(color: Colors.white.withOpacity(0.1)),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: t.colorScheme.primary, width: 2),
+                          borderSide: BorderSide(
+                              color: t.colorScheme.primary, width: 2),
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Completa la contraseña' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Completa la contraseña'
+                          : null,
                       onFieldSubmitted: (_) => _submit(),
                     ),
                     Align(
@@ -183,7 +233,9 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: _forgotPassword,
                         child: Text(
                           '¿Olvidaste tu contraseña?',
-                          style: TextStyle(color: t.colorScheme.primary.withOpacity(0.8), fontSize: 13),
+                          style: TextStyle(
+                              color: t.colorScheme.primary.withOpacity(0.8),
+                              fontSize: 13),
                         ),
                       ),
                     ),
@@ -194,10 +246,15 @@ class _LoginPageState extends State<LoginPage> {
                       child: FilledButton(
                         onPressed: auth.isLoading ? null : _submit,
                         style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                         ),
-                        child: Text(strings('login').toUpperCase(), 
-                          style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                        child: auth.isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Text(strings('login').toUpperCase(),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.5)),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -208,9 +265,11 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () => context.push(AppRoutes.register),
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: Colors.white.withOpacity(0.2)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                         ),
-                        child: Text(strings('register'), style: const TextStyle(color: Colors.white)),
+                        child: Text(strings('register'),
+                            style: const TextStyle(color: Colors.white)),
                       ),
                     ),
                   ],
