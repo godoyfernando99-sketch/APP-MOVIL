@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-// Asegúrate de que esta ruta sea correcta según tu estructura
 import 'user_profile.dart'; 
 
 class AuthController extends ChangeNotifier {
@@ -17,9 +16,15 @@ class AuthController extends ChangeNotifier {
 
   UserProfile? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
-  bool get isLoggedIn => _auth.currentUser != null && (_auth.currentUser?.emailVerified ?? false);
   
-  // Getter corregido para mayor seguridad en la comparación
+  // Modificado para que si es Google Sign-In no exija emailVerified (ya que Google lo verifica)
+  bool get isLoggedIn {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    // Si entró por Google o ya verificó su email
+    return user.emailVerified || user.providerData.any((p) => p.providerId == 'google.com');
+  }
+  
   bool get isPro => _currentUser?.isPro ?? false;
 
   AuthController() {
@@ -42,9 +47,30 @@ class AuthController extends ChangeNotifier {
     );
   }
 
+  /// NUEVA FUNCIÓN: Recuperar Contraseña
+  /// Esta es la que faltaba para que el correo llegue.
+  Future<String?> sendPasswordReset(String email) async {
+    if (email.isEmpty) return "Por favor, ingresa tu correo.";
+    try {
+      _isLoading = true;
+      notifyListeners();
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null; // Éxito
+    } on FirebaseAuthException catch (e) {
+      debugPrint("Error al enviar reset: ${e.code}");
+      switch (e.code) {
+        case 'user-not-found': return "No existe un usuario con este correo.";
+        case 'invalid-email': return "El formato del correo es incorrecto.";
+        default: return "Error: ${e.message}";
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   void _listenToUserProfile(String uid) {
     _userSubscription?.cancel();
-    
     _userSubscription = _firestore
         .collection('users')
         .doc(uid)
@@ -52,7 +78,6 @@ class AuthController extends ChangeNotifier {
         .listen((doc) async {
       if (doc.exists && doc.data() != null) {
         _currentUser = UserProfile.fromJson(doc.data()!);
-        // Solo reseteamos si no es un plan ilimitado
         if (!isPro) {
           await checkAndResetMonthlyScans();
         }
@@ -61,50 +86,15 @@ class AuthController extends ChangeNotifier {
     }, onError: (e) => debugPrint('Error en el Stream de usuario: $e'));
   }
 
-  Future<void> init() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-      final user = _auth.currentUser;
-      if (user != null) {
-        _listenToUserProfile(user.uid);
-      }
-    } catch (e) {
-      debugPrint('AuthController.init failed: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> checkAndResetMonthlyScans() async {
-    final user = _currentUser;
-    if (user == null || isPro) return; // PROs no necesitan reset de límites
-
-    final now = DateTime.now();
-    final lastReset = user.lastReset ?? user.createdAt;
-
-    if (now.difference(lastReset).inDays >= 30) {
-      final int resetValue = user.maxScansByPlan;
-      
-      await _firestore.collection('users').doc(user.uid).update({
-        'monthlyScans': resetValue, // Sincronizado con el nombre del campo en UserProfile
-        'lastReset': Timestamp.fromDate(now),
-        'updatedAt': Timestamp.fromDate(now),
-      });
-    }
-  }
-
   Future<void> useFreeScan() async {
     final user = _currentUser;
-    // Si no hay usuario o es PRO, no descontamos nada
     if (user == null || isPro) return;
 
     if (user.scansRemaining > 0) {
       try {
         await _firestore.collection('users').doc(user.uid).update({
           'monthlyScans': user.scansRemaining - 1,
-          'updatedAt': Timestamp.fromDate(DateTime.now()),
+          'updatedAt': FieldValue.serverTimestamp(), // Mejor usar serverTimestamp
         });
       } catch (e) {
         debugPrint('Error al descontar escaneo: $e');
@@ -112,22 +102,19 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> updateSubscription(String plan) async {
-    if (_currentUser == null) return;
-    try {
-      final now = DateTime.now();
-      // Usamos el copyWith corregido
-      final tempProfile = _currentUser!.copyWith(subscriptionPlan: plan);
-      final int initialScans = tempProfile.maxScansByPlan;
+  Future<void> checkAndResetMonthlyScans() async {
+    final user = _currentUser;
+    if (user == null || isPro) return;
 
-      await _firestore.collection('users').doc(_currentUser!.uid).update({
-        'subscriptionPlan': plan.toLowerCase(),
-        'monthlyScans': initialScans,
+    final now = DateTime.now();
+    final lastReset = user.lastReset ?? user.createdAt;
+
+    if (now.difference(lastReset).inDays >= 30) {
+      await _firestore.collection('users').doc(user.uid).update({
+        'monthlyScans': user.maxScansByPlan,
         'lastReset': Timestamp.fromDate(now),
         'updatedAt': Timestamp.fromDate(now),
       });
-    } catch (e) {
-      debugPrint('AuthController.updateSubscription failed: $e');
     }
   }
 
@@ -162,7 +149,7 @@ class AuthController extends ChangeNotifier {
         updatedAt: now,
         lastReset: now,
         subscriptionPlan: 'free',
-        scansRemaining: 3, // Ahora el constructor lo acepta
+        scansRemaining: 3, 
       );
 
       await _firestore.collection('users').doc(profile.uid).set(profile.toJson());
@@ -181,7 +168,7 @@ class AuthController extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      String? email = username.trim();
+      String email = username.trim();
       if (!email.contains('@')) {
         final query = await _firestore
             .collection('users')
@@ -197,6 +184,7 @@ class AuthController extends ChangeNotifier {
         password: password
       );
       
+      // Permitir login solo si está verificado
       if (!credential.user!.emailVerified) {
         await _auth.signOut();
         return 'Verifica tu correo electrónico.';
@@ -258,8 +246,8 @@ class AuthController extends ChangeNotifier {
 
   Future<void> logout() async {
     _userSubscription?.cancel();
-    await _auth.signOut();
     await _googleSignIn.signOut();
+    await _auth.signOut();
     _currentUser = null;
     notifyListeners();
   }
