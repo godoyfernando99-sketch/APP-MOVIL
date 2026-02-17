@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:scanneranimal/app/history/scan_models.dart';
-import 'package:scanneranimal/data/local_db.dart'; // Verifica que la ruta sea correcta
+import '../storage/local_db.dart'; // Verifica que la ruta sea correcta
 
 class HistoryController extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
