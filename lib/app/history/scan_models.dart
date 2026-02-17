@@ -19,9 +19,9 @@ class ScanResult {
     this.medicationName,
     this.medicationDose,
     this.isPregnant,
-    this.pregnancyWeeks,
+    this.gestationWeeks, // <--- Cambio de int a String para mayor detalle (ej: "45 días")
     this.foodRecommendation,
-    this.observations, // <--- Asegúrate de que esta línea esté aquí
+    this.observations, 
   });
 
   final String id;
@@ -41,9 +41,12 @@ class ScanResult {
   final String? medicationName;
   final String? medicationDose;
   final bool? isPregnant;
-  final int? pregnancyWeeks;
+  final String? gestationWeeks; // <--- String para soportar "3 semanas" o "40 días"
   final String? foodRecommendation;
   final String? observations;
+
+  // Getter para mantener compatibilidad con código antiguo si usabas pregnancyWeeks
+  String? get pregnancyWeeks => gestationWeeks;
 
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -63,7 +66,7 @@ class ScanResult {
     'medicationName': medicationName,
     'medicationDose': medicationDose,
     'isPregnant': isPregnant,
-    'pregnancyWeeks': pregnancyWeeks,
+    'gestationWeeks': gestationWeeks,
     'foodRecommendation': foodRecommendation,
     'observations': observations,
   };
@@ -91,7 +94,8 @@ class ScanResult {
       medicationName: map['medicationName']?.toString(),
       medicationDose: map['medicationDose']?.toString(),
       isPregnant: map['isPregnant'] as bool?,
-      pregnancyWeeks: (map['pregnancyWeeks'] as num?)?.toInt(),
+      // Convertimos a String cualquier valor que venga para evitar errores de tipo
+      gestationWeeks: map['gestationWeeks']?.toString() ?? map['pregnancyWeeks']?.toString(),
       foodRecommendation: map['foodRecommendation']?.toString(),
       observations: map['observations']?.toString(),
     );
@@ -115,7 +119,7 @@ class ScanResult {
     String? medicationName,
     String? medicationDose,
     bool? isPregnant,
-    int? pregnancyWeeks,
+    String? gestationWeeks,
     String? foodRecommendation,
     String? observations,
   }) {
@@ -137,9 +141,9 @@ class ScanResult {
       medicationName: medicationName ?? this.medicationName,
       medicationDose: medicationDose ?? this.medicationDose,
       isPregnant: isPregnant ?? this.isPregnant,
-      pregnancyWeeks: pregnancyWeeks ?? this.pregnancyWeeks,
+      gestationWeeks: gestationWeeks ?? this.gestationWeeks,
       foodRecommendation: foodRecommendation ?? this.foodRecommendation,
       observations: observations ?? this.observations,
     );
   }
-} // <--- ESTA ES LA LLAVE QUE FALTABA
+}
