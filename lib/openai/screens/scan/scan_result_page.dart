@@ -1,12 +1,18 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import '../../../app/auth/auth_controller.dart'; 
 import '../../../app/history/history_controller.dart';
 import '../../../app/history/scan_models.dart';
-import '../../../../data/animals.dart';
 import '../../../../nav.dart';
 import '../../../../widgets/farm_background_scaffold.dart';
 
@@ -22,18 +28,107 @@ class _ScanResultPageState extends State<ScanResultPage> {
   bool _isSaving = false;
   String? _userObservations;
 
-  void _shareResult(ScanResult result, String breedDisplay) {
-    final String textToShare = '''
-🐾 *REPORTE VETERINARIO IA* 🐾
-Especie/Raza: $breedDisplay
-Salud: ${result.healthStatus.toUpperCase()}
-Enfermedad: ${result.diseaseName ?? 'Ninguna'}
-Medicamento: ${result.medicationName ?? 'N/A'}
-Dosis: ${result.medicationDose ?? 'N/A'}
-Embarazo: ${result.isPregnant == true ? 'SÍ (${result.pregnancyWeeks} sem)' : 'No detectado'}
-Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
-    ''';
-    Share.share(textToShare);
+  /// Genera un PDF profesional con la foto y los datos del diagnóstico
+  Future<void> _shareAsProfessionalPDF(ScanResult result, String breedDisplay) async {
+    final pdf = pw.Document();
+    
+    // Preparar la imagen del animal si existe
+    pw.MemoryImage? animalImage;
+    if (result.photosBase64.isNotEmpty) {
+      try {
+        final Uint8List bytes = base64Decode(result.photosBase64.first);
+        animalImage = pw.MemoryImage(bytes);
+      } catch (e) {
+        debugPrint("Error decodificando imagen para PDF: $e");
+      }
+    }
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Encabezado
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text("ScannerAnimal IA", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                  pw.Text("FECHA: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}"),
+                ],
+              ),
+              pw.Divider(thickness: 2, color: PdfColors.blue800),
+              pw.SizedBox(height: 20),
+
+              // Ficha del Animal y Foto
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (animalImage != null)
+                    pw.Container(
+                      width: 150,
+                      height: 150,
+                      decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400)),
+                      child: pw.Image(animalImage, fit: pw.BoxFit.cover),
+                    ),
+                  pw.SizedBox(width: 20),
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text("FICHA DE IDENTIFICACIÓN", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+                        pw.SizedBox(height: 5),
+                        pw.Text("Especie: ${result.detectedSpecies ?? result.animalCategory}"),
+                        pw.Text("Raza: $breedDisplay"),
+                        pw.Text("Estado de Salud: ${result.healthStatus.toUpperCase()}"),
+                        if (result.isPregnant == true)
+                          pw.Text("Gestación: ${result.gestationWeeks ?? 'Detectada'}", style: pw.TextStyle(color: PdfColors.pink)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 30),
+              pw.Text("REPORTE VETERINARIO IA", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+              pw.Divider(),
+
+              // Detalles Médicos
+              pw.Bullet(text: "Diagnóstico Estimado: ${result.diseaseName ?? 'Ninguna detectada'}"),
+              pw.Bullet(text: "Medicamento Sugerido: ${result.medicationName ?? 'N/A'}"),
+              pw.Bullet(text: "Dosis recomendada: ${result.medicationDose ?? 'N/A'}"),
+              
+              pw.SizedBox(height: 20),
+              pw.Text("RECOMENDACIONES NUTRICIONALES Y CUIDADOS:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(color: PdfColors.grey100),
+                child: pw.Text(result.foodRecommendation ?? "Sin recomendaciones específicas.", textAlign: pw.TextAlign.justify),
+              ),
+
+              pw.SizedBox(height: 20),
+              pw.Text("NOTAS ADICIONALES:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Text(_userObservations ?? result.observations ?? "Sin observaciones adicionales."),
+
+              pw.Spacer(),
+              pw.Divider(),
+              pw.Center(
+                child: pw.Text("Este reporte es generado por IA y debe ser validado por un veterinario colegiado.", 
+                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    // Guardar archivo temporal y compartir
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}/Reporte_${result.animalId}.pdf');
+    await file.writeAsBytes(await pdf.save());
+
+    await Share.shareXFiles([XFile(file.path)], text: 'Comparto reporte veterinario de ScannerAnimal IA.');
   }
 
   Future<void> _showObservationsAndSave() async {
@@ -110,23 +205,18 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
 
   @override
   Widget build(BuildContext context) {
-    // Si el payload es un error de validación
-    if (widget.payload is String && widget.payload.toString().contains('VALIDATION_ERROR')) {
-      return _buildErrorState();
+    if (widget.payload is String && widget.payload.toString().contains('no es una imagen de un animal')) {
+      return _buildErrorState(widget.payload.toString());
     }
 
-    // Si el payload no es un ScanResult, mostramos error genérico en lugar de crashear
     if (widget.payload is! ScanResult) {
       return _buildGeneralErrorState();
     }
 
     final result = widget.payload as ScanResult;
-    
-    // CORRECCIÓN SEGURA DE TEXTO
     final String health = (result.healthStatus).toString().toLowerCase();
     final String displayBreed = result.detectedBreed ?? "No identificada";
     
-    // Lógica de color mejorada para evitar fallos
     Color statusColor = Colors.orangeAccent;
     IconData statusIcon = Icons.warning;
 
@@ -161,22 +251,32 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
               _buildResultRow('Raza:', displayBreed, Icons.category),
               
               if (result.isPregnant == true)
-                _buildResultRow('Gestación:', '${result.pregnancyWeeks ?? 0} Sem', Icons.favorite, valueColor: Colors.pinkAccent),
+                _buildResultRow('Gestación:', result.gestationWeeks ?? 'Detectada', Icons.favorite, valueColor: Colors.pinkAccent),
               
               _buildResultRow('Enfermedad:', result.diseaseName ?? 'Ninguna', Icons.bug_report),
               _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize),
               
               const SizedBox(height: 20),
+              
+              // RECOMENDACIONES CON AUTO-AJUSTE DE TEXTO
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text("RECOMENDACIÓN:", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+              const SizedBox(height: 8),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(result.foodRecommendation ?? "Sin recomendaciones adicionales",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic, fontSize: 13)),
+                child: Text(
+                  result.foodRecommendation ?? "Sin recomendaciones adicionales",
+                  textAlign: TextAlign.left,
+                  softWrap: true,
+                  style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic, fontSize: 14, height: 1.4)
+                ),
               ),
               
               const SizedBox(height: 30),
@@ -184,9 +284,9 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _shareResult(result, displayBreed),
-                      icon: const Icon(Icons.share, size: 18),
-                      label: const Text("COMPARTIR"),
+                      onPressed: () => _shareAsProfessionalPDF(result, displayBreed),
+                      icon: const Icon(Icons.picture_as_pdf, size: 18),
+                      label: const Text("PDF / WHATSAPP"),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white24),
@@ -216,6 +316,29 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     );
   }
 
+  // ... (Resto de métodos _buildGeneralErrorState, _buildErrorState y _buildResultRow iguales) ...
+  Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.blueAccent, size: 20),
+          const SizedBox(width: 10),
+          Text(label, style: const TextStyle(color: Colors.white60)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              value, 
+              textAlign: TextAlign.right,
+              style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildGeneralErrorState() {
     return FarmBackgroundScaffold(
       title: 'ERROR',
@@ -226,12 +349,6 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
             const Icon(Icons.error_outline, color: Colors.orangeAccent, size: 80),
             const SizedBox(height: 16),
             const Text("Error de interpretación", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40),
-              child: Text("La IA respondió pero los datos no son compatibles. Intenta con otra foto.", 
-                textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
-            ),
             const SizedBox(height: 24),
             ElevatedButton(onPressed: () => context.pop(), child: const Text("REINTENTAR"))
           ],
@@ -240,7 +357,7 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(String message) {
     return FarmBackgroundScaffold(
       title: 'AVISO',
       child: Center(
@@ -249,33 +366,16 @@ Observaciones: ${_userObservations ?? 'Sin notas adicionales'}
           children: [
             const Icon(Icons.no_photography, color: Colors.redAccent, size: 80),
             const SizedBox(height: 16),
-            const Text("No se detectó un animal", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text("Imagen no válida", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text("Asegúrate de que el animal se vea claramente.", style: TextStyle(color: Colors.white70)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+            ),
             const SizedBox(height: 24),
-            ElevatedButton(onPressed: () => context.pop(), child: const Text("REINTENTAR"))
+            ElevatedButton(onPressed: () => context.pop(), child: const Text("VOLVER A INTENTAR"))
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blueAccent, size: 20),
-          const SizedBox(width: 10),
-          Text(label, style: const TextStyle(color: Colors.white60)),
-          const Spacer(),
-          Expanded(
-            child: Text(value, 
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
       ),
     );
   }
