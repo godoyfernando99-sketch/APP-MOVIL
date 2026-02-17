@@ -3,14 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:scanneranimal/app/history/scan_models.dart';
-import 'package:scanneranimal/app/storage/local_db.dart';
+import 'package:scanneranimal/data/local_db.dart'; // Verifica que la ruta sea correcta
 
 class HistoryController extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final LocalDb _localDb = LocalDb();
 
-  List<ScanResult> _items = []; // Eliminado 'const' para permitir actualizaciones
+  List<ScanResult> _items = [];
   List<ScanResult> get items => _items;
 
   bool _isLoading = false;
@@ -30,6 +30,8 @@ class HistoryController extends ChangeNotifier {
           refresh();
         }
       });
+      // Carga inicial rápida desde local antes de ir a red
+      await _loadFromLocalStorage();
       await refresh();
     } catch (e) {
       debugPrint('[HistoryController] init() failed: $e');
@@ -48,6 +50,7 @@ class HistoryController extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
+    if (_isLoading) return; // Evitar múltiples refrescos simultáneos
     try {
       _isLoading = true;
       notifyListeners();
@@ -71,20 +74,22 @@ class HistoryController extends ChangeNotifier {
       final user = _auth.currentUser;
       if (user == null) return;
 
-      // Consultar Firebase
+      // Consultar Firebase con un try-catch específico por si no hay conexión
       final query = await _firestore
           .collection('scanResults')
           .where('ownerId', isEqualTo: user.uid)
           .orderBy('createdAt', descending: true)
           .limit(100)
-          .get();
+          .get(const GetOptions(source: Source.serverAndCache)); // Prioriza servidor pero usa cache si falla
 
       // Mapear imágenes locales para recombinarlas
       final localHistory = await _localDb.getHistory();
-      final localMap = <String, Map<String, dynamic>>{};
+      final localMap = <String, List<String>>{};
       for (final json in localHistory) {
         final id = json['id']?.toString();
-        if (id != null) localMap[id] = json;
+        if (id != null && json['photosBase64'] != null) {
+          localMap[id] = List<String>.from(json['photosBase64']);
+        }
       }
       
       final firebaseItems = <ScanResult>[];
@@ -93,13 +98,12 @@ class HistoryController extends ChangeNotifier {
           final data = doc.data();
           data['id'] = doc.id;
           
-          // Recombinar con imágenes locales si existen
-          final localData = localMap[doc.id];
-          if (localData != null && localData['photosBase64'] != null) {
-            data['photosBase64'] = localData['photosBase64'];
+          // RECOMBINACIÓN: Si en local tengo las fotos de este ID de Firebase, las pongo
+          if (localMap.containsKey(doc.id)) {
+            data['photosBase64'] = localMap[doc.id];
           }
           
-          firebaseItems.add(ScanResult.fromMap(data)); // Usamos fromMap
+          firebaseItems.add(ScanResult.fromMap(data));
         } catch (e) {
           debugPrint('Error parseando escaneo de Firebase: $e');
         }
@@ -108,10 +112,10 @@ class HistoryController extends ChangeNotifier {
       _items = firebaseItems;
       notifyListeners();
 
-      // Sincronizar localmente
+      // Sincronizar localmente (importante para mantener las fotos que ya existían)
       await _localDb.setHistory(_items.map((e) => e.toMap()).toList());
     } catch (e) {
-      debugPrint('[HistoryController] Error Firebase: $e');
+      debugPrint('[HistoryController] Error Firebase (cargando local...): $e');
       await _loadFromLocalStorage();
     }
   }
@@ -139,28 +143,25 @@ class HistoryController extends ChangeNotifier {
   Future<void> add(ScanResult item) async {
     try {
       final user = _auth.currentUser;
-      final now = DateTime.now();
       
       final itemWithOwner = item.copyWith(
         ownerId: user?.uid ?? 'local',
-        createdAt: item.createdAt, // Mantener la fecha original si ya existe
       );
 
-      // 1. Guardar en local storage (CON imágenes)
-      final currentHistory = await _localDb.getHistory();
-      final updatedHistory = [itemWithOwner.toMap(), ...currentHistory];
-      await _localDb.setHistory(updatedHistory);
+      // 1. Guardar en local storage INMEDIATAMENTE para respuesta instantánea
+      _items = [itemWithOwner, ..._items];
+      notifyListeners();
       
-      // 2. Intentar guardar en Firebase (SIN imágenes para ahorrar espacio)
+      final currentHistoryMap = _items.map((e) => e.toMap()).toList();
+      await _localDb.setHistory(currentHistoryMap);
+      
+      // 2. Intentar guardar en Firebase en segundo plano
       if (user != null) {
+        // Ignoramos el await para que la UI no espere a la red
         _saveToFirebase(itemWithOwner).catchError((e) {
           debugPrint('Firebase save failed (non-critical): $e');
         });
       }
-
-      // 3. Actualizar lista en memoria y notificar UI
-      _items = [itemWithOwner, ..._items];
-      notifyListeners();
       
     } catch (e) {
       debugPrint('[HistoryController] add() failed: $e');
@@ -170,15 +171,19 @@ class HistoryController extends ChangeNotifier {
 
   Future<void> _saveToFirebase(ScanResult item) async {
     try {
-      // Usamos el método toMap() que ya configuramos en scan_models.dart
-      // Eliminamos las fotos para no exceder el límite de documento de Firestore (1MB)
+      // Preparamos los datos quitando las fotos pesadas
       final mapData = item.toMap();
       mapData.remove('photosBase64'); 
       
-      await _firestore.collection('scanResults').doc(item.id).set(mapData);
-      debugPrint('[HistoryController] ✓ Guardado en Firebase exitoso');
+      // Usamos set con merge por si el documento ya existía parcialmente
+      await _firestore
+          .collection('scanResults')
+          .doc(item.id)
+          .set(mapData, SetOptions(merge: true));
+          
+      debugPrint('[HistoryController] ✓ Sincronizado con la nube');
     } catch (e) {
-      debugPrint('[HistoryController] Error guardando en Firebase: $e');
+      debugPrint('[HistoryController] Error en sincronización Cloud: $e');
       rethrow;
     }
   }
