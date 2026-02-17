@@ -19,7 +19,7 @@ class ScanResult {
     this.medicationName,
     this.medicationDose,
     this.isPregnant,
-    this.gestationWeeks, // <--- Cambio de int a String para mayor detalle (ej: "45 días")
+    this.gestationWeeks, 
     this.foodRecommendation,
     this.observations, 
   });
@@ -41,11 +41,11 @@ class ScanResult {
   final String? medicationName;
   final String? medicationDose;
   final bool? isPregnant;
-  final String? gestationWeeks; // <--- String para soportar "3 semanas" o "40 días"
+  final String? gestationWeeks; 
   final String? foodRecommendation;
   final String? observations;
 
-  // Getter para mantener compatibilidad con código antiguo si usabas pregnancyWeeks
+  // Getter para compatibilidad
   String? get pregnancyWeeks => gestationWeeks;
 
   Map<String, dynamic> toMap() => {
@@ -74,8 +74,10 @@ class ScanResult {
   static ScanResult fromMap(Map<String, dynamic> map) {
     DateTime parse(dynamic r) {
       if (r is Timestamp) return r.toDate();
+      if (r == null) return DateTime.now();
       return DateTime.tryParse(r.toString()) ?? DateTime.now();
     }
+
     return ScanResult(
       id: map['id']?.toString() ?? '',
       ownerId: map['ownerId']?.toString() ?? '',
@@ -86,15 +88,14 @@ class ScanResult {
       mode: map['mode']?.toString() ?? 'nochip',
       microchipNumber: map['microchipNumber']?.toString(),
       photosBase64: List<String>.from(map['photosBase64'] ?? []),
-      healthStatus: map['healthStatus']?.toString() ?? 'buena',
+      healthStatus: map['healthStatus']?.toString() ?? 'regular',
       detectedBreed: map['detectedBreed']?.toString(),
       detectedSpecies: map['detectedSpecies']?.toString(),
       diseaseName: map['diseaseName']?.toString(),
       fractureDescription: map['fractureDescription']?.toString(),
       medicationName: map['medicationName']?.toString(),
       medicationDose: map['medicationDose']?.toString(),
-      isPregnant: map['isPregnant'] as bool?,
-      // Convertimos a String cualquier valor que venga para evitar errores de tipo
+      isPregnant: map['isPregnant'] is bool ? map['isPregnant'] as bool : false,
       gestationWeeks: map['gestationWeeks']?.toString() ?? map['pregnancyWeeks']?.toString(),
       foodRecommendation: map['foodRecommendation']?.toString(),
       observations: map['observations']?.toString(),
