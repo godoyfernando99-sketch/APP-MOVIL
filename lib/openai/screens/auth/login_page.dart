@@ -159,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'assets/icons/logo_app.png', // Corregido el nombre según tu pubspec anterior
+                      'assets/icons/logos_app.png', // Corregido el nombre según tu pubspec anterior
                       height: 120,
                       width: 120,
                     ),
