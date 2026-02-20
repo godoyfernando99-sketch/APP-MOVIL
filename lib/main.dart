@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:in_app_update/in_app_update.dart'; // Importamos la librería
 
 import 'package:scanneranimal/app/app_settings.dart';
 import 'package:scanneranimal/app/auth/auth_controller.dart';
@@ -24,8 +25,35 @@ void main() async {
   runApp(const ScannerAnimalApp());
 }
 
-class ScannerAnimalApp extends StatelessWidget {
+class ScannerAnimalApp extends StatefulWidget {
   const ScannerAnimalApp({super.key});
+
+  @override
+  State<ScannerAnimalApp> createState() => _ScannerAnimalAppState();
+}
+
+class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
+  
+  @override
+  void initState() {
+    super.initState();
+    // Verificamos si hay una nueva versión en la Play Store al arrancar
+    _checkForUpdate();
+  }
+
+  /// Lógica para detectar y forzar la actualización desde Google Play
+  Future<void> _checkForUpdate() async {
+    try {
+      final info = await InAppUpdate.checkForUpdate();
+      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+        // Realiza la actualización inmediata (pantalla completa de Google Play)
+        await InAppUpdate.performImmediateUpdate();
+      }
+    } catch (e) {
+      debugPrint('Error al verificar actualización: $e');
+      // No bloqueamos al usuario si la verificación falla (ej. sin internet)
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
