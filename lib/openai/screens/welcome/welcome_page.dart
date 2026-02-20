@@ -176,7 +176,7 @@ class _TutorialVideoDialogState extends State<_TutorialVideoDialog> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.asset('assets/video/tutorial_app.mp4')
+    _controller = VideoPlayerController.asset('assets/video/TUTORIALS.mp4')
       ..initialize().then((_) {
         setState(() {});
         _controller.play();
