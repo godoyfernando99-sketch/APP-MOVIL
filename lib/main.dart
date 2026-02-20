@@ -1,3 +1,9 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:in_app_update/in_app_update.dart';
+
 import 'package:scanneranimal/app/app_settings.dart';
 import 'package:scanneranimal/app/auth/auth_controller.dart';
 import 'package:scanneranimal/app/history/history_controller.dart';
@@ -31,25 +37,20 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
   @override
   void initState() {
     super.initState();
-    // Usamos addPostFrameCallback para esperar a que la UI esté lista antes de lanzar el diálogo
+    // Ejecutar la revisión de actualización después del primer frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkForUpdate();
     });
   }
 
-  /// Lógica para detectar y forzar la actualización desde Google Play
   Future<void> _checkForUpdate() async {
     try {
-      // Verifica si hay una actualización disponible
       final info = await InAppUpdate.checkForUpdate();
-      
       if (info.updateAvailability == UpdateAvailability.updateAvailable) {
-        // Lanza la actualización inmediata (obliga al usuario a actualizar para seguir)
         await InAppUpdate.performImmediateUpdate();
       }
     } catch (e) {
-      // Registramos el error pero no bloqueamos al usuario
-      debugPrint('🚨 Error en In-App Update: $e');
+      debugPrint('🚨 Error de actualización: $e');
     }
   }
 
