@@ -2,8 +2,8 @@ name: scanneranimal
 description: "A new Flutter project."
 publish_to: "none"
 
-# Incrementamos la versión para asegurar que los cambios se apliquen correctamente
-version: 1.0.0+15
+# Incrementamos la versión cada vez que subimos a la Play Store para detectar actualizaciones
+version: 1.0.0+16
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -20,6 +20,7 @@ dependencies:
   url_launcher: ^6.3.1
   permission_handler: ^11.3.1
   share_plus: ^10.1.0
+  in_app_update: ^4.0.2 # <-- NUEVA: Control de actualizaciones desde la App
 
   # Interfaz y Navegación
   cupertino_icons: ^1.0.8
@@ -29,7 +30,7 @@ dependencies:
   # Cámara y Almacenamiento
   image_picker: ^1.1.2
   shared_preferences: ^2.3.2
-  path_provider: ^2.1.2 # <-- NECESARIO para guardar el PDF temporalmente antes de compartir
+  path_provider: ^2.1.2
   
   # Firebase (Base de datos, Auth e IA)
   firebase_core: ^3.10.1
@@ -43,7 +44,7 @@ dependencies:
   in_app_purchase_android: ^0.4.0+5
   in_app_purchase_storekit: ^0.4.4
 
-  # GENERACIÓN DE PDF Y FICHA PROFESIONAL (Nuevas)
+  # GENERACIÓN DE PDF Y FICHA PROFESIONAL
   pdf: ^3.10.8
   printing: ^5.11.0
 
