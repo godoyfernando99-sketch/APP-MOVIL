@@ -87,7 +87,7 @@ class MainMenuPage extends StatelessWidget {
             const SizedBox(height: 16),
 
             _CategoryButton(
-              title: 'Animales de Casa',
+              title: 'MASCOTAS',
               subtitle: 'Perros, gatos, conejos...',
               icon: Icons.pets_rounded,
               color: Colors.orange.shade700.withOpacity(0.9),
@@ -95,7 +95,7 @@ class MainMenuPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _CategoryButton(
-              title: 'Animales de Granja',
+              title: 'GANADERIA',
               subtitle: 'Vacas, cerdos, caballos...',
               icon: Icons.agriculture_rounded,
               color: Colors.green.shade700.withOpacity(0.9),
