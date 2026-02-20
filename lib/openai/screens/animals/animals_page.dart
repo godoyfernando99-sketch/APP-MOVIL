@@ -17,7 +17,7 @@ class AnimalsPage extends StatelessWidget {
         .toList();
 
     return FarmBackgroundScaffold(
-      title: category == 'home' ? 'ANIMALES DE CASA' : 'ANIMALES DE GRANJA',
+      title: category == 'home' ? 'MASCOTAS' : 'GANADERIA',
       backgroundColor: Colors.transparent,
       child: GridView.builder(
         padding: const EdgeInsets.all(20),
