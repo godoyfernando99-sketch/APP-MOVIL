@@ -20,7 +20,8 @@ dependencies:
   url_launcher: ^6.3.1
   permission_handler: ^11.3.1
   share_plus: ^10.1.0
-  in_app_update: ^4.0.2 # <-- NUEVA: Control de actualizaciones desde la App
+  in_app_update: ^4.0.2 # Control de actualizaciones desde la App
+  video_player: ^2.8.1  # <-- NUEVA: Para reproducir el video tutorial
 
   # Interfaz y Navegación
   cupertino_icons: ^1.0.8
@@ -60,6 +61,7 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/video/  # <-- NUEVA: Configuración para que la app reconozca tus videos
 
 flutter_launcher_icons:
   android: "logo_app"
