@@ -14,45 +14,53 @@ class AiDiagnosisService {
     required List<Uint8List> photos,
   }) async {
     try {
+      // Usamos Gemini 2.0 Flash que es excelente siguiendo instrucciones complejas
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-2.0-flash',
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
-          temperature: 0.1, // Precisión máxima
+          temperature: 0.0, // Bajamos a 0.0 para eliminar cualquier alucinación creativa
+          topP: 0.95,
         ),
       );
 
-      // --- PROMPT MEJORADO: ESPECIALISTA VETERINARIO Y FARMACOLOGÍA ---
+      // --- PROMPT DE NIVEL EXPERTO (VETERINARY ONCOLOGY & OBSTETRICS) ---
       final prompt = """
-      Eres un experto veterinario con especialidad en diagnóstico clínico, obstetricia y farmacología.
-      Tu tarea es analizar la salud de un animal de la categoría: $animalCategory.
+      ACTÚA COMO: Un sistema de visión artificial veterinario de alta precisión especializado en grandes y pequeñas especies.
+      OBJETIVO: Diagnosticar la categoría: $animalCategory basada en imágenes.
 
-      REGLAS DE VALIDACIÓN:
-      1. Si la imagen NO es un animal real o es ilegible, responde: {"is_animal": false}
+      INSTRUCCIONES CRÍTICAS DE ANÁLISIS:
+      1. ANÁLISIS DE GESTACIÓN (OBSTETRICIA):
+         - Observa la distensión del flanco derecho, descenso de la ubre y edema pre-parto.
+         - Si detectas gestación, estima el tiempo basándote en la morfología externa:
+           * Bovinos: Indica meses (ej. "7 meses / 210 días").
+           * Caninos/Felinos: Indica semanas (ej. "6 semanas / 42 días").
+         - Sé específico: "Gestación temprana", "Gestación a término" o "No gestante".
 
-      REGLAS DE ANÁLISIS MÉDICO:
-      2. Si detectas una enfermedad (diseaseName), identifica obligatoriamente:
-         - medicationName: Nombre genérico y comercial del medicamento adecuado.
-         - Vía de administración: Especifica claramente si es ORAL o INYECTADO.
-         - medicationDose: Si es inyectado, indica la dosis exacta en mililitros (ml) o centímetros cúbicos (cc) por cada kilogramo de peso del animal (ej. 1ml/10kg). Si es oral, indica mg/kg.
-         - foodRecommendation: Nombre del alimento o dieta clínica específica según la patología y la especie.
-      
-      3. Evaluación de Preñez (Gestation):
-         - Identifica desarrollo mamario o distensión abdominal.
-         - gestationWeeks: Indica el tiempo en días o semanas según la especie.
+      2. TRAUMATOLOGÍA Y LESIONES:
+         - Analiza la angulación de las patas (desviaciones óseas), inflamación de articulaciones (nudos, corvejones) y heridas abiertas.
+         - Clasifica fracturas visibles o cojeras evidentes por postura.
 
-      Responde estrictamente en este formato JSON:
+      3. FARMACOLOGÍA Y DOSIS (ESTRICTO):
+         - Si hay enfermedad, indica el principio activo Y un nombre comercial común.
+         - FORMATO DE DOSIS: Debe ser una fórmula aplicable. Ej: "1 ml por cada 20 kg de peso vivo".
+         - VÍA: Especificar IM (Intramuscular), SC (Subcutánea) u Oral.
+
+      REGLAS DE SEGURIDAD:
+      - Si la imagen NO es un animal real o no hay suficiente claridad para un diagnóstico médico, responde {"is_animal": false}.
+
+      ESQUEMA DE RESPUESTA JSON (Sigue este formato exacto):
       {
         "is_animal": true,
-        "healthStatus": "bueno/regular/critico",
-        "detectedBreed": "raza detectada",
-        "isPregnant": true/false,
-        "gestationWeeks": "X semanas/días o N/A",
-        "diseaseName": "nombre de la enfermedad o 'No detectada'",
-        "medicationName": "nombre del medicamento + vía (ej. Enrofloxacina - Inyectable)",
-        "medicationDose": "Dosis referencial (ej. 0.5ml por cada 10kg)",
-        "foodRecommendation": "dieta específica sugerida",
-        "observations": "Resumen médico incluyendo advertencia de pesar al animal antes de medicar."
+        "healthStatus": "crítico | regular | bueno",
+        "detectedBreed": "Raza específica",
+        "isPregnant": true,
+        "gestationWeeks": "X semanas/meses (estimado preciso)",
+        "diseaseName": "Nombre técnico de la patología o 'Sano'",
+        "medicationName": "Principio Activo + Nombre Comercial (Vía)",
+        "medicationDose": "X ml por cada X kg",
+        "foodRecommendation": "Dieta terapéutica recomendada",
+        "observations": "Resumen técnico. Advertir que el peso exacto es obligatorio antes de inyectar."
       }
       """;
       
@@ -64,15 +72,16 @@ class AiDiagnosisService {
       ];
 
       final response = await model.generateContent(content);
-
       final String? rawText = response.text;
-      if (rawText == null) throw 'La IA no devolvió ninguna respuesta.';
+      
+      if (rawText == null) throw 'Error: El motor de IA no generó datos.';
 
+      // Limpieza de formato Markdown
       final cleanJson = rawText.trim().replaceAll('```json', '').replaceAll('```', '');
       final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
 
       if (aiJson['is_animal'] == false) {
-        throw 'Esa no es una imagen de un animal. Por favor, coloca la imagen del animal seleccionado.';
+        throw 'La imagen no es lo suficientemente clara o no es un animal. Por favor, intenta de nuevo.';
       }
       
       final now = DateTime.now();
@@ -95,11 +104,11 @@ class AiDiagnosisService {
         medicationDose: aiJson['medicationDose'] ?? 'N/A',
         isPregnant: aiJson['isPregnant'] ?? false,
         gestationWeeks: aiJson['gestationWeeks'] ?? 'N/A', 
-        foodRecommendation: aiJson['foodRecommendation'] ?? 'Consultar dieta con especialista',
-        observations: aiJson['observations'] ?? 'Análisis realizado con Vertex AI.',
+        foodRecommendation: aiJson['foodRecommendation'] ?? 'Dieta estándar',
+        observations: aiJson['observations'] ?? 'Analizado con Vertex AI Pro-Vision.',
       );
     } catch (e) {
-      print('🚨 ERROR EN VERTEX AI: $e');
+      print('🚨 ERROR CRÍTICO IA: $e');
       rethrow;
     }
   }
