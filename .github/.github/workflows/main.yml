@@ -1,1 +1,37 @@
 
+name: Build and Sign AAB
+
+on:
+  push:
+    branches: [ main ] # Se activa cada vez que guardas cambios
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # Usamos Linux que es GRATIS
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build AAB
+        run: flutter build appbundle --release
+        # Aquí Flutter usará tu archivo .jks que ya está en la carpeta android/app/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release
+          path: build/app/outputs/bundle/release/app-release.aab
