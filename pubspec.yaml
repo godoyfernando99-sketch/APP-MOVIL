@@ -3,7 +3,7 @@ description: "A new Flutter project."
 publish_to: "none"
 
 # Incrementamos la versión cada vez que subimos a la Play Store para detectar actualizaciones
-version: 1.0.0+17
+version: 1.0.0+18
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
