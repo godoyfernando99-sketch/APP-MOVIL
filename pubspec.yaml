@@ -68,7 +68,7 @@ flutter:
 
 # CORRECCIÓN EN LA GENERACIÓN DE ICONOS
 flutter_launcher_icons:
-  android: true # CAMBIADO: Al poner 'true', generará los archivos como 'ic_launcher'
+  android: true 
   ios: true
   image_path: "assets/icons/logo_app.png"
   remove_alpha_ios: true
