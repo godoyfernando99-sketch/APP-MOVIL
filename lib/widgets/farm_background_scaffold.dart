@@ -21,7 +21,7 @@ class FarmBackgroundScaffold extends StatelessWidget {
   final Color? backgroundColor; 
 
   static const String _bgAsset =
-      'assets/images/farm_animals_pasture_background_photo_green_1769096572851.jpg';
+      'assets/images/fondo nuevo.png';
 
   @override
   Widget build(BuildContext context) {
