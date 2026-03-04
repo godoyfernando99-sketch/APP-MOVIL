@@ -1,9 +1,9 @@
 name: scanneranimal
-description: "A new Flutter project."
+description: "Identificación animal mediante IA y Microchip NFC."
 publish_to: "none"
 
-# Incrementamos la versión cada vez que subimos a la Play Store para detectar actualizaciones
-version: 1.0.0+18
+# Incrementamos la versión para asegurar que los cambios de permisos se apliquen
+version: 1.0.0+19
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -14,40 +14,44 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   
-  # Comunicación y Utilidades
+  # --- COMUNICACIÓN Y UTILIDADES ---
   http: ^1.2.0
   intl: ^0.20.2
   url_launcher: ^6.3.1
   permission_handler: ^11.3.1
   share_plus: ^10.1.0
-  in_app_update: ^4.0.2 # Control de actualizaciones desde la App
-  video_player: ^2.8.1  # <-- NUEVA: Para reproducir el video tutorial
+  in_app_update: ^4.0.2
+  video_player: ^2.8.1
 
-  # Interfaz y Navegación
+  # --- HARDWARE: NFC & SENSORES (NUEVO) ---
+  nfc_manager: ^3.3.0  # <--- CRÍTICO: Para la lectura de Microchips
+
+  # --- INTERFAZ Y NAVEGACIÓN ---
   cupertino_icons: ^1.0.8
+  font_awesome_flutter: ^10.7.0 # Para iconos veterinarios extra
   go_router: ^14.2.0
   provider: ^6.1.2
   
-  # Cámara y Almacenamiento
+  # --- CÁMARA Y ALMACENAMIENTO ---
   image_picker: ^1.1.2
   shared_preferences: ^2.3.2
   path_provider: ^2.1.2
   
-  # Firebase (Base de datos, Auth e IA)
+  # --- FIREBASE & IA (Vertex AI) ---
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.1
   cloud_firestore: ^5.6.1
   google_sign_in: ^6.2.2
-  firebase_vertexai: ^1.1.0
+  firebase_vertexai: ^1.1.0 # Gemini 2.0 Flash
   
-  # Pagos y Suscripciones
+  # --- PAGOS Y SUSCRIPCIONES ---
   in_app_purchase: ^3.2.0
   in_app_purchase_android: ^0.4.0+5
   in_app_purchase_storekit: ^0.4.4
 
-  # GENERACIÓN DE PDF Y FICHA PROFESIONAL
+  # --- GENERACIÓN DE PDF Y REPORTES ---
   pdf: ^3.10.8
-  printing: ^5.11.0
+  printing: ^5.11.0 # Permite imprimir directamente el PDF generado
 
 dev_dependencies:
   flutter_test:
@@ -61,7 +65,11 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-    - assets/video/  # <-- NUEVA: Configuración para que la app reconozca tus videos
+    - assets/video/
+    - assets/images/perro_bg.jpg # Asegúrate de que estos archivos existan
+    - assets/images/gato_bg.jpg
+    - assets/images/rana_bg.jpg
+    - assets/images/loro_bg.jpg
 
 flutter_launcher_icons:
   android: "logo_app"
