@@ -24,7 +24,8 @@ dependencies:
   video_player: ^2.8.1
 
   # --- HARDWARE: NFC & SENSORES ---
-  nfc_manager: ^3.3.0
+  # CORRECCIÓN FINAL: Subimos a 4.1.1 para compatibilidad con Kotlin 1.9.22
+  nfc_manager: ^4.1.1 
 
   # --- INTERFAZ Y NAVEGACIÓN ---
   cupertino_icons: ^1.0.8
@@ -62,8 +63,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # CORRECCIÓN: Declaramos solo las carpetas. 
-  # Flutter incluirá automáticamente todo lo que esté dentro de ellas.
+  # Carpetas de assets optimizadas
   assets:
     - assets/images/
     - assets/icons/
