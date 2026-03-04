@@ -53,7 +53,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text("ScannerAnimal IA - Reporte Oficial", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
-                  pw.Text("ID: ${result.id.substring(0,8)}"),
+                  pw.Text("ID: ${result.id.length > 8 ? result.id.substring(0,8) : result.id}"),
                 ],
               ),
               pw.Divider(thickness: 2, color: PdfColors.blue800),
@@ -66,8 +66,14 @@ class _ScanResultPageState extends State<ScanResultPage> {
                     pw.Container(
                       width: 120,
                       height: 120,
-                      decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
-                      child: pw.ClipRRect(borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)), child: pw.Image(animalImage, fit: pw.BoxFit.cover)),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(color: PdfColors.grey400), 
+                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))
+                      ),
+                      child: pw.ClipRRect(
+                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)), 
+                        child: pw.Image(animalImage, fit: pw.BoxFit.cover)
+                      ),
                     ),
                   pw.SizedBox(width: 20),
                   pw.Expanded(
@@ -115,7 +121,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 padding: const pw.EdgeInsets.all(8),
                 decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
                 child: pw.Text(
-                  "AVISO: Este documento es un informe preliminar generado por IA. No sustituye el juicio clínico de un médico veterinario colegiado. Las dosis son sugerencias basadas en promedios.",
+                  "AVISO: Este documento es un informe preliminar generado por IA. No sustituye el juicio clínico de un médico veterinario colegiado.",
                   textAlign: pw.TextAlign.center,
                   style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
                 ),
@@ -129,7 +135,8 @@ class _ScanResultPageState extends State<ScanResultPage> {
     final directory = await getTemporaryDirectory();
     final file = File('${directory.path}/ScannerAnimal_${result.id}.pdf');
     await file.writeAsBytes(await pdf.save());
-    await Share.shareXFiles([XFile(file.path)], text: 'Informe Veterinario - ${result.detectedBreed}');
+    // Corrección aquí también para evitar nulos en el texto de compartir
+    await Share.shareXFiles([XFile(file.path)], text: 'Informe Veterinario - ${result.detectedBreed ?? "Mascota"}');
   }
 
   pw.Widget _pdfRow(String label, String value, {bool isBold = false}) {
@@ -206,6 +213,9 @@ class _ScanResultPageState extends State<ScanResultPage> {
     final result = widget.payload as ScanResult;
     final bool hasMicrochip = result.microchipNumber != null;
     final Color statusColor = result.healthStatus.toLowerCase().contains('buen') ? Colors.greenAccent : Colors.orangeAccent;
+    
+    // VARIABLE DE SEGURIDAD PARA EVITAR ERRORES DE TIPO String? en el build
+    final String displayBreed = result.detectedBreed ?? "No identificada";
 
     return FarmBackgroundScaffold(
       title: 'ANÁLISIS COMPLETADO',
@@ -213,7 +223,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
-            // TARJETA DE MICROCHIP (Nueva sección destacada)
             if (hasMicrochip)
               _buildMicrochipBanner(result.microchipNumber!),
 
@@ -231,21 +240,22 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   _buildHeader(result, statusColor),
                   const Divider(color: Colors.white10, height: 40),
                   
-                  _buildResultRow('Identidad:', result.detectedBreed, Icons.info_outline),
-                  _buildResultRow('Categoría:', result.detectedSpecies, Icons.pets),
+                  _buildResultRow('Identidad:', displayBreed, Icons.info_outline),
+                  _buildResultRow('Categoría:', result.detectedSpecies ?? 'Animal', Icons.pets),
                   
                   if (result.isPregnant == true)
-                    _buildResultRow('Gestación:', result.gestationWeeks, Icons.auto_awesome, valueColor: Colors.pinkAccent),
+                    _buildResultRow('Gestación:', result.gestationWeeks ?? 'N/A', Icons.auto_awesome, valueColor: Colors.pinkAccent),
                   
-                  _buildResultRow('Hallazgo:', result.diseaseName, Icons.healing_outlined),
-                  _buildResultRow('Prescripción:', result.medicationName, Icons.medication_liquid_rounded),
-                  _buildResultRow('Dosis:', result.medicationDose, Icons.straighten_rounded, valueColor: Colors.greenAccent),
+                  _buildResultRow('Hallazgo:', result.diseaseName ?? 'Sano', Icons.healing_outlined),
+                  _buildResultRow('Prescripción:', result.medicationName ?? 'N/A', Icons.medication_liquid_rounded),
+                  _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.straighten_rounded, valueColor: Colors.greenAccent),
                   
                   const SizedBox(height: 25),
                   _buildNutritionalBox(result.foodRecommendation),
                   
                   const SizedBox(height: 35),
-                  _buildActionButtons(result),
+                  // LLAMADA CORREGIDA PARA PASAR String NO NULO
+                  _buildActionButtons(result, displayBreed),
                 ],
               ),
             ),
@@ -314,12 +324,12 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
-  Widget _buildActionButtons(ScanResult result) {
+  Widget _buildActionButtons(ScanResult result, String breed) {
     return Row(
       children: [
         Expanded(
           child: TextButton.icon(
-            onPressed: () => _shareAsProfessionalPDF(result, result.detectedBreed),
+            onPressed: () => _shareAsProfessionalPDF(result, breed),
             icon: const Icon(Icons.share_rounded, size: 18),
             label: const Text("COMPARTIR"),
             style: TextButton.styleFrom(foregroundColor: Colors.white70),
