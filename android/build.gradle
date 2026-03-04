@@ -1,15 +1,15 @@
 buildscript {
-    ext.kotlin_version = '1.9.0' // Versión estable y compatible
+    // CORRECCIÓN: Subimos a 1.9.22 para resolver el error de compilación en nfc_manager
+    ext.kotlin_version = '1.9.22' 
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        // Bajamos a una versión de Gradle más compatible con Flutter
+        // Mantenemos 8.1.0 que es muy estable para Flutter
         classpath 'com.android.tools.build:gradle:8.1.0' 
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        // Google Services para que Firebase no falle al conectar
-        classpath 'com.google.gms:google-services:4.4.0'
+        classpath 'com.google.gms:google-services:4.4.1'
     }
 }
 
@@ -32,6 +32,7 @@ tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
 
+// Bloque de carga de llaves para el firmado en producción
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
