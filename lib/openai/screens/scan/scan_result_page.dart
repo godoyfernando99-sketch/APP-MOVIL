@@ -67,11 +67,13 @@ class _ScanResultPageState extends State<ScanResultPage> {
                       width: 120,
                       height: 120,
                       decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: PdfColors.grey400), 
+                        border: pw.Border.all(color: PdfColors.grey400),
                         borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))
                       ),
+                      // AJUSTE AQUÍ: Se eliminó 'borderRadius' que causaba el error en pw.ClipRRect
                       child: pw.ClipRRect(
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)), 
+                        horizontalRadius: 10,
+                        verticalRadius: 10,
                         child: pw.Image(animalImage, fit: pw.BoxFit.cover)
                       ),
                     ),
@@ -135,7 +137,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
     final directory = await getTemporaryDirectory();
     final file = File('${directory.path}/ScannerAnimal_${result.id}.pdf');
     await file.writeAsBytes(await pdf.save());
-    // Corrección aquí también para evitar nulos en el texto de compartir
     await Share.shareXFiles([XFile(file.path)], text: 'Informe Veterinario - ${result.detectedBreed ?? "Mascota"}');
   }
 
@@ -214,7 +215,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
     final bool hasMicrochip = result.microchipNumber != null;
     final Color statusColor = result.healthStatus.toLowerCase().contains('buen') ? Colors.greenAccent : Colors.orangeAccent;
     
-    // VARIABLE DE SEGURIDAD PARA EVITAR ERRORES DE TIPO String? en el build
     final String displayBreed = result.detectedBreed ?? "No identificada";
 
     return FarmBackgroundScaffold(
@@ -254,7 +254,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   _buildNutritionalBox(result.foodRecommendation),
                   
                   const SizedBox(height: 35),
-                  // LLAMADA CORREGIDA PARA PASAR String NO NULO
                   _buildActionButtons(result, displayBreed),
                 ],
               ),
