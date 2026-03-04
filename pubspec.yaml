@@ -2,7 +2,6 @@ name: scanneranimal
 description: "Identificación animal mediante IA y Microchip NFC."
 publish_to: "none"
 
-# Incrementamos la versión para asegurar que los cambios de permisos se apliquen
 version: 1.0.0+19
 
 environment:
@@ -24,7 +23,6 @@ dependencies:
   video_player: ^2.8.1
 
   # --- HARDWARE: NFC & SENSORES ---
-  # CORRECCIÓN FINAL: Subimos a 4.1.1 para compatibilidad con Kotlin 1.9.22
   nfc_manager: ^4.1.1 
 
   # --- INTERFAZ Y NAVEGACIÓN ---
@@ -63,14 +61,14 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Carpetas de assets optimizadas
   assets:
     - assets/images/
     - assets/icons/
     - assets/video/
 
+# CORRECCIÓN EN LA GENERACIÓN DE ICONOS
 flutter_launcher_icons:
-  android: "logo_app"
+  android: true # CAMBIADO: Al poner 'true', generará los archivos como 'ic_launcher'
   ios: true
   image_path: "assets/icons/logo_app.png"
   remove_alpha_ios: true
