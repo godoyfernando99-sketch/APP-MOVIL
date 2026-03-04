@@ -1,7 +1,43 @@
-// ... (tus importaciones se mantienen igual)
+import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+// Importaciones de pantallas - Asegúrate de que los nombres de archivo sean correctos
+import 'package:scanneranimal/openai/screens/animals/animals_page.dart';
+import 'package:scanneranimal/openai/screens/auth/login_page.dart';
+import 'package:scanneranimal/openai/screens/auth/register_page.dart';
+import 'package:scanneranimal/openai/screens/history/history_page.dart';
+import 'package:scanneranimal/openai/screens/info/diseases_page.dart';
+import 'package:scanneranimal/openai/screens/info/medications_page.dart';
+import 'package:scanneranimal/openai/screens/menu/main_menu_page.dart';
+import 'package:scanneranimal/openai/screens/scan/scan_capture_page.dart';
+import 'package:scanneranimal/openai/screens/scan/scan_result_page.dart';
+import 'package:scanneranimal/openai/screens/subscriptions/subscriptions_page.dart';
+import 'package:scanneranimal/openai/screens/welcome/welcome_page.dart';
+import 'package:scanneranimal/openai/screens/support/vip_support_page.dart';
+
+// Importar el modelo para que ScanResult sea reconocido
+import 'package:scanneranimal/app/history/scan_models.dart';
+
+// 1. Mover el Notifier arriba para que AppRouter lo vea correctamente
+class AuthStateNotifier extends ChangeNotifier {
+  StreamSubscription<User?>? _subscription;
+
+  AuthStateNotifier() {
+    _subscription = FirebaseAuth.instance.authStateChanges().listen((_) => notifyListeners());
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+}
 
 class AppRouter {
-  static final _authNotifier = AuthStateNotifier();
+  // 2. Inicialización estática corregida
+  static final AuthStateNotifier _authNotifier = AuthStateNotifier();
 
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.login,
@@ -32,16 +68,14 @@ class AppRouter {
         },
       ),
 
-      // CORRECCIÓN AQUÍ: Hacemos los parámetros opcionales con '?' para que AppRoutes.scanCapture funcione solo
+      // Usamos la ruta simplificada que MainMenu espera
       GoRoute(
         path: AppRoutes.scanCapture, 
         name: 'scanCapture',
         pageBuilder: (context, state) {
-          // Intentamos obtener parámetros del path o del 'extra'
           final Map<String, dynamic>? extra = state.extra as Map<String, dynamic>?;
-          final String animalId = extra?['animalId'] ?? 'generic_id';
-          final String mode = extra?['mode'] ?? 'visual'; // 'visual' o 'microchip'
-          
+          final String animalId = extra?['animalId'] ?? 'generic';
+          final String mode = extra?['mode'] ?? 'visual';
           return MaterialPage(child: ScanCapturePage(animalId: animalId, mode: mode));
         },
       ),
@@ -100,7 +134,7 @@ class AppRoutes {
   static const String welcome = '/welcome';
   static const String menu = '/menu';
   static const String animals = '/animals';
-  static const String scanCapture = '/scan-capture'; // Ruta simplificada
+  static const String scanCapture = '/scan-capture'; 
   static const String scanResult = '/scan-result';
   static const String history = '/history';
   static const String subscriptions = '/subscriptions';
@@ -109,6 +143,6 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String support = '/support';
   
-  // Añadimos esta para que el compilador no de error si MainMenu llama a .capture
+  // Alias para compatibilidad con MainMenuPage
   static const String capture = scanCapture; 
 }
