@@ -15,9 +15,9 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.scanneranimal.app"
     
-    // CORRECCIÓN: Bajamos a 34 para evitar conflictos de Kotlin con nfc_manager
-    // El SDK 36 es demasiado nuevo y causa el error "compileReleaseKotlin"
-    compileSdk = 34 
+    // ACTUALIZACIÓN: Subimos a 36 para satisfacer a androidx.core:1.17.0
+    // Esto permite que el proyecto compile con las librerías más recientes.
+    compileSdk = 36 
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -32,7 +32,7 @@ android {
     defaultConfig {
         applicationId "com.scanneranimal.app"
         minSdk = 21
-        // CORRECCIÓN: Sincronizamos con el SDK 34 para máxima estabilidad
+        // Mantenemos 34 para asegurar la estabilidad en dispositivos actuales
         targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -66,7 +66,7 @@ flutter {
 }
 
 dependencies {
-    // Actualizamos el BOM a una versión estable compatible con SDK 34
+    // Firebase BOM actualizado para compatibilidad con las últimas dependencias de AndroidX
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1' 
