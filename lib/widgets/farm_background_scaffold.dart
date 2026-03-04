@@ -10,7 +10,8 @@ class FarmBackgroundScaffold extends StatelessWidget {
     this.showBack = true,
     this.showHome = true,
     this.actions,
-    this.backgroundColor, 
+    this.backgroundColor,
+    this.bottomNavigationBar, // <--- NUEVO PARÁMETRO
   });
 
   final String title;
@@ -18,36 +19,38 @@ class FarmBackgroundScaffold extends StatelessWidget {
   final bool showBack;
   final bool showHome;
   final List<Widget>? actions;
-  final Color? backgroundColor; 
+  final Color? backgroundColor;
+  final Widget? bottomNavigationBar; // <--- DEFINICIÓN DEL PARÁMETRO
 
-  static const String _bgAsset =
-      'assets/images/fondo nuevo.png';
+  static const String _bgAsset = 'assets/images/fondo nuevo.png';
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    
-    // CAMBIO AQUÍ: Bajamos el alpha de 0.72 a 0.20 para que la imagen se vea clara
-    // O usamos Colors.transparent si queremos ver la foto original pura.
+    // Overlay más transparente para que luzca el fondo
     final overlayColor = backgroundColor ?? Colors.black.withOpacity(0.25);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent,
+      // PASAMOS EL PARÁMETRO AL SCAFFOLD REAL
+      bottomNavigationBar: bottomNavigationBar, 
       appBar: AppBar(
-        // Sombra en el texto para que se lea bien sobre la imagen
-        title: Text(title, style: const TextStyle(
-          color: Colors.white, 
-          fontWeight: FontWeight.bold,
-          shadows: [Shadow(blurRadius: 8, color: Colors.black)]
-        )),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            shadows: [Shadow(blurRadius: 8, color: Colors.black)],
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         leading: showBack
             ? IconButton(
                 onPressed: () => context.pop(),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                tooltip: 'Back',
+                tooltip: 'Atrás',
               )
             : null,
         actions: [
@@ -55,7 +58,7 @@ class FarmBackgroundScaffold extends StatelessWidget {
             IconButton(
               onPressed: () => context.go(AppRoutes.menu),
               icon: const Icon(Icons.home_rounded, color: Colors.white),
-              tooltip: 'Home',
+              tooltip: 'Inicio',
             ),
           ...?actions,
           const SizedBox(width: 6),
@@ -64,12 +67,16 @@ class FarmBackgroundScaffold extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Imagen de fondo
-          Image.asset(_bgAsset, fit: BoxFit.cover),
-          
-          // 2. Capa de color (Overlay) - Ahora más transparente
+          // 1. Imagen de fondo (Asegúrate de que la ruta sea correcta)
+          Image.asset(
+            _bgAsset,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(color: Colors.black),
+          ),
+
+          // 2. Capa de color (Overlay)
           Container(color: overlayColor),
-          
+
           // 3. Contenido de la pantalla
           SafeArea(child: child),
         ],
