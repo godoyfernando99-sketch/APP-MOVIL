@@ -28,7 +28,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
   bool _isSaving = false;
   String? _userObservations;
 
-  /// Genera un PDF profesional con la foto, datos del diagnóstico y Disclaimer
+  /// Genera un PDF profesional incluyendo el Microchip
   Future<void> _shareAsProfessionalPDF(ScanResult result, String breedDisplay) async {
     final pdf = pw.Document();
     
@@ -49,81 +49,75 @@ class _ScanResultPageState extends State<ScanResultPage> {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Encabezado Profesional
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text("ScannerAnimal IA", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
-                  pw.Text("FECHA: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}"),
+                  pw.Text("ScannerAnimal IA - Reporte Oficial", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                  pw.Text("ID: ${result.id.substring(0,8)}"),
                 ],
               ),
               pw.Divider(thickness: 2, color: PdfColors.blue800),
-              pw.SizedBox(height: 20),
+              pw.SizedBox(height: 15),
 
-              // Ficha del Animal
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   if (animalImage != null)
                     pw.Container(
-                      width: 130,
-                      height: 130,
-                      decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400)),
-                      child: pw.Image(animalImage, fit: pw.BoxFit.cover),
+                      width: 120,
+                      height: 120,
+                      decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
+                      child: pw.ClipRRect(borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)), child: pw.Image(animalImage, fit: pw.BoxFit.cover)),
                     ),
                   pw.SizedBox(width: 20),
                   pw.Expanded(
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text("IDENTIFICACIÓN", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                        pw.Text("DATOS DE IDENTIFICACIÓN", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.grey700)),
                         pw.SizedBox(height: 5),
-                        pw.Text("Especie: ${result.detectedSpecies ?? result.animalCategory}"),
-                        pw.Text("Raza: $breedDisplay"),
-                        pw.Text("Estado: ${result.healthStatus.toUpperCase()}"),
-                        if (result.isPregnant == true)
-                          pw.Text("Gestación: ${result.gestationWeeks}", style: pw.TextStyle(color: PdfColors.pink700, fontWeight: pw.FontWeight.bold)),
+                        _pdfRow("Especie:", result.detectedSpecies ?? "N/A"),
+                        _pdfRow("Raza:", breedDisplay),
+                        _pdfRow("Microchip:", result.microchipNumber ?? "No detectado", isBold: result.microchipNumber != null),
+                        _pdfRow("Estado:", result.healthStatus.toUpperCase()),
                       ],
                     ),
                   ),
                 ],
               ),
 
-              pw.SizedBox(height: 25),
-              pw.Text("TRATAMIENTO Y PRESCRIPCIÓN SUGERIDA", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: PdfColors.blue900)),
+              pw.SizedBox(height: 20),
+              pw.Text("DIAGNÓSTICO Y TRATAMIENTO", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: PdfColors.blue900)),
               pw.Divider(color: PdfColors.blue100),
 
-              // Detalles Médicos con los nuevos campos
               pw.SizedBox(height: 10),
-              _pdfRow("Diagnóstico:", result.diseaseName ?? 'Ninguna detectada'),
-              _pdfRow("Medicamento:", result.medicationName ?? 'N/A'),
-              _pdfRow("Dosis Sugerida:", result.medicationDose ?? 'N/A', isBold: true),
-              _pdfRow("Alimentación:", result.foodRecommendation ?? "Sin dieta específica"),
+              _pdfRow("Hallazgo:", result.diseaseName ?? 'Sano'),
+              _pdfRow("Plan Terapéutico:", result.medicationName ?? 'N/A'),
+              _pdfRow("Dosificación:", result.medicationDose ?? 'Consultar Veterinario', isBold: true),
+              _pdfRow("Nutrición:", result.foodRecommendation ?? "Dieta habitual"),
+
+              if (result.isPregnant == true) ...[
+                 pw.SizedBox(height: 10),
+                 pw.Container(
+                   padding: const pw.EdgeInsets.all(5),
+                   color: PdfColors.pink50,
+                   child: _pdfRow("ESTADO GESTACIONAL:", result.gestationWeeks ?? "Confirmado", isBold: true),
+                 )
+              ],
 
               pw.SizedBox(height: 20),
-              pw.Text("NOTAS ADICIONALES:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
-              pw.Text(_userObservations ?? result.observations ?? "Sin observaciones."),
+              pw.Text("OBSERVACIONES TÉCNICAS:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+              pw.Text(result.observations ?? "Analizado mediante visión artificial Vertex AI.", style: const pw.TextStyle(fontSize: 9)),
 
               pw.Spacer(),
               
-              // DISCLAIMER LEGAL OBLIGATORIO
               pw.Container(
                 padding: const pw.EdgeInsets.all(8),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.red50,
-                  border: pw.Border.all(color: PdfColors.red900, width: 0.5),
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))
-                ),
-                child: pw.Column(
-                  children: [
-                    pw.Text("DESCARGO DE RESPONSABILIDAD LEGAL", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.red900)),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                      "Este reporte es una guía informativa generada por IA. Las dosis y medicamentos mencionados son sugerencias referenciales. Es OBLIGATORIO consultar a un veterinario antes de cualquier administración. El usuario asume toda la responsabilidad del uso de esta información.",
-                      textAlign: pw.TextAlign.justify,
-                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.black),
-                    ),
-                  ],
+                decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+                child: pw.Text(
+                  "AVISO: Este documento es un informe preliminar generado por IA. No sustituye el juicio clínico de un médico veterinario colegiado. Las dosis son sugerencias basadas en promedios.",
+                  textAlign: pw.TextAlign.center,
+                  style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
                 ),
               ),
             ],
@@ -133,24 +127,24 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
 
     final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/Reporte_${result.id}.pdf');
+    final file = File('${directory.path}/ScannerAnimal_${result.id}.pdf');
     await file.writeAsBytes(await pdf.save());
-    await Share.shareXFiles([XFile(file.path)], text: 'Reporte Veterinario IA - ScannerAnimal');
+    await Share.shareXFiles([XFile(file.path)], text: 'Informe Veterinario - ${result.detectedBreed}');
   }
 
   pw.Widget _pdfRow(String label, String value, {bool isBold = false}) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      padding: const pw.EdgeInsets.symmetric(vertical: 1),
       child: pw.Row(
         children: [
-          pw.SizedBox(width: 100, child: pw.Text(label, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
-          pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 10, fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal))),
+          pw.SizedBox(width: 80, child: pw.Text(label, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
+          pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 9, fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal))),
         ],
       ),
     );
   }
 
-  // --- MÉTODOS DE GUARDADO Y DIÁLOGOS (Se mantienen igual) ---
+  // --- Lógica de persistencia ---
 
   Future<void> _showObservationsAndSave() async {
     if (!mounted || widget.payload is! ScanResult) return;
@@ -161,38 +155,24 @@ class _ScanResultPageState extends State<ScanResultPage> {
       builder: (context) {
         final controller = TextEditingController(text: _userObservations);
         return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Notas Finales", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("¿Deseas agregar algún detalle extra sobre el animal?", 
-                style: TextStyle(color: Colors.white70, fontSize: 13)),
-              const SizedBox(height: 15),
-              TextField(
-                controller: controller,
-                maxLines: 3,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: "Ej: Se aplicó la inyección...",
-                  hintStyle: const TextStyle(color: Colors.white30),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25), side: const BorderSide(color: Colors.white10)),
+          title: const Text("Notas de Campo", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: controller,
+            maxLines: 3,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: "Ej: Se observó mejoría tras la dosis...",
+              hintStyle: const TextStyle(color: Colors.white24),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.05),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+            ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, ""), 
-              child: const Text("SIN NOTAS", style: TextStyle(color: Colors.white54))
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, controller.text), 
-              child: const Text("GUARDAR")
-            ),
+            TextButton(onPressed: () => Navigator.pop(context, ""), child: const Text("SALTAR", style: TextStyle(color: Colors.white38))),
+            ElevatedButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("GUARDAR")),
           ],
         );
       },
@@ -206,19 +186,14 @@ class _ScanResultPageState extends State<ScanResultPage> {
   }
 
   Future<void> _saveFinalResult() async {
-    if (widget.payload is! ScanResult) return;
     final baseResult = widget.payload as ScanResult;
     final finalResult = baseResult.copyWith(observations: _userObservations);
-    
-    final historyController = context.read<HistoryController>();
-    final authController = context.read<AuthController>();
-
     setState(() => _isSaving = true);
     try {
-      await historyController.add(finalResult);
-      await authController.useFreeScan();
+      await context.read<HistoryController>().add(finalResult);
+      await context.read<AuthController>().useFreeScan();
     } catch (e) {
-      debugPrint("Error al finalizar: $e");
+      debugPrint("Error guardando: $e");
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -226,130 +201,81 @@ class _ScanResultPageState extends State<ScanResultPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.payload is String && widget.payload.toString().contains('no es una imagen de un animal')) {
-      return _buildErrorState(widget.payload.toString());
-    }
-
-    if (widget.payload is! ScanResult) {
-      return _buildGeneralErrorState();
-    }
+    if (widget.payload is! ScanResult) return _buildGeneralErrorState();
 
     final result = widget.payload as ScanResult;
-    final String health = (result.healthStatus).toString().toLowerCase();
-    final String displayBreed = result.detectedBreed ?? "No identificada";
-    
-    Color statusColor = Colors.orangeAccent;
-    IconData statusIcon = Icons.warning;
-
-    if (health.contains('buen')) {
-      statusColor = Colors.greenAccent;
-      statusIcon = Icons.check_circle;
-    } else if (health.contains('mal') || health.contains('crit') || health.contains('enfer')) {
-      statusColor = Colors.redAccent;
-      statusIcon = Icons.error;
-    }
+    final bool hasMicrochip = result.microchipNumber != null;
+    final Color statusColor = result.healthStatus.toLowerCase().contains('buen') ? Colors.greenAccent : Colors.orangeAccent;
 
     return FarmBackgroundScaffold(
-      title: 'RESULTADO IA',
+      title: 'ANÁLISIS COMPLETADO',
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: statusColor.withOpacity(0.4), width: 2),
-          ),
-          child: Column(
-            children: [
-              Icon(statusIcon, color: statusColor, size: 70),
-              const SizedBox(height: 10),
-              Text(result.healthStatus.toUpperCase(), 
-                style: TextStyle(color: statusColor, fontSize: 24, fontWeight: FontWeight.bold)),
-              const Divider(color: Colors.white24, height: 40),
-              
-              _buildResultRow('Especie:', result.detectedSpecies ?? 'Animal', Icons.pets),
-              _buildResultRow('Raza:', displayBreed, Icons.category),
-              
-              if (result.isPregnant == true)
-                _buildResultRow('Gestación:', result.gestationWeeks ?? 'Detectada', Icons.favorite, valueColor: Colors.pinkAccent),
-              
-              _buildResultRow('Enfermedad:', result.diseaseName ?? 'Ninguna', Icons.bug_report),
-              _buildResultRow('Medicamento:', result.medicationName ?? 'N/A', Icons.medication),
-              _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.colorize, valueColor: Colors.greenAccent),
-              
-              const SizedBox(height: 20),
-              
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text("RECOMENDACIÓN NUTRICIONAL:", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Column(
+          children: [
+            // TARJETA DE MICROCHIP (Nueva sección destacada)
+            if (hasMicrochip)
+              _buildMicrochipBanner(result.microchipNumber!),
+
+            const SizedBox(height: 15),
+
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
               ),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  result.foodRecommendation ?? "Sin recomendaciones adicionales",
-                  style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic, fontSize: 13, height: 1.4)
-                ),
-              ),
-              
-              const SizedBox(height: 30),
-              Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _shareAsProfessionalPDF(result, displayBreed),
-                      icon: const Icon(Icons.picture_as_pdf, size: 18),
-                      label: const Text("PDF / WHATSAPP"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white24),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _showObservationsAndSave,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: statusColor.withOpacity(0.8),
-                        foregroundColor: Colors.black,
-                        textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      child: _isSaving 
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) 
-                        : const Text("FINALIZAR"),
-                    ),
-                  ),
+                  _buildHeader(result, statusColor),
+                  const Divider(color: Colors.white10, height: 40),
+                  
+                  _buildResultRow('Identidad:', result.detectedBreed, Icons.info_outline),
+                  _buildResultRow('Categoría:', result.detectedSpecies, Icons.pets),
+                  
+                  if (result.isPregnant == true)
+                    _buildResultRow('Gestación:', result.gestationWeeks, Icons.auto_awesome, valueColor: Colors.pinkAccent),
+                  
+                  _buildResultRow('Hallazgo:', result.diseaseName, Icons.healing_outlined),
+                  _buildResultRow('Prescripción:', result.medicationName, Icons.medication_liquid_rounded),
+                  _buildResultRow('Dosis:', result.medicationDose, Icons.straighten_rounded, valueColor: Colors.greenAccent),
+                  
+                  const SizedBox(height: 25),
+                  _buildNutritionalBox(result.foodRecommendation),
+                  
+                  const SizedBox(height: 35),
+                  _buildActionButtons(result),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 40),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildResultRow(String label, String value, IconData icon, {Color? valueColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+  Widget _buildMicrochipBanner(String id) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Colors.blue.shade900, Colors.blue.shade700]),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 10)],
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.blueAccent, size: 20),
-          const SizedBox(width: 10),
-          Text(label, style: const TextStyle(color: Colors.white60)),
-          const SizedBox(width: 10),
+          const Icon(Icons.nfc_rounded, color: Colors.white, size: 30),
+          const SizedBox(width: 15),
           Expanded(
-            child: Text(
-              value, 
-              textAlign: TextAlign.right,
-              style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("MICROCHIP DETECTADO", style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                Text(id, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              ],
             ),
           ),
         ],
@@ -357,44 +283,81 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
-  Widget _buildGeneralErrorState() {
-    return FarmBackgroundScaffold(
-      title: 'ERROR',
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.orangeAccent, size: 80),
-            const SizedBox(height: 16),
-            const Text("Error de interpretación", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            ElevatedButton(onPressed: () => context.pop(), child: const Text("REINTENTAR"))
-          ],
+  Widget _buildHeader(ScanResult result, Color color) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+          child: Icon(Icons.analytics_outlined, color: color, size: 50),
         ),
+        const SizedBox(height: 15),
+        Text("ESTADO: ${result.healthStatus.toUpperCase()}", 
+          style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1)),
+      ],
+    );
+  }
+
+  Widget _buildNutritionalBox(String? text) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("RECOMENDACIÓN NUTRICIONAL", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(15)),
+          child: Text(text ?? "Sin dieta específica.", style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(ScanResult result) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextButton.icon(
+            onPressed: () => _shareAsProfessionalPDF(result, result.detectedBreed),
+            icon: const Icon(Icons.share_rounded, size: 18),
+            label: const Text("COMPARTIR"),
+            style: TextButton.styleFrom(foregroundColor: Colors.white70),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: _isSaving ? null : _showObservationsAndSave,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.greenAccent.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              padding: const EdgeInsets.symmetric(vertical: 15),
+            ),
+            child: const Text("FINALIZAR", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResultRow(String label, String? value, IconData icon, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blueAccent.withOpacity(0.7), size: 18),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+          const Spacer(),
+          Text(value ?? 'N/A', style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        ],
       ),
     );
   }
 
-  Widget _buildErrorState(String message) {
-    return FarmBackgroundScaffold(
-      title: 'AVISO',
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.no_photography, color: Colors.redAccent, size: 80),
-            const SizedBox(height: 16),
-            const Text("Imagen no válida", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(onPressed: () => context.pop(), child: const Text("VOLVER A INTENTAR"))
-          ],
-        ),
-      ),
-    );
+  Widget _buildGeneralErrorState() {
+    return FarmBackgroundScaffold(title: 'ERROR', child: Center(child: ElevatedButton(onPressed: () => context.pop(), child: const Text("REINTENTAR"))));
   }
 }
