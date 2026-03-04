@@ -80,7 +80,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
             // BOTÓN MICROCHIP: Envía a captura con instrucción de detectar ID
             _ScanButton(
-              title: "Identificar por Microchip",
+              title: "Escaneo por Microchip",
               subtitle: "Detectar ID mediante fotos y proximidad",
               icon: Icons.nfc_rounded,
               color: Colors.blueAccent,
@@ -91,7 +91,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
             // BOTÓN VISUAL: Envía a captura normal
             _ScanButton(
-              title: "Escaneo Visual (IA)",
+              title: "Escaneo Visual",
               subtitle: "Análisis completo por fotografía",
               icon: Icons.auto_awesome_rounded,
               color: Colors.greenAccent,
