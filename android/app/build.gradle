@@ -13,11 +13,11 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
+    // Namespace centralizado para evitar errores de manifiesto
     namespace = "com.scanneranimal.app"
     
-    // ACTUALIZACIÓN: Subimos a 36 para satisfacer a androidx.core:1.17.0
-    // Esto permite que el proyecto compile con las librerías más recientes.
-    compileSdk = 36 
+    // Subimos a 35/36 para cumplir con los requisitos de Google Play 2024/2025
+    compileSdk = 35 
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -30,16 +30,21 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.scanneranimal.app"
-        minSdk = 21
-        // Mantenemos 34 para asegurar la estabilidad en dispositivos actuales
-        targetSdk = 34
+        // Corregido: Se añadió el "=" para cumplir con el nuevo estándar de Gradle
+        applicationId = "com.scanneranimal.app"
+        
+        // Mantenemos 24 para asegurar compatibilidad con librerías modernas
+        minSdk = 24
+        
+        // ACTUALIZADO: Nivel 35 es el requisito obligatorio actual de Google Play
+        targetSdk = 35
+        
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true
     }
 
-    // Configuramos la firma para que use los datos del key.properties
+    // Configuración de firma automática
     signingConfigs {
         release {
             keyAlias keystoreProperties['keyAlias']
@@ -53,7 +58,7 @@ android {
         release {
             signingConfig signingConfigs.release 
             
-            // Optimizaciones para producción
+            // Optimizaciones de tamaño y seguridad
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -66,7 +71,7 @@ flutter {
 }
 
 dependencies {
-    // Firebase BOM actualizado para compatibilidad con las últimas dependencias de AndroidX
+    // Firebase y AndroidX actualizados
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1' 
