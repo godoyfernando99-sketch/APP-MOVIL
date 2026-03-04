@@ -36,7 +36,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
     }
   }
 
-  // Lógica CORREGIDA para NfcManager 4.x.x
+  // Lógica CORREGIDA para NfcManager 4.x.x con Cast explícito
   void _startNfcSession() async {
     bool isAvailable = await NfcManager.instance.isAvailable();
     if (!isAvailable) {
@@ -44,18 +44,17 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       return;
     }
 
-    // 1. Añadimos pollingOptions (Obligatorio en 4.x.x)
     NfcManager.instance.startSession(
       pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
       onDiscovered: (NfcTag tag) async {
         try {
-          // 2. CORRECCIÓN: Convertimos tag.data a Map para poder usar el operador []
-          final Map<String, dynamic> data = Map<String, dynamic>.from(tag.data);
-          
+          // LA CORRECCIÓN CLAVE: Añadimos 'as Map' antes de crear el Map de String/dynamic
+          final Map<String, dynamic> data = Map<String, dynamic>.from(tag.data as Map);
+
           final nfcData = data['mifare'] ?? data['nfca'] ?? data['iso7816'];
-          
-          // El identificador suele venir como List<int> dentro de los datos del protocolo
-          final List<int>? identifier = nfcData is Map ? nfcData['identifier'] : null;
+
+          // Verificamos si nfcData es un Map para extraer el identificador
+          final List<int>? identifier = (nfcData is Map) ? nfcData['identifier'] : null;
 
           if (identifier != null) {
             if (mounted) {
@@ -66,7 +65,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                     .toUpperCase();
               });
             }
-            
+
             await NfcManager.instance.stopSession();
 
             if (mounted) {
@@ -87,12 +86,11 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
 
   @override
   void dispose() {
-    // Detenemos la sesión de forma segura
     NfcManager.instance.stopSession().catchError((_) {});
     super.dispose();
   }
 
-  // --- El resto del código se mantiene igual pero con limpiezas menores ---
+  // --- Lógica de Fotos ---
 
   Future<void> _pickImageSource() async {
     if (_photos.length >= 3) return;
