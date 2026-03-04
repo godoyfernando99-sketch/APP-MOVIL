@@ -10,57 +10,60 @@ class AiDiagnosisService {
     required String animalId,
     required String animalCategory,
     required String mode,
-    String? microchipNumber,
+    String? microchipId, // Cambiado de microchipNumber para coincidir con el llamado de la UI
     required List<Uint8List> photos,
   }) async {
     try {
-      // Usamos Gemini 2.0 Flash que es excelente siguiendo instrucciones complejas
+      // Usamos Gemini 2.0 Flash optimizado para visión y medicina
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-2.0-flash',
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
-          temperature: 0.0, // Bajamos a 0.0 para eliminar cualquier alucinación creativa
+          temperature: 0.1, // Un poco de flexibilidad para descriptores técnicos
           topP: 0.95,
         ),
       );
 
-      // --- PROMPT DE NIVEL EXPERTO (VETERINARY ONCOLOGY & OBSTETRICS) ---
+      // El microchipId se incluye en el contexto si existe
+      final String idContext = (microchipId != null) 
+          ? "IDENTIFICADOR DETECTADO POR NFC: $microchipId. Úsalo como ID oficial." 
+          : "Sin identificador electrónico detectado.";
+
+      // --- PROMPT DE NIVEL EXPERTO ---
       final prompt = """
-      ACTÚA COMO: Un sistema de visión artificial veterinario de alta precisión especializado en grandes y pequeñas especies.
-      OBJETIVO: Diagnosticar la categoría: $animalCategory basada en imágenes.
+      ACTÚA COMO: Un sistema de visión artificial veterinario de alta precisión.
+      CONTEXTO DE IDENTIDAD: $idContext
+      OBJETIVO: Diagnosticar la categoría: $animalCategory basada en las imágenes proporcionadas.
 
-      INSTRUCCIONES CRÍTICAS DE ANÁLISIS:
-      1. ANÁLISIS DE GESTACIÓN (OBSTETRICIA):
-         - Observa la distensión del flanco derecho, descenso de la ubre y edema pre-parto.
-         - Si detectas gestación, estima el tiempo basándote en la morfología externa:
-           * Bovinos: Indica meses (ej. "7 meses / 210 días").
-           * Caninos/Felinos: Indica semanas (ej. "6 semanas / 42 días").
-         - Sé específico: "Gestación temprana", "Gestación a término" o "No gestante".
+      INSTRUCCIONES CRÍTICAS:
+      1. ANÁLISIS DE GESTACIÓN:
+         - Evaluar distensión abdominal, estado de la glándula mamaria y postura.
+         - Reportar tiempo estimado: Meses para grandes especies, Semanas para mascotas.
 
-      2. TRAUMATOLOGÍA Y LESIONES:
-         - Analiza la angulación de las patas (desviaciones óseas), inflamación de articulaciones (nudos, corvejones) y heridas abiertas.
-         - Clasifica fracturas visibles o cojeras evidentes por postura.
+      2. EXAMEN FÍSICO VISUAL:
+         - Detectar anomalías cutáneas, inflamación articular o desnutrición.
+         - Identificar la raza con la mayor precisión posible.
 
-      3. FARMACOLOGÍA Y DOSIS (ESTRICTO):
-         - Si hay enfermedad, indica el principio activo Y un nombre comercial común.
-         - FORMATO DE DOSIS: Debe ser una fórmula aplicable. Ej: "1 ml por cada 20 kg de peso vivo".
-         - VÍA: Especificar IM (Intramuscular), SC (Subcutánea) u Oral.
+      3. RECOMENDACIÓN FARMACOLÓGICA:
+         - Si hay una patología evidente, sugiere Principio Activo + Nombre Comercial.
+         - DOSIS: Obligatorio en formato "X ml por cada X kg".
+         - VÍA DE ADMINISTRACIÓN: IM, SC, u Oral.
 
       REGLAS DE SEGURIDAD:
-      - Si la imagen NO es un animal real o no hay suficiente claridad para un diagnóstico médico, responde {"is_animal": false}.
+      - Si las imágenes no muestran un animal real, responde {"is_animal": false}.
 
-      ESQUEMA DE RESPUESTA JSON (Sigue este formato exacto):
+      ESQUEMA DE RESPUESTA JSON:
       {
         "is_animal": true,
         "healthStatus": "crítico | regular | bueno",
         "detectedBreed": "Raza específica",
         "isPregnant": true,
-        "gestationWeeks": "X semanas/meses (estimado preciso)",
-        "diseaseName": "Nombre técnico de la patología o 'Sano'",
-        "medicationName": "Principio Activo + Nombre Comercial (Vía)",
-        "medicationDose": "X ml por cada X kg",
-        "foodRecommendation": "Dieta terapéutica recomendada",
-        "observations": "Resumen técnico. Advertir que el peso exacto es obligatorio antes de inyectar."
+        "gestationWeeks": "X semanas/meses (estimado)",
+        "diseaseName": "Nombre técnico o 'Sano'",
+        "medicationName": "Medicamento (Vía)",
+        "medicationDose": "Fórmula de dosificación",
+        "foodRecommendation": "Dieta específica",
+        "observations": "Análisis técnico breve."
       }
       """;
       
@@ -74,27 +77,28 @@ class AiDiagnosisService {
       final response = await model.generateContent(content);
       final String? rawText = response.text;
       
-      if (rawText == null) throw 'Error: El motor de IA no generó datos.';
+      if (rawText == null) throw 'Error: La IA no devolvió datos.';
 
-      // Limpieza de formato Markdown
+      // Limpieza y parseo
       final cleanJson = rawText.trim().replaceAll('```json', '').replaceAll('```', '');
       final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
 
       if (aiJson['is_animal'] == false) {
-        throw 'La imagen no es lo suficientemente clara o no es un animal. Por favor, intenta de nuevo.';
+        throw 'No se detectó un animal claro en las fotos. Por favor, captura imágenes nítidas.';
       }
       
       final now = DateTime.now();
 
+      // Construcción del objeto final para el historial y resultados
       return ScanResult(
         id: now.millisecondsSinceEpoch.toString(),
-        ownerId: 'user_test',
+        ownerId: 'user_active',
         createdAt: now,
         updatedAt: now,
         animalId: animalId,
         animalCategory: animalCategory,
         mode: mode,
-        microchipNumber: microchipNumber,
+        microchipNumber: microchipId, // Se guarda el ID obtenido por NFC
         photosBase64: photos.map((p) => base64Encode(p)).toList(),
         healthStatus: aiJson['healthStatus'] ?? 'regular',
         detectedBreed: aiJson['detectedBreed'] ?? 'Desconocida',
@@ -108,7 +112,7 @@ class AiDiagnosisService {
         observations: aiJson['observations'] ?? 'Analizado con Vertex AI Pro-Vision.',
       );
     } catch (e) {
-      print('🚨 ERROR CRÍTICO IA: $e');
+      print('🚨 ERROR EN SERVICIO IA: $e');
       rethrow;
     }
   }
