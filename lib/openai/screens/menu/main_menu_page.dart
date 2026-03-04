@@ -2,298 +2,157 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-// Import corregido con ruta relativa para asegurar compatibilidad en GitHub
 import '../../../app/auth/auth_controller.dart';
 import '../../../../nav.dart';
 import '../../../../widgets/farm_background_scaffold.dart';
 
-class MainMenuPage extends StatelessWidget {
+class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
 
-  void _handleVipSupport(BuildContext context, bool isPro) {
-    if (isPro) {
-      context.push(AppRoutes.support);
-    } else {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: Colors.grey[900],
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.stars_rounded, color: Colors.amber),
-              SizedBox(width: 10),
-              Text("Exclusivo PRO", style: TextStyle(color: Colors.white)),
-            ],
-          ),
-          content: const Text(
-            "El soporte técnico prioritario con veterinarios expertos es una función exclusiva para usuarios con el Plan PRO activo.",
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("ENTENDIDO", style: TextStyle(color: Colors.white54)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber.shade700,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () {
-                Navigator.pop(context);
-                context.push(AppRoutes.subscriptions);
-              },
-              child: const Text("OBTENER PRO", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
+  @override
+  State<MainMenuPage> createState() => _MainMenuPageState();
+}
+
+class _MainMenuPageState extends State<MainMenuPage> {
+  int _selectedIndex = 0;
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    
+    switch (index) {
+      case 1: context.push(AppRoutes.history); break;
+      case 2: context.push(AppRoutes.medications); break;
+      case 3: context.push(AppRoutes.diseases); break;
+      case 4: context.push(AppRoutes.subscriptions); break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    // Usamos el import relativo de AuthController
     final authController = context.watch<AuthController>();
     final user = authController.currentUser;
-    
-    final String currentPlan = user?.subscriptionPlan?.toLowerCase() ?? 'free';
-    final bool isUserPro = currentPlan == 'pro';
-    final int scansLeft = user?.scansRemaining ?? 0;
 
     return FarmBackgroundScaffold(
       title: 'ScannerAnimal IA',
-      backgroundColor: Colors.transparent, 
-      actions: [
-        IconButton(
-          onPressed: () => context.push(AppRoutes.profile),
-          icon: const Icon(Icons.account_circle_rounded, size: 30),
+      backgroundColor: Colors.transparent,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: Colors.white12, width: 0.5)),
         ),
-      ],
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.black.withOpacity(0.95),
+          selectedItemColor: Colors.greenAccent,
+          unselectedItemColor: Colors.white54,
+          elevation: 0,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Inicio'),
+            BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Historial'),
+            BottomNavigationBarItem(icon: Icon(Icons.vaccines_rounded), label: 'Medicinas'),
+            BottomNavigationBarItem(icon: Icon(Icons.sick_rounded), label: 'Salud'),
+            BottomNavigationBarItem(icon: Icon(Icons.star_rounded), label: 'PRO'),
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildWelcomeHeader(t, user?.fullName ?? user?.username ?? 'Usuario'),
-            const SizedBox(height: 16),
-
-            if (isUserPro) _buildProInfoBanner() else _buildFreeScansBanner(scansLeft),
+            const SizedBox(height: 40),
+            _buildHeader(user?.fullName ?? user?.username ?? 'Usuario'),
+            const SizedBox(height: 50),
             
-            const SizedBox(height: 24),
-            _buildSectionTitle(t, '¿Qué vamos a analizar hoy?'),
-            const SizedBox(height: 16),
-
-            _CategoryButton(
-              title: 'MASCOTAS',
-              subtitle: 'Perros, gatos, conejos...',
-              icon: Icons.pets_rounded,
-              color: Colors.orange.shade700.withOpacity(0.9),
-              onTap: () => context.push('${AppRoutes.animals}/home'),
+            const Text(
+              "MODO DE ESCANEO",
+              style: TextStyle(
+                color: Colors.white70, 
+                fontWeight: FontWeight.bold, 
+                letterSpacing: 2,
+                fontSize: 13
+              ),
             ),
-            const SizedBox(height: 16),
-            _CategoryButton(
-              title: 'GANADERIA',
-              subtitle: 'Vacas, cerdos, caballos...',
-              icon: Icons.agriculture_rounded,
-              color: Colors.green.shade700.withOpacity(0.9),
-              onTap: () => context.push('${AppRoutes.animals}/farm'),
-            ),
+            const SizedBox(height: 25),
 
-            const Divider(height: 48, color: Colors.white24),
-            _buildSectionTitle(t, 'Servicios VIP'),
-            const SizedBox(height: 16),
-            
-            _CategoryButton(
-              title: 'Soporte VIP Prioritario',
-              subtitle: isUserPro ? 'Chat activo con veterinarios' : 'Desbloquea con el Plan PRO',
-              icon: Icons.support_agent_rounded,
-              color: isUserPro ? Colors.amber.shade800.withOpacity(0.9) : Colors.grey.withOpacity(0.5),
-              onTap: () => _handleVipSupport(context, isUserPro),
+            // BOTÓN MICROCHIP: Envía a captura con instrucción de detectar ID
+            _ScanButton(
+              title: "Identificar por Microchip",
+              subtitle: "Detectar ID mediante fotos y proximidad",
+              icon: Icons.nfc_rounded,
+              color: Colors.blueAccent,
+              onTap: () => context.push(AppRoutes.capture, extra: {'type': 'microchip', 'step': 'photos'}),
             ),
 
-            const Divider(height: 48, color: Colors.white24),
-            _buildSectionTitle(t, 'Biblioteca & Historial'),
             const SizedBox(height: 16),
-            
-            // Fila superior: Historial y Enfermedades
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickActionCard(
-                    title: 'Historial',
-                    icon: Icons.history_rounded,
-                    color: Colors.blue.shade300,
-                    onTap: () => context.push(AppRoutes.history),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _QuickActionCard(
-                    title: 'Enfermedades',
-                    icon: Icons.sick_rounded,
-                    color: Colors.red.shade400,
-                    onTap: () => context.push(AppRoutes.diseases),
-                  ),
-                ),
-              ],
+
+            // BOTÓN VISUAL: Envía a captura normal
+            _ScanButton(
+              title: "Escaneo Visual (IA)",
+              subtitle: "Análisis completo por fotografía",
+              icon: Icons.auto_awesome_rounded,
+              color: Colors.greenAccent,
+              onTap: () => context.push(AppRoutes.capture, extra: {'type': 'visual'}),
             ),
-            const SizedBox(height: 12),
-            
-            // Fila inferior: Medicamentos y Suscripción
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickActionCard(
-                    title: 'Medicamentos', // <--- BOTÓN AGREGADO
-                    icon: Icons.vaccines_rounded,
-                    color: Colors.purpleAccent,
-                    onTap: () => context.push(AppRoutes.medications),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _QuickActionCard(
-                    title: 'Suscripción',
-                    icon: Icons.star_rounded,
-                    color: Colors.amber.shade400,
-                    onTap: () => context.push(AppRoutes.subscriptions),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFreeScansBanner(int count) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.redAccent.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.speed_rounded, color: Colors.redAccent),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              count > 0 ? "Te quedan $count escaneos disponibles." : "Escaneos agotados. ¡Pásate a PRO!",
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProInfoBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.verified_user_rounded, color: Colors.amber, size: 20),
-          SizedBox(width: 12),
-          Text("USUARIO PRO - ACCESO TOTAL", style: TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(ThemeData t, String title) {
-    return Text(title, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.white));
-  }
-
-  Widget _buildWelcomeHeader(ThemeData t, String name) {
+  Widget _buildHeader(String name) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('¡Hola, $name!', style: t.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
-        const Text('Tu asistente veterinario con IA listo.', style: TextStyle(color: Colors.white70)),
+        Text(
+          '¡Hola, $name!',
+          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          '¿Cómo identificaremos a la mascota hoy?',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white60, fontSize: 15),
+        ),
       ],
     );
   }
 }
 
-// --- COMPONENTES AUXILIARES ---
-class _CategoryButton extends StatelessWidget {
+class _ScanButton extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
 
-  const _CategoryButton({required this.title, required this.subtitle, required this.icon, required this.color, required this.onTap});
+  const _ScanButton({
+    required this.title, 
+    required this.subtitle, 
+    required this.icon, 
+    required this.color, 
+    required this.onTap
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
-        child: Row(
-          children: [
-            Icon(icon, size: 40, color: Colors.white),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
-          ],
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
       ),
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickActionCard({required this.title, required this.icon, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: Colors.black26,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: color.withOpacity(0.5))),
-      child: InkWell(
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
-              Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 12)),
-            ],
-          ),
-        ),
+        leading: Icon(icon, color: color, size: 35),
+        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+        subtitle: Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 16),
       ),
     );
   }
 }
+                
