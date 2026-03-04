@@ -2,14 +2,14 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:nfc_manager/nfc_manager.dart'; // Importante para el microchip
+import 'package:nfc_manager/nfc_manager.dart'; 
 import 'package:scanneranimal/nav.dart';
 import 'package:scanneranimal/openai/ai_diagnosis_service.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 
 class ScanCapturePage extends StatefulWidget {
   final String animalId;
-  final String mode; // 'visual' o 'microchip'
+  final String mode; 
 
   const ScanCapturePage({
     super.key,
@@ -24,65 +24,75 @@ class ScanCapturePage extends StatefulWidget {
 class _ScanCapturePageState extends State<ScanCapturePage> {
   final List<Uint8List> _photos = [];
   bool _isProcessing = false;
-  String? _detectedMicrochipId; // Guardará el ID del chip detectado
+  String? _detectedMicrochipId; 
   bool _isNfcSupported = true;
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    // Si entramos en modo microchip, activamos el sensor NFC inmediatamente
     if (widget.mode == 'microchip') {
       _startNfcSession();
     }
   }
 
-  // Lógica para detectar el Microchip por proximidad (NFC)
+  // Lógica CORREGIDA para NfcManager 4.x.x
   void _startNfcSession() async {
     bool isAvailable = await NfcManager.instance.isAvailable();
     if (!isAvailable) {
-      setState(() => _isNfcSupported = false);
+      if (mounted) setState(() => _isNfcSupported = false);
       return;
     }
 
-    NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
-      try {
-        // Extraemos el identificador único del chip (ID de hardware)
-        final nfcData = tag.data['mifare'] ?? tag.data['nfca'] ?? tag.data['iso7816'];
-        final List<int>? identifier = nfcData?['identifier'];
-
-        if (identifier != null) {
-          setState(() {
-            _detectedMicrochipId = identifier
-                .map((e) => e.toRadixString(16).padLeft(2, '0'))
-                .join(':')
-                .toUpperCase();
-          });
-          // Detenemos la sesión una vez detectado para ahorrar batería
-          NfcManager.instance.stopSession();
+    // 1. Añadimos pollingOptions (Obligatorio en 4.x.x)
+    NfcManager.instance.startSession(
+      pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
+      onDiscovered: (NfcTag tag) async {
+        try {
+          // 2. CORRECCIÓN: Convertimos tag.data a Map para poder usar el operador []
+          final Map<String, dynamic> data = Map<String, dynamic>.from(tag.data);
           
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("✅ Microchip detectado correctamente"),
-                backgroundColor: Colors.blueAccent,
-              ),
-            );
+          final nfcData = data['mifare'] ?? data['nfca'] ?? data['iso7816'];
+          
+          // El identificador suele venir como List<int> dentro de los datos del protocolo
+          final List<int>? identifier = nfcData is Map ? nfcData['identifier'] : null;
+
+          if (identifier != null) {
+            if (mounted) {
+              setState(() {
+                _detectedMicrochipId = identifier
+                    .map((e) => e.toRadixString(16).padLeft(2, '0'))
+                    .join(':')
+                    .toUpperCase();
+              });
+            }
+            
+            await NfcManager.instance.stopSession();
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("✅ Microchip detectado correctamente"),
+                  backgroundColor: Colors.blueAccent,
+                ),
+              );
+            }
           }
+        } catch (e) {
+          debugPrint("Error leyendo NFC: $e");
         }
-      } catch (e) {
-        debugPrint("Error leyendo NFC: $e");
-      }
-    });
+      },
+    );
   }
 
   @override
   void dispose() {
-    if (widget.mode == 'microchip') NfcManager.instance.stopSession();
+    // Detenemos la sesión de forma segura
+    NfcManager.instance.stopSession().catchError((_) {});
     super.dispose();
   }
 
-  // --- Lógica de Fotos (Igual a la tuya con leves ajustes) ---
+  // --- El resto del código se mantiene igual pero con limpiezas menores ---
 
   Future<void> _pickImageSource() async {
     if (_photos.length >= 3) return;
@@ -146,7 +156,6 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
         animalCategory: widget.animalId,
         mode: widget.mode,
         photos: _photos,
-        // Pasamos el ID del microchip al servicio para que aparezca en resultados
         microchipId: _detectedMicrochipId, 
       );
 
@@ -165,7 +174,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
   @override
   Widget build(BuildContext context) {
     bool isMicrochipMode = widget.mode == 'microchip';
-    
+
     return FarmBackgroundScaffold(
       title: isMicrochipMode ? 'Identificación Microchip' : 'Captura IA',
       child: Container(
@@ -174,10 +183,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            
-            // Indicador de Estado del Microchip (Solo en modo microchip)
             if (isMicrochipMode) _buildNfcStatusIndicator(),
-
             const SizedBox(height: 20),
             Text(
               "Análisis de ${widget.animalId}",
@@ -188,9 +194,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
               "Captura 3 fotos para un análisis preciso",
               style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
-
             const SizedBox(height: 30),
-            
             Expanded(
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -235,9 +239,7 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                 },
               ),
             ),
-            
             const SizedBox(height: 20),
-            
             if (_isProcessing)
               const Column(
                 children: [
@@ -253,66 +255,5 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    // El botón se habilita si hay al menos una foto y, si es modo microchip, se recomienda haberlo detectado.
-                    onPressed: (_photos.length == 3) ? _processDiagnosis : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isMicrochipMode ? Colors.blueAccent : Colors.greenAccent.shade700,
-                      disabledBackgroundColor: Colors.white10,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                    ),
-                    child: Text(
-                      isMicrochipMode && _detectedMicrochipId == null 
-                        ? "ESPERANDO MICROCHIP..." 
-                        : "ANALIZAR AHORA", 
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Widget para mostrar visualmente si el chip ya fue detectado
-  Widget _buildNfcStatusIndicator() {
-    bool detected = _detectedMicrochipId != null;
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: detected ? Colors.blue.withOpacity(0.2) : Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: detected ? Colors.blueAccent : Colors.orangeAccent),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            detected ? Icons.check_circle : Icons.sensors,
-            color: detected ? Colors.blueAccent : Colors.orangeAccent,
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  detected ? "MICROCHIP IDENTIFICADO" : "BUSCANDO MICROCHIP...",
-                  style: TextStyle(
-                    color: detected ? Colors.blueAccent : Colors.orangeAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12
-                  ),
-                ),
-                if (detected)
-                  Text("ID: $_detectedMicrochipId", style: const TextStyle(color: Colors.white, fontSize: 14)),
-                if (!detected)
-                  const Text("Acerque el dispositivo al animal", style: TextStyle(color: Colors.white70, fontSize: 11)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+                    onPressed: (_photos.length >= 1) ? _processDiagnosis : null,
+                    style:
