@@ -1,13 +1,14 @@
 buildscript {
-    // CORRECCIÓN: Subimos a 1.9.22 para resolver el error de compilación en nfc_manager
+    // CORRECCIÓN DEFINITIVA: 1.9.22 es perfecta para el SDK 36 y nfc_manager
     ext.kotlin_version = '1.9.22' 
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        // Mantenemos 8.1.0 que es muy estable para Flutter
-        classpath 'com.android.tools.build:gradle:8.1.0' 
+        // ACTUALIZACIÓN: Subimos a 8.2.1 para soportar mejor el SDK 36
+        // Esta versión de Gradle es necesaria cuando compileSdk es 35 o 36
+        classpath 'com.android.tools.build:gradle:8.2.1' 
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.google.gms:google-services:4.4.1'
     }
