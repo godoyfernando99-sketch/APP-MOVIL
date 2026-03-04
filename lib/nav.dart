@@ -1,42 +1,8 @@
-import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-
-// Importaciones de pantallas
-import 'package:scanneranimal/openai/screens/animals/animals_page.dart';
-import 'package:scanneranimal/openai/screens/auth/login_page.dart';
-import 'package:scanneranimal/openai/screens/auth/register_page.dart';
-import 'package:scanneranimal/openai/screens/history/history_page.dart';
-import 'package:scanneranimal/openai/screens/info/diseases_page.dart';
-import 'package:scanneranimal/openai/screens/info/medications_page.dart';
-import 'package:scanneranimal/openai/screens/menu/main_menu_page.dart';
-import 'package:scanneranimal/openai/screens/scan/scan_capture_page.dart';
-import 'package:scanneranimal/openai/screens/scan/scan_result_page.dart';
-import 'package:scanneranimal/openai/screens/subscriptions/subscriptions_page.dart';
-import 'package:scanneranimal/openai/screens/welcome/welcome_page.dart';
-import 'package:scanneranimal/openai/screens/support/vip_support_page.dart'; // <--- NUEVA IMPORTACIÓN
-
-// IMPORTANTE: Importar el modelo para que GoRouter reconozca el tipo en 'extra'
-import 'package:scanneranimal/app/history/scan_models.dart';
-
-class AuthStateNotifier extends ChangeNotifier {
-  StreamSubscription<User?>? _subscription;
-
-  AuthStateNotifier() {
-    _subscription = FirebaseAuth.instance.authStateChanges().listen((_) => notifyListeners());
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
-  }
-}
+// ... (tus importaciones se mantienen igual)
 
 class AppRouter {
   static final _authNotifier = AuthStateNotifier();
-  
+
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.login,
     refreshListenable: _authNotifier,
@@ -45,10 +11,10 @@ class AppRouter {
       final isLoggedIn = user != null; 
       final isOnAuthPage = state.matchedLocation == AppRoutes.login || 
                           state.matchedLocation == AppRoutes.register;
-      
+
       if (isLoggedIn && isOnAuthPage) return AppRoutes.welcome;
       if (!isLoggedIn && !isOnAuthPage) return AppRoutes.login;
-      
+
       return null;
     },
     routes: [
@@ -56,7 +22,7 @@ class AppRouter {
       GoRoute(path: AppRoutes.register, name: 'register', pageBuilder: (context, state) => const MaterialPage(child: RegisterPage())),
       GoRoute(path: AppRoutes.welcome, name: 'welcome', pageBuilder: (context, state) => const MaterialPage(child: WelcomePage())),
       GoRoute(path: AppRoutes.menu, name: 'menu', pageBuilder: (context, state) => const NoTransitionPage(child: MainMenuPage())),
-      
+
       GoRoute(
         path: '${AppRoutes.animals}/:category', 
         name: 'animals', 
@@ -66,12 +32,16 @@ class AppRouter {
         },
       ),
 
+      // CORRECCIÓN AQUÍ: Hacemos los parámetros opcionales con '?' para que AppRoutes.scanCapture funcione solo
       GoRoute(
-        path: '${AppRoutes.scanCapture}/:animalId/:mode',
+        path: AppRoutes.scanCapture, 
         name: 'scanCapture',
         pageBuilder: (context, state) {
-          final animalId = state.pathParameters['animalId'] ?? '';
-          final mode = state.pathParameters['mode'] ?? 'nochip';
+          // Intentamos obtener parámetros del path o del 'extra'
+          final Map<String, dynamic>? extra = state.extra as Map<String, dynamic>?;
+          final String animalId = extra?['animalId'] ?? 'generic_id';
+          final String mode = extra?['mode'] ?? 'visual'; // 'visual' o 'microchip'
+          
           return MaterialPage(child: ScanCapturePage(animalId: animalId, mode: mode));
         },
       ),
@@ -92,14 +62,8 @@ class AppRouter {
       GoRoute(path: AppRoutes.subscriptions, name: 'subscriptions', pageBuilder: (context, state) => const MaterialPage(child: SubscriptionsPage())),
       GoRoute(path: AppRoutes.diseases, name: 'diseases', pageBuilder: (context, state) => const MaterialPage(child: DiseasesPage())),
       GoRoute(path: AppRoutes.medications, name: 'medications', pageBuilder: (context, state) => const MaterialPage(child: MedicationsPage())),
-      
-      // --- RUTA DE SOPORTE VIP ---
-      GoRoute(
-        path: AppRoutes.support, 
-        name: 'support', 
-        pageBuilder: (context, state) => const MaterialPage(child: VipSupportPage())
-      ),
-      
+      GoRoute(path: AppRoutes.support, name: 'support', pageBuilder: (context, state) => const MaterialPage(child: VipSupportPage())),
+
       GoRoute(
         path: AppRoutes.profile, 
         name: 'profile', 
@@ -136,12 +100,15 @@ class AppRoutes {
   static const String welcome = '/welcome';
   static const String menu = '/menu';
   static const String animals = '/animals';
-  static const String scanCapture = '/scan/capture';
-  static const String scanResult = '/scan/result';
+  static const String scanCapture = '/scan-capture'; // Ruta simplificada
+  static const String scanResult = '/scan-result';
   static const String history = '/history';
   static const String subscriptions = '/subscriptions';
   static const String diseases = '/diseases';
   static const String medications = '/medications';
   static const String profile = '/profile';
-  static const String support = '/support'; // <--- NUEVA CONSTANTE
+  static const String support = '/support';
+  
+  // Añadimos esta para que el compilador no de error si MainMenu llama a .capture
+  static const String capture = scanCapture; 
 }
