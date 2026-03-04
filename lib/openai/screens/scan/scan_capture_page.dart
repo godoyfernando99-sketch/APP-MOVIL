@@ -256,4 +256,81 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: (_photos.length >= 1) ? _processDiagnosis : null,
-                    style:
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isMicrochipMode ? Colors.blueAccent : Colors.greenAccent.shade700,
+                      disabledBackgroundColor: Colors.white10,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                    ),
+                    child: Text(
+                      isMicrochipMode && _detectedMicrochipId == null 
+                        ? "ESPERANDO MICROCHIP..." 
+                        : "ANALIZAR AHORA", 
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNfcStatusIndicator() {
+    bool detected = _detectedMicrochipId != null;
+    if (!_isNfcSupported) {
+      return Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.redAccent),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.redAccent),
+            SizedBox(width: 15),
+            Text("NFC no disponible en este equipo", style: TextStyle(color: Colors.white)),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: detected ? Colors.blue.withOpacity(0.2) : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: detected ? Colors.blueAccent : Colors.orangeAccent),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            detected ? Icons.check_circle : Icons.sensors,
+            color: detected ? Colors.blueAccent : Colors.orangeAccent,
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  detected ? "MICROCHIP IDENTIFICADO" : "BUSCANDO MICROCHIP...",
+                  style: TextStyle(
+                    color: detected ? Colors.blueAccent : Colors.orangeAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12
+                  ),
+                ),
+                if (detected)
+                  Text("ID: $_detectedMicrochipId", style: const TextStyle(color: Colors.white, fontSize: 14)),
+                if (!detected)
+                  const Text("Acerque el dispositivo al animal", style: TextStyle(color: Colors.white70, fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
