@@ -11,15 +11,11 @@ import 'package:scanneranimal/data/animals.dart';
 import 'package:scanneranimal/l10n/app_strings.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 
-// IMPORTANTE: Asegúrate de que esta ruta sea la correcta para tu servicio de PDF
-// import 'package:scanneranimal/services/pdf_service.dart'; 
-
 class HistoryPage extends StatelessWidget {
   const HistoryPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context);
     final strings = (String key) => AppStrings.of(context, key);
     final history = context.watch<HistoryController>();
 
@@ -29,7 +25,7 @@ class HistoryPage extends StatelessWidget {
       child: RefreshIndicator(
         onRefresh: () => context.read<HistoryController>().refresh(),
         child: history.items.isEmpty 
-          ? _EmptyHistory(t: t)
+          ? const _EmptyHistory()
           : ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               itemCount: history.items.length + 1,
@@ -47,21 +43,17 @@ class HistoryPage extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'ESCANEOS GUARDADOS', 
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 13)
-            )
-          ),
-          IconButton(
-            onPressed: () => context.read<HistoryController>().refresh(),
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
-          ),
-        ],
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        'ESCANEOS GUARDADOS', 
+        style: TextStyle(
+          color: Colors.white, 
+          fontWeight: FontWeight.w900, 
+          letterSpacing: 1.2, 
+          fontSize: 13,
+          shadows: [Shadow(color: Colors.black, blurRadius: 2, offset: Offset(1, 1))]
+        )
       ),
     );
   }
@@ -73,22 +65,14 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final animal = AnimalsCatalog.byId(item.animalId);
     final dateLabel = DateFormat('dd MMM, yyyy • HH:mm').format(item.createdAt);
     final thumbBytes = item.photosBase64.isNotEmpty ? base64Decode(item.photosBase64.first) : null;
 
-    final Color healthColor = item.healthStatus.toLowerCase().contains('buen') 
-        ? Colors.greenAccent 
-        : (item.healthStatus.toLowerCase().contains('regu') ? Colors.orangeAccent : Colors.redAccent);
-
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.65),
+        color: Colors.black.withOpacity(0.7),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: item.isPregnant == true ? Colors.pinkAccent.withOpacity(0.4) : Colors.white.withOpacity(0.1),
-          width: item.isPregnant == true ? 1.5 : 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -99,9 +83,23 @@ class _HistoryCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                _buildThumbnail(thumbBytes, animal, healthColor),
+                _buildThumbnail(thumbBytes),
                 const SizedBox(width: 16),
-                Expanded(child: _buildInfo(animal, dateLabel, healthColor)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Muestra Tipo de Animal y Raza directamente en la tarjeta
+                      Text(
+                        "${item.animalType ?? 'Animal'} - ${item.detectedBreed ?? 'Raza'}",
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      Text(dateLabel, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
+                      const SizedBox(height: 6),
+                      _buildStatusBadge(),
+                    ],
+                  ),
+                ),
                 const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white12, size: 14),
               ],
             ),
@@ -111,69 +109,41 @@ class _HistoryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildThumbnail(Uint8List? thumbBytes, dynamic animal, Color healthColor) {
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: SizedBox(
-            width: 70, height: 70,
-            child: thumbBytes == null 
-              ? Image.asset(animal.assetImage, fit: BoxFit.cover) 
-              : Image.memory(thumbBytes, fit: BoxFit.cover),
-          ),
-        ),
-        Positioned(
-          right: 4, top: 4,
-          child: Container(
-            width: 16, height: 16,
-            decoration: BoxDecoration(
-              color: item.isPregnant == true ? Colors.pinkAccent : healthColor,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.black, width: 2),
-            ),
-            child: Icon(
-              item.isPregnant == true ? Icons.favorite : Icons.circle,
-              size: 8, color: Colors.white,
-            ),
-          ),
-        ),
-      ],
+  Widget _buildThumbnail(Uint8List? bytes) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: SizedBox(
+        width: 65, height: 65,
+        child: bytes != null 
+          ? Image.memory(bytes, fit: BoxFit.cover)
+          : Container(color: Colors.white10, child: const Icon(Icons.pets, color: Colors.white24)),
+      ),
     );
   }
 
-  Widget _buildInfo(dynamic animal, String dateLabel, Color healthColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "${animal.name}${item.isPregnant == true ? ' ❤️' : ''}", 
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)
+  Widget _buildStatusBadge() {
+    final bool isHealthy = item.healthStatus.toLowerCase().contains('buen') || item.diseaseName == null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: (isHealthy ? Colors.greenAccent : Colors.orangeAccent).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6)
+      ),
+      child: Text(
+        (item.diseaseName ?? 'SANO').toUpperCase(),
+        style: TextStyle(
+          color: isHealthy ? Colors.greenAccent : Colors.orangeAccent, 
+          fontSize: 9, 
+          fontWeight: FontWeight.bold
         ),
-        Text(dateLabel, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: healthColor.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
-              child: Text((item.diseaseName ?? 'SANO').toUpperCase(), style: TextStyle(color: healthColor, fontSize: 9, fontWeight: FontWeight.bold)),
-            ),
-            if (item.medicationName != null) ...[
-              const SizedBox(width: 8),
-              const Icon(Icons.medication_rounded, size: 12, color: Colors.white38),
-            ]
-          ],
-        ),
-      ],
+      ),
     );
   }
 
   void _showDetail(BuildContext context) {
-    showModalBottomSheet<void>(
+    showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
       backgroundColor: const Color(0xFF0F0F0F),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
       builder: (_) => HistoryDetailSheet(item: item),
@@ -187,10 +157,8 @@ class HistoryDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final animal = AnimalsCatalog.byId(item.animalId);
     final dateLabel = DateFormat('dd MMMM, yyyy - HH:mm').format(item.createdAt);
-    final photos = item.photosBase64.map((b) { try { return base64Decode(b); } catch (_) { return null; } }).whereType<Uint8List>().toList();
-
+    
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
       expand: false,
@@ -200,39 +168,62 @@ class HistoryDetailSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildHeader(context, animal, dateLabel),
+            _buildDetailHeader(dateLabel),
             const SizedBox(height: 24),
-            _buildPhotoGallery(photos, animal),
-            const SizedBox(height: 24),
-            
-            if (item.observations?.isNotEmpty ?? false)
-              _DetailSection(title: 'NOTAS DEL USUARIO', icon: Icons.edit_note_rounded, color: Colors.orangeAccent, children: [
-                Text(item.observations!, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5))
-              ]),
 
-            _DetailSection(title: 'DIAGNÓSTICO IA', icon: Icons.analytics_outlined, color: Colors.cyanAccent, children: [
-              _DetailRow(label: 'Estado General', value: item.healthStatus.toUpperCase()),
-              if (item.diseaseName != null) _DetailRow(label: 'Hallazgo', value: item.diseaseName!),
-              if (item.detectedBreed != null) _DetailRow(label: 'Raza / Especie', value: item.detectedBreed!),
-            ]),
+            // SECCIÓN IDENTIFICACIÓN (Animal y Raza)
+            _DetailSection(
+              title: 'IDENTIFICACIÓN', 
+              icon: Icons.pets_rounded, 
+              color: Colors.cyanAccent, 
+              children: [
+                _DetailRow(label: 'Tipo de Animal', value: item.animalType ?? 'N/A'),
+                _DetailRow(label: 'Raza / Especie', value: item.detectedBreed ?? 'N/A', isBold: true),
+              ]
+            ),
 
-            _DetailSection(title: 'REPRODUCCIÓN', icon: Icons.favorite_rounded, color: Colors.pinkAccent, children: [
-              _DetailRow(label: 'Gestación', value: item.isPregnant == true ? 'DETECTADA' : 'NO'),
-              if (item.isPregnant == true) _DetailRow(label: 'Tiempo', value: item.gestationWeeks ?? 'N/A'),
-            ]),
+            // SECCIÓN SALUD
+            _DetailSection(
+              title: 'ESTADO DE SALUD', 
+              icon: Icons.monitor_heart_rounded, 
+              color: Colors.greenAccent, 
+              children: [
+                _DetailRow(label: 'Condición', value: item.healthStatus.toUpperCase()),
+                if (item.diseaseName != null) _DetailRow(label: 'Diagnóstico', value: item.diseaseName!),
+              ]
+            ),
 
-            _DetailSection(title: 'TRATAMIENTO RECOMENDADO', icon: Icons.medication_liquid_rounded, color: Colors.greenAccent, children: [
-              _DetailRow(label: 'Medicamento', value: item.medicationName ?? 'N/A'),
-              _DetailRow(label: 'Dosis Sugerida', value: item.medicationDose ?? 'N/A', isBold: true),
-              const SizedBox(height: 12),
-              const Text("DIETA Y CUIDADOS:", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text(item.foodRecommendation ?? "Sin instrucciones específicas.", style: const TextStyle(color: Colors.white, fontSize: 13, fontStyle: FontStyle.italic)),
-            ]),
+            // SECCIÓN NUTRICIÓN (Alimento Sugerido)
+            _DetailSection(
+              title: 'RECOMENDACIÓN NUTRICIONAL', 
+              icon: Icons.restaurant_rounded, 
+              color: Colors.orangeAccent, 
+              children: [
+                const Text("ALIMENTO SUGERIDO:", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Text(
+                  // Intenta extraer el nombre del alimento si está en el string, sino usa uno genérico
+                  item.foodRecommendation?.split('.').first ?? "Alimento Balanceado Específico",
+                  style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  item.foodRecommendation ?? "Sin recomendaciones específicas.",
+                  style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                ),
+              ]
+            ),
 
-            _buildLegalDisclaimer(),
-            const SizedBox(height: 24),
-            _buildBackButton(context),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white10,
+                minimumSize: const Size(double.infinity, 56),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+              ),
+              child: const Text('CERRAR'),
+            ),
             const SizedBox(height: 40),
           ],
         ),
@@ -240,90 +231,18 @@ class HistoryDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, dynamic animal, String dateLabel) {
-    return Row(
+  Widget _buildDetailHeader(String date) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-          child: const Icon(Icons.history_edu_rounded, color: Colors.blueAccent),
-        ),
-        const SizedBox(width: 16),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(animal.name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
-          Text(dateLabel, style: const TextStyle(color: Colors.white38, fontSize: 13)),
-        ])),
-        // BOTÓN PDF CON NUEVA CONFIGURACIÓN DE ACCIÓN
-        IconButton.filledTonal(
-          onPressed: () => _handlePdfExport(context),
-          icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.redAccent),
-        ),
+        const Text("REPORTE IA", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 2)),
+        Text(date, style: const TextStyle(color: Colors.white38, fontSize: 13)),
       ],
-    );
-  }
-
-  void _handlePdfExport(BuildContext context) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: Colors.blueAccent,
-        content: Row(children: [
-          SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
-          SizedBox(width: 12),
-          Text("Preparando Reporte PDF..."),
-        ]),
-      ),
-    );
-
-    try {
-      // AQUÍ LLAMAS A TU SERVICIO DE PDF
-      // await PdfService.generateAndShare(item); 
-      print("Exportando PDF de: ${item.id}");
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error al generar PDF")));
-    }
-  }
-
-  Widget _buildPhotoGallery(List<Uint8List> photos, dynamic animal) {
-    if (photos.isEmpty) {
-      return ClipRRect(borderRadius: BorderRadius.circular(24), child: Image.asset(animal.assetImage, height: 200, fit: BoxFit.cover));
-    }
-    return SizedBox(
-      height: 220,
-      child: PageView.builder(
-        itemCount: photos.length,
-        itemBuilder: (ctx, i) => Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: ClipRRect(borderRadius: BorderRadius.circular(24), child: Image.memory(photos[i], fit: BoxFit.cover)),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLegalDisclaimer() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.02), borderRadius: BorderRadius.circular(12)),
-      child: const Text(
-        "Este historial es un registro informativo. Debe ser validado por un profesional veterinario antes de iniciar tratamientos.",
-        style: TextStyle(color: Colors.white24, fontSize: 10, fontStyle: FontStyle.italic),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildBackButton(BuildContext context) {
-    return FilledButton(
-      onPressed: () => Navigator.pop(context),
-      style: FilledButton.styleFrom(
-        backgroundColor: Colors.white10, foregroundColor: Colors.white,
-        minimumSize: const Size(double.infinity, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      child: const Text('CERRAR'),
     );
   }
 }
 
+// WIDGETS DE SOPORTE PARA EL DISEÑO
 class _DetailSection extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -337,7 +256,7 @@ class _DetailSection extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withOpacity(0.04),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withOpacity(0.1)),
       ),
@@ -376,14 +295,11 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _EmptyHistory extends StatelessWidget {
-  final ThemeData t;
-  const _EmptyHistory({required this.t});
+  const _EmptyHistory();
   @override
   Widget build(BuildContext context) {
-    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Icon(Icons.auto_fix_off_rounded, size: 64, color: Colors.white.withOpacity(0.1)),
-      const SizedBox(height: 16),
-      const Text('SIN REGISTROS', style: TextStyle(color: Colors.white30, fontWeight: FontWeight.bold, letterSpacing: 2)),
-    ]));
+    return const Center(
+      child: Text('NO HAY REGISTROS', style: TextStyle(color: Colors.white24, fontWeight: FontWeight.bold, letterSpacing: 2))
+    );
   }
 }
