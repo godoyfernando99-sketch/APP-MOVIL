@@ -39,7 +39,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       actions: [
         IconButton(
           icon: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent),
-          onPressed: () => authController.signOut(),
+          onPressed: () => authController.logout(),
           tooltip: 'Cerrar Sesión',
         ),
       ],
