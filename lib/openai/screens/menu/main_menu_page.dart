@@ -13,20 +13,14 @@ class MainMenuPage extends StatefulWidget {
 class _MainMenuPageState extends State<MainMenuPage> {
   int _selectedIndex = 0;
 
-  // Lista de vistas para mantener la barra de navegación siempre visible
-  late final List<Widget> _pages;
-
-  @override
-  void initState() {
-    super.initState();
-    _pages = [
-      const MainMenuContent(), // El menú principal que ves abajo
-      const Center(child: Text("Historial", style: TextStyle(color: Colors.white, fontSize: 18))), 
-      const Center(child: Text("Medicamentos", style: TextStyle(color: Colors.white, fontSize: 18))),
-      const Center(child: Text("Salud", style: TextStyle(color: Colors.white, fontSize: 18))),
-      const Center(child: Text("Suscripciones", style: TextStyle(color: Colors.white, fontSize: 18))),
-    ];
-  }
+  // Usamos un getter para las páginas para mantener la barra de navegación siempre visible
+  List<Widget> get _pages => [
+    const MainMenuContent(),
+    const Center(child: Text("Historial", style: TextStyle(color: Colors.white, fontSize: 18))), 
+    const Center(child: Text("Medicamentos", style: TextStyle(color: Colors.white, fontSize: 18))),
+    const Center(child: Text("Salud", style: TextStyle(color: Colors.white, fontSize: 18))),
+    const Center(child: Text("Suscripciones", style: TextStyle(color: Colors.white, fontSize: 18))),
+  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -41,11 +35,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return FarmBackgroundScaffold(
       title: 'ScannerAnimal IA',
       backgroundColor: Colors.transparent,
-      // BOTÓN DE CERRAR SESIÓN EN EL APPBAR
+      // BOTÓN DE CERRAR SESIÓN
       actions: [
         IconButton(
           icon: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent),
-          onPressed: () => authController.signOut(),
+          onPressed: () => authController.signOut(), // Cambiar a logout() si tu controlador usa ese nombre
           tooltip: 'Cerrar Sesión',
         ),
       ],
@@ -86,9 +80,11 @@ class MainMenuContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final authController = context.watch<AuthController>();
     final user = authController.currentUser;
-    final isPro = user?.isPremium ?? false; 
-    final scanLimit = 5;
-    final scansDone = user?.scanCount ?? 0;
+
+    // VINCULACIÓN CON TU MODELO USERPROFILE
+    final bool isPro = user?.isPro ?? false; 
+    final int scansAvailable = user?.scansRemaining ?? 0;
+    final int maxScans = user?.maxScansByPlan ?? 10;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -100,17 +96,17 @@ class MainMenuContent extends StatelessWidget {
           
           const SizedBox(height: 30),
           
-          // BARRA DE CONTEO PERSONALIZADA
-          _buildEnhancedCounter(isPro, scansDone, scanLimit),
+          // BARRA DE CONTEO PERSONALIZADA (Vinculada a tu lógica)
+          _buildEnhancedCounter(isPro, scansAvailable, maxScans),
           
           const SizedBox(height: 40),
 
-          // TEXTO CON DELINEADO (Shadows para simular borde negro)
-          Text(
+          // TEXTO CON DELINEADO NEGRO
+          const Text(
             "MODO DE ESCANEO",
             style: TextStyle(
               color: Colors.white, 
-              fontWeight: FontWeight.black, 
+              fontWeight: FontWeight.w900, 
               letterSpacing: 2,
               fontSize: 14,
               shadows: [
@@ -146,7 +142,7 @@ class MainMenuContent extends StatelessWidget {
           // BOTÓN DE SOPORTE EXCLUSIVO PRO
           if (isPro) ...[
             _SupportButton(onTap: () {
-               // Lógica soporte
+              // Aquí puedes abrir WhatsApp o un mail de soporte
             }),
             const SizedBox(height: 20),
           ],
@@ -161,9 +157,12 @@ class MainMenuContent extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              '¡Hola, $name!',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+            Flexible(
+              child: Text(
+                '¡Hola, $name!',
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             if (isPro) const Padding(
               padding: EdgeInsets.only(left: 8),
@@ -185,8 +184,9 @@ class MainMenuContent extends StatelessWidget {
     );
   }
 
-  Widget _buildEnhancedCounter(bool isPro, int count, int limit) {
-    double progress = isPro ? 1.0 : (count / limit).clamp(0.0, 1.0);
+  Widget _buildEnhancedCounter(bool isPro, int available, int max) {
+    // Calculamos el progreso inverso ya que tu modelo cuenta "restantes"
+    double progress = isPro ? 1.0 : (available / max).clamp(0.0, 1.0);
     
     return Container(
       width: double.infinity,
@@ -214,7 +214,7 @@ class MainMenuContent extends StatelessWidget {
                 ),
               ),
               Text(
-                isPro ? "Ilimitado" : "$count / $limit",
+                isPro ? "Ilimitado" : "$available / $max disponibles",
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ],
@@ -232,7 +232,7 @@ class MainMenuContent extends StatelessWidget {
           if (!isPro) ...[
             const SizedBox(height: 10),
             const Text(
-              "Pásate a PRO para escaneos infinitos",
+              "Obtén soporte VIP y escaneos ilimitados con PRO",
               style: TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ]
