@@ -237,7 +237,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   _buildHeader(result, statusColor),
                   const Divider(color: Colors.white10, height: 40),
 
-                  // Usamos los Getters inteligentes: animalType y breed
                   _buildResultRow('Animal:', result.animalType.toUpperCase(), Icons.pets),
                   _buildResultRow('Raza / Especie:', result.breed, Icons.info_outline, valueColor: Colors.cyanAccent),
 
@@ -249,7 +248,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.straighten_rounded, valueColor: Colors.greenAccent),
 
                   const SizedBox(height: 25),
-                  _buildNutritionalBox(result), // Pasamos todo el objeto para el cuadro resaltado
+                  _buildNutritionalBox(result), 
 
                   const SizedBox(height: 35),
                   _buildActionButtons(result),
@@ -378,7 +377,8 @@ class _ScanResultPageState extends State<ScanResultPage> {
           Flexible(
             child: Text(
               value ?? 'N/A', 
-              textAlign: pw.TextAlign.right,
+              // CORRECCIÓN AQUÍ: Se eliminó pw. para usar el TextAlign estándar de Flutter
+              textAlign: TextAlign.right,
               style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
             ),
           ),
