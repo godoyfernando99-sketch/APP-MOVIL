@@ -89,13 +89,18 @@ class _HistoryCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Muestra Tipo de Animal y Raza directamente en la tarjeta
+                      // Usamos los nuevos getters: animalType y breed
                       Text(
-                        "${item.animalType ?? 'Animal'} - ${item.detectedBreed ?? 'Raza'}",
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        "${item.animalType} - ${item.breed}",
+                        style: const TextStyle(
+                          color: Colors.white, 
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 15,
+                        ),
                       ),
+                      const SizedBox(height: 2),
                       Text(dateLabel, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       _buildStatusBadge(),
                     ],
                   ),
@@ -116,7 +121,10 @@ class _HistoryCard extends StatelessWidget {
         width: 65, height: 65,
         child: bytes != null 
           ? Image.memory(bytes, fit: BoxFit.cover)
-          : Container(color: Colors.white10, child: const Icon(Icons.pets, color: Colors.white24)),
+          : Container(
+              color: Colors.white10, 
+              child: const Icon(Icons.pets, color: Colors.white24, size: 30)
+            ),
       ),
     );
   }
@@ -124,17 +132,19 @@ class _HistoryCard extends StatelessWidget {
   Widget _buildStatusBadge() {
     final bool isHealthy = item.healthStatus.toLowerCase().contains('buen') || item.diseaseName == null;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: (isHealthy ? Colors.greenAccent : Colors.orangeAccent).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(6)
+        color: (isHealthy ? Colors.greenAccent : Colors.orangeAccent).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: (isHealthy ? Colors.greenAccent : Colors.orangeAccent).withOpacity(0.3))
       ),
       child: Text(
         (item.diseaseName ?? 'SANO').toUpperCase(),
         style: TextStyle(
           color: isHealthy ? Colors.greenAccent : Colors.orangeAccent, 
           fontSize: 9, 
-          fontWeight: FontWeight.bold
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5
         ),
       ),
     );
@@ -158,7 +168,10 @@ class HistoryDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateLabel = DateFormat('dd MMMM, yyyy - HH:mm').format(item.createdAt);
-    
+    final photos = item.photosBase64.map((b) {
+      try { return base64Decode(b); } catch (_) { return null; }
+    }).whereType<Uint8List>().toList();
+
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
       expand: false,
@@ -171,48 +184,75 @@ class HistoryDetailSheet extends StatelessWidget {
             _buildDetailHeader(dateLabel),
             const SizedBox(height: 24),
 
+            if (photos.isNotEmpty) _buildPhotoGallery(photos),
+            const SizedBox(height: 24),
+
             // SECCIÓN IDENTIFICACIÓN (Animal y Raza)
             _DetailSection(
               title: 'IDENTIFICACIÓN', 
               icon: Icons.pets_rounded, 
               color: Colors.cyanAccent, 
               children: [
-                _DetailRow(label: 'Tipo de Animal', value: item.animalType ?? 'N/A'),
-                _DetailRow(label: 'Raza / Especie', value: item.detectedBreed ?? 'N/A', isBold: true),
+                _DetailRow(label: 'Tipo de Animal', value: item.animalType.toUpperCase()),
+                _DetailRow(label: 'Raza / Especie', value: item.breed, isBold: true),
+                if (item.microchipNumber != null)
+                  _DetailRow(label: 'Microchip ID', value: item.microchipNumber!),
               ]
             ),
 
             // SECCIÓN SALUD
             _DetailSection(
-              title: 'ESTADO DE SALUD', 
+              title: 'ESTADO DE SALUD IA', 
               icon: Icons.monitor_heart_rounded, 
               color: Colors.greenAccent, 
               children: [
-                _DetailRow(label: 'Condición', value: item.healthStatus.toUpperCase()),
-                if (item.diseaseName != null) _DetailRow(label: 'Diagnóstico', value: item.diseaseName!),
+                _DetailRow(label: 'Condición General', value: item.healthStatus.toUpperCase()),
+                if (item.diseaseName != null) 
+                  _DetailRow(label: 'Hallazgo', value: item.diseaseName!, isBold: true),
               ]
             ),
 
-            // SECCIÓN NUTRICIÓN (Alimento Sugerido)
+            // SECCIÓN NUTRICIÓN (Alimento Sugerido Resaltado)
             _DetailSection(
               title: 'RECOMENDACIÓN NUTRICIONAL', 
               icon: Icons.restaurant_rounded, 
               color: Colors.orangeAccent, 
               children: [
-                const Text("ALIMENTO SUGERIDO:", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
+                const Text("ALIMENTO RECOMENDADO:", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orangeAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orangeAccent.withOpacity(0.2))
+                  ),
+                  child: Text(
+                    item.suggestedFoodName.toUpperCase(),
+                    style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w900, fontSize: 16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text("GUÍA DE ALIMENTACIÓN:", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
                 Text(
-                  // Intenta extraer el nombre del alimento si está en el string, sino usa uno genérico
-                  item.foodRecommendation?.split('.').first ?? "Alimento Balanceado Específico",
-                  style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  item.foodRecommendation ?? "Sin recomendaciones específicas.",
-                  style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                  item.foodRecommendation ?? "Sin instrucciones específicas.",
+                  style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4, fontStyle: FontStyle.italic),
                 ),
               ]
             ),
+
+            // SECCIÓN REPRODUCCIÓN (Si aplica)
+            if (item.isPregnant == true)
+              _DetailSection(
+                title: 'ESTADO REPRODUCTIVO', 
+                icon: Icons.favorite_rounded, 
+                color: Colors.pinkAccent, 
+                children: [
+                  _DetailRow(label: 'Gestación', value: 'CONFIRMADA'),
+                  _DetailRow(label: 'Tiempo Estimado', value: item.gestationWeeks ?? 'N/A'),
+                ]
+              ),
 
             const SizedBox(height: 20),
             FilledButton(
@@ -222,7 +262,7 @@ class HistoryDetailSheet extends StatelessWidget {
                 minimumSize: const Size(double.infinity, 56),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
               ),
-              child: const Text('CERRAR'),
+              child: const Text('REGRESAR AL HISTORIAL', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 40),
           ],
@@ -235,9 +275,29 @@ class HistoryDetailSheet extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("REPORTE IA", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 2)),
+        const Text("REPORTE DETALLADO", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 12)),
+        const SizedBox(height: 4),
         Text(date, style: const TextStyle(color: Colors.white38, fontSize: 13)),
       ],
+    );
+  }
+
+  Widget _buildPhotoGallery(List<Uint8List> photos) {
+    return SizedBox(
+      height: 180,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: photos.length,
+        itemBuilder: (ctx, i) => Container(
+          width: 250,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white10),
+            image: DecorationImage(image: MemoryImage(photos[i]), fit: BoxFit.cover)
+          ),
+        ),
+      ),
     );
   }
 }
@@ -282,13 +342,20 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(label, style: const TextStyle(color: Colors.white38, fontSize: 13)),
-        Flexible(child: Text(value, textAlign: TextAlign.right, style: TextStyle(
-          color: isBold ? Colors.greenAccent : Colors.white, 
-          fontSize: 13, fontWeight: isBold ? FontWeight.w900 : FontWeight.bold
-        ))),
+        Flexible(
+          child: Text(
+            value, 
+            textAlign: TextAlign.right, 
+            style: TextStyle(
+              color: isBold ? Colors.greenAccent : Colors.white, 
+              fontSize: 13, 
+              fontWeight: isBold ? FontWeight.w900 : FontWeight.bold
+            )
+          )
+        ),
       ]),
     );
   }
@@ -298,8 +365,17 @@ class _EmptyHistory extends StatelessWidget {
   const _EmptyHistory();
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('NO HAY REGISTROS', style: TextStyle(color: Colors.white24, fontWeight: FontWeight.bold, letterSpacing: 2))
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history_rounded, size: 50, color: Colors.white.withOpacity(0.1)),
+          const SizedBox(height: 16),
+          const Text('NO HAY REGISTROS GUARDADOS', 
+            style: TextStyle(color: Colors.white24, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 12)
+          ),
+        ],
+      )
     );
   }
 }
