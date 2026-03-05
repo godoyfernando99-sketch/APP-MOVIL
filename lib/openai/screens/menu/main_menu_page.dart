@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart'; // IMPORTANTE: Añadir esto
 import '../../../app/auth/auth_controller.dart';
+import '../../../../nav.dart'; // Asegúrate de que esta ruta sea correcta para AppRoutes
 import '../../../../widgets/farm_background_scaffold.dart';
 
 class MainMenuPage extends StatefulWidget {
@@ -13,7 +15,6 @@ class MainMenuPage extends StatefulWidget {
 class _MainMenuPageState extends State<MainMenuPage> {
   int _selectedIndex = 0;
 
-  // Usamos un getter para las páginas para mantener la barra de navegación siempre visible
   List<Widget> get _pages => [
     const MainMenuContent(),
     const Center(child: Text("Historial", style: TextStyle(color: Colors.white, fontSize: 18))), 
@@ -35,11 +36,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return FarmBackgroundScaffold(
       title: 'ScannerAnimal IA',
       backgroundColor: Colors.transparent,
-      // BOTÓN DE CERRAR SESIÓN
       actions: [
         IconButton(
           icon: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent),
-          onPressed: () => authController.signOut(), // Cambiar a logout() si tu controlador usa ese nombre
+          onPressed: () => authController.signOut(),
           tooltip: 'Cerrar Sesión',
         ),
       ],
@@ -81,7 +81,6 @@ class MainMenuContent extends StatelessWidget {
     final authController = context.watch<AuthController>();
     final user = authController.currentUser;
 
-    // VINCULACIÓN CON TU MODELO USERPROFILE
     final bool isPro = user?.isPro ?? false; 
     final int scansAvailable = user?.scansRemaining ?? 0;
     final int maxScans = user?.maxScansByPlan ?? 10;
@@ -93,15 +92,13 @@ class MainMenuContent extends StatelessWidget {
         children: [
           const SizedBox(height: 30),
           _buildHeader(user?.fullName ?? user?.username ?? 'Usuario', isPro),
-          
+
           const SizedBox(height: 30),
-          
-          // BARRA DE CONTEO PERSONALIZADA (Vinculada a tu lógica)
+
           _buildEnhancedCounter(isPro, scansAvailable, maxScans),
-          
+
           const SizedBox(height: 40),
 
-          // TEXTO CON DELINEADO NEGRO
           const Text(
             "MODO DE ESCANEO",
             style: TextStyle(
@@ -112,8 +109,6 @@ class MainMenuContent extends StatelessWidget {
               shadows: [
                 Shadow(offset: Offset(1.5, 1.5), blurRadius: 1, color: Colors.black),
                 Shadow(offset: Offset(-1.5, -1.5), blurRadius: 1, color: Colors.black),
-                Shadow(offset: Offset(1.5, -1.5), blurRadius: 1, color: Colors.black),
-                Shadow(offset: Offset(-1.5, 1.5), blurRadius: 1, color: Colors.black),
               ],
             ),
           ),
@@ -124,7 +119,10 @@ class MainMenuContent extends StatelessWidget {
             subtitle: "Detectar ID mediante fotos y proximidad",
             icon: Icons.nfc_rounded,
             color: Colors.blueAccent,
-            onTap: () {}, 
+            onTap: () => context.push(
+              AppRoutes.scanNfc, 
+              extra: {'animalId': 'generic', 'mode': 'nochip'}
+            ), 
           ),
 
           const SizedBox(height: 16),
@@ -134,15 +132,18 @@ class MainMenuContent extends StatelessWidget {
             subtitle: "Análisis completo por fotografía",
             icon: Icons.auto_awesome_rounded,
             color: Colors.greenAccent,
-            onTap: () {},
+            onTap: () => context.push(
+              AppRoutes.scanVisual, 
+              extra: {'animalId': 'generic', 'mode': 'visual'}
+            ),
           ),
 
           const SizedBox(height: 40),
 
-          // BOTÓN DE SOPORTE EXCLUSIVO PRO
           if (isPro) ...[
             _SupportButton(onTap: () {
-              // Aquí puedes abrir WhatsApp o un mail de soporte
+              // DIRECCIONAMIENTO AL SOPORTE VIP
+              context.push(AppRoutes.support); 
             }),
             const SizedBox(height: 20),
           ],
@@ -151,6 +152,8 @@ class MainMenuContent extends StatelessWidget {
     );
   }
 
+  // ... (Los widgets _buildHeader, _buildEnhancedCounter, _ScanButton y _SupportButton se mantienen igual que en tu código original)
+  
   Widget _buildHeader(String name, bool isPro) {
     return Column(
       children: [
@@ -185,9 +188,7 @@ class MainMenuContent extends StatelessWidget {
   }
 
   Widget _buildEnhancedCounter(bool isPro, int available, int max) {
-    // Calculamos el progreso inverso ya que tu modelo cuenta "restantes"
     double progress = isPro ? 1.0 : (available / max).clamp(0.0, 1.0);
-    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -229,13 +230,6 @@ class MainMenuContent extends StatelessWidget {
               color: isPro ? Colors.amber : Colors.greenAccent,
             ),
           ),
-          if (!isPro) ...[
-            const SizedBox(height: 10),
-            const Text(
-              "Obtén soporte VIP y escaneos ilimitados con PRO",
-              style: TextStyle(color: Colors.white54, fontSize: 11),
-            ),
-          ]
         ],
       ),
     );
@@ -268,7 +262,7 @@ class _SupportButton extends StatelessWidget {
                 Icon(Icons.headset_mic_rounded, color: Colors.white),
                 SizedBox(width: 12),
                 Text(
-                  "CONTACTAR SOPORTE PRO",
+                  "ACCEDER A SOPORTE VIP",
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1),
                 ),
               ],
