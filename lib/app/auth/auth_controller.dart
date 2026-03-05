@@ -9,20 +9,20 @@ class AuthController extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late final GoogleSignIn _googleSignIn;
-  
+
   StreamSubscription<DocumentSnapshot>? _userSubscription;
   UserProfile? _currentUser;
   bool _isLoading = false;
 
   UserProfile? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
-  
+
   bool get isLoggedIn {
     final user = _auth.currentUser;
     if (user == null) return false;
     return user.emailVerified || user.providerData.any((p) => p.providerId == 'google.com');
   }
-  
+
   bool get isPro => _currentUser?.isPro ?? false;
 
   AuthController() {
@@ -38,7 +38,7 @@ class AuthController extends ChangeNotifier {
     });
   }
 
-  /// REINTEGRADO: Método init que llama main.dart
+  /// MÉTODO: init llamado desde main.dart
   Future<void> init() async {
     try {
       _isLoading = true;
@@ -97,15 +97,14 @@ class AuthController extends ChangeNotifier {
     }, onError: (e) => debugPrint('Error en el Stream de usuario: $e'));
   }
 
-  /// REINTEGRADO: Método updateSubscription para la página de planes
+  /// MÉTODO: updateSubscription para la página de planes
   Future<void> updateSubscription(String plan) async {
     if (_currentUser == null) return;
     try {
       _isLoading = true;
       notifyListeners();
       final now = DateTime.now();
-      
-      // Calculamos los escaneos según el plan (ajusta según tu lógica de UserProfile)
+
       int scans = (plan.toLowerCase() == 'pro' || plan.toLowerCase() == 'gold') ? 9999 : 3;
 
       await _firestore.collection('users').doc(_currentUser!.uid).update({
@@ -181,7 +180,7 @@ class AuthController extends ChangeNotifier {
         scansRemaining: 3, 
       );
       await _firestore.collection('users').doc(profile.uid).set(profile.toJson());
-      await _auth.signOut();
+      await signOut(); // Se usa el nuevo nombre del método
       return null;
     } on FirebaseAuthException catch (e) {
       return e.message;
@@ -210,7 +209,7 @@ class AuthController extends ChangeNotifier {
         password: password
       );
       if (!credential.user!.emailVerified) {
-        await _auth.signOut();
+        await signOut(); // Se usa el nuevo nombre del método
         return 'Verifica tu correo electrónico.';
       }
       return null;
@@ -262,12 +261,21 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> logout() async {
-    _userSubscription?.cancel();
-    await _googleSignIn.signOut();
-    await _auth.signOut();
-    _currentUser = null;
-    notifyListeners();
+  /// CORRECCIÓN: Nombre cambiado de logout a signOut para coincidir con el Router y Menú
+  Future<void> signOut() async {
+    try {
+      _userSubscription?.cancel();
+      // Cerramos sesión de Google solo si hubo una sesión activa
+      if (await _googleSignIn.isSignedIn()) {
+        await _googleSignIn.signOut();
+      }
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint('Error durante el cierre de sesión: $e');
+    } finally {
+      _currentUser = null;
+      notifyListeners();
+    }
   }
 
   @override
