@@ -10,63 +10,53 @@ class AiDiagnosisService {
     required String animalId,
     required String animalCategory,
     required String mode,
-    String? microchipId, // Cambiado de microchipNumber para coincidir con el llamado de la UI
+    String? microchipId, 
     required List<Uint8List> photos,
   }) async {
     try {
-      // Usamos Gemini 2.0 Flash optimizado para visión y medicina
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-2.0-flash',
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
-          temperature: 0.1, // Un poco de flexibilidad para descriptores técnicos
+          temperature: 0.1, 
           topP: 0.95,
         ),
       );
 
-      // El microchipId se incluye en el contexto si existe
       final String idContext = (microchipId != null) 
-          ? "IDENTIFICADOR DETECTADO POR NFC: $microchipId. Úsalo como ID oficial." 
-          : "Sin identificador electrónico detectado.";
+          ? "IDENTIFICADOR DETECTADO POR NFC: $microchipId." 
+          : "Sin identificador electrónico.";
 
-      // --- PROMPT DE NIVEL EXPERTO ---
+      // --- PROMPT OPTIMIZADO PARA LOS NUEVOS CAMPOS ---
       final prompt = """
-      ACTÚA COMO: Un sistema de visión artificial veterinario de alta precisión.
-      CONTEXTO DE IDENTIDAD: $idContext
-      OBJETIVO: Diagnosticar la categoría: $animalCategory basada en las imágenes proporcionadas.
+      ACTÚA COMO: Especialista en Medicina Veterinaria y Nutrición Animal.
+      CONTEXTO: $idContext
+      CATEGORÍA SELECCIONADA: $animalCategory.
 
-      INSTRUCCIONES CRÍTICAS:
-      1. ANÁLISIS DE GESTACIÓN:
-         - Evaluar distensión abdominal, estado de la glándula mamaria y postura.
-         - Reportar tiempo estimado: Meses para grandes especies, Semanas para mascotas.
+      TAREAS CRÍTICAS:
+      1. IDENTIFICACIÓN: Determina la especie exacta (Ej: Perro, Gato, Vaca, Caballo) y su raza.
+      2. NUTRICIÓN (CLAVE): Sugiere un alimento específico. 
+         - Debes escribir el nombre del producto en MAYÚSCULAS seguido de dos puntos y luego la explicación.
+         - Ejemplo: "ROYAL CANIN PUPPY: Alimento diseñado para el crecimiento óseo..."
+      3. SALUD: Detecta signos de enfermedad, parásitos o lesiones.
+      4. GESTACIÓN: Si es hembra, evalúa signos de preñez y estima semanas.
 
-      2. EXAMEN FÍSICO VISUAL:
-         - Detectar anomalías cutáneas, inflamación articular o desnutrición.
-         - Identificar la raza con la mayor precisión posible.
-
-      3. RECOMENDACIÓN FARMACOLÓGICA:
-         - Si hay una patología evidente, sugiere Principio Activo + Nombre Comercial.
-         - DOSIS: Obligatorio en formato "X ml por cada X kg".
-         - VÍA DE ADMINISTRACIÓN: IM, SC, u Oral.
-
-      REGLAS DE SEGURIDAD:
-      - Si las imágenes no muestran un animal real, responde {"is_animal": false}.
-
-      ESQUEMA DE RESPUESTA JSON:
+      ESQUEMA DE RESPUESTA JSON OBLIGATORIO:
       {
         "is_animal": true,
-        "healthStatus": "crítico | regular | bueno",
-        "detectedBreed": "Raza específica",
-        "isPregnant": true,
-        "gestationWeeks": "X semanas/meses (estimado)",
-        "diseaseName": "Nombre técnico o 'Sano'",
-        "medicationName": "Medicamento (Vía)",
-        "medicationDose": "Fórmula de dosificación",
-        "foodRecommendation": "Dieta específica",
-        "observations": "Análisis técnico breve."
+        "species": "Especie detectada (ej: Perro)",
+        "breed": "Raza detectada",
+        "healthStatus": "bueno | regular | crítico",
+        "diseaseName": "Nombre de patología o 'Sano'",
+        "medicationName": "Medicamento y vía",
+        "medicationDose": "Dosis exacta (ej: 1ml/10kg)",
+        "isPregnant": false,
+        "gestationWeeks": "N/A",
+        "foodRecommendation": "NOMBRE DEL ALIMENTO: Explicación detallada de por qué este alimento.",
+        "observations": "Análisis clínico breve."
       }
       """;
-      
+
       final List<Content> content = [
         Content.multi([
           TextPart(prompt),
@@ -76,43 +66,41 @@ class AiDiagnosisService {
 
       final response = await model.generateContent(content);
       final String? rawText = response.text;
-      
-      if (rawText == null) throw 'Error: La IA no devolvió datos.';
 
-      // Limpieza y parseo
-      final cleanJson = rawText.trim().replaceAll('```json', '').replaceAll('```', '');
-      final Map<String, dynamic> aiJson = jsonDecode(cleanJson);
+      if (rawText == null) throw 'Error de comunicación con IA.';
+
+      final Map<String, dynamic> aiJson = jsonDecode(rawText.trim());
 
       if (aiJson['is_animal'] == false) {
-        throw 'No se detectó un animal claro en las fotos. Por favor, captura imágenes nítidas.';
+        throw 'No se detectó un animal en las imágenes.';
       }
-      
+
       final now = DateTime.now();
 
-      // Construcción del objeto final para el historial y resultados
+      // Construcción con mapeo a los campos de ScanResult
       return ScanResult(
         id: now.millisecondsSinceEpoch.toString(),
         ownerId: 'user_active',
         createdAt: now,
         updatedAt: now,
         animalId: animalId,
-        animalCategory: animalCategory,
+        animalCategory: animalCategory, // Categoría del catálogo
         mode: mode,
-        microchipNumber: microchipId, // Se guarda el ID obtenido por NFC
+        microchipNumber: microchipId,
         photosBase64: photos.map((p) => base64Encode(p)).toList(),
         healthStatus: aiJson['healthStatus'] ?? 'regular',
-        detectedBreed: aiJson['detectedBreed'] ?? 'Desconocida',
-        detectedSpecies: animalCategory,
-        diseaseName: aiJson['diseaseName'] ?? 'No detectada',
-        medicationName: aiJson['medicationName'] ?? 'N/A',
-        medicationDose: aiJson['medicationDose'] ?? 'N/A',
+        detectedBreed: aiJson['breed'] ?? 'No identificada',
+        detectedSpecies: aiJson['species'] ?? animalCategory, // IA corrige la especie
+        diseaseName: aiJson['diseaseName'],
+        medicationName: aiJson['medicationName'],
+        medicationDose: aiJson['medicationDose'],
         isPregnant: aiJson['isPregnant'] ?? false,
-        gestationWeeks: aiJson['gestationWeeks'] ?? 'N/A', 
-        foodRecommendation: aiJson['foodRecommendation'] ?? 'Dieta estándar',
-        observations: aiJson['observations'] ?? 'Analizado con Vertex AI Pro-Vision.',
+        gestationWeeks: aiJson['gestationWeeks'], 
+        foodRecommendation: aiJson['foodRecommendation'], // Aquí viene el formato NOMBRE: INFO
+        observations: aiJson['observations'],
       );
     } catch (e) {
-      print('🚨 ERROR EN SERVICIO IA: $e');
+      print('🚨 ERROR IA SERVICE: $e');
       rethrow;
     }
   }
