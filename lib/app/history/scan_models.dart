@@ -45,8 +45,34 @@ class ScanResult {
   final String? foodRecommendation;
   final String? observations;
 
+  // --- NUEVOS GETTERS PARA LA UI ---
+
+  /// Retorna el tipo de animal (ej: Perro, Vaca). 
+  /// Si detectedSpecies es nulo, usa animalCategory.
+  String get animalType => (detectedSpecies?.isNotEmpty ?? false) 
+      ? detectedSpecies! 
+      : (animalCategory.isNotEmpty ? animalCategory : 'Animal');
+
+  /// Retorna la raza. Si es nula, pone "Desconocida".
+  String get breed => (detectedBreed?.isNotEmpty ?? false) ? detectedBreed! : 'Raza no detectada';
+
+  /// Extrae solo el nombre del alimento de la recomendación nutricional.
+  /// Asume que el formato es "Nombre del Alimento: Descripción" o similar.
+  String get suggestedFoodName {
+    if (foodRecommendation == null || foodRecommendation!.isEmpty) return "Alimento Balanceado";
+    // Si contiene dos puntos, tomamos la primera parte
+    if (foodRecommendation!.contains(':')) {
+      return foodRecommendation!.split(':').first.trim();
+    }
+    // Si no, tomamos las primeras 3 palabras como "nombre"
+    List<String> words = foodRecommendation!.split(' ');
+    return words.length > 3 ? "${words[0]} ${words[1]} ${words[2]}" : foodRecommendation!;
+  }
+
   // Getter para compatibilidad
   String? get pregnancyWeeks => gestationWeeks;
+
+  // --- MAPEO DE DATOS ---
 
   Map<String, dynamic> toMap() => {
     'id': id,
