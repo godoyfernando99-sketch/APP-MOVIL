@@ -29,9 +29,9 @@ class _ScanResultPageState extends State<ScanResultPage> {
   String? _userObservations;
 
   /// Genera un PDF profesional incluyendo el Microchip
-  Future<void> _shareAsProfessionalPDF(ScanResult result, String breedDisplay) async {
+  Future<void> _shareAsProfessionalPDF(ScanResult result) async {
     final pdf = pw.Document();
-    
+
     pw.MemoryImage? animalImage;
     if (result.photosBase64.isNotEmpty) {
       try {
@@ -70,7 +70,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
                         border: pw.Border.all(color: PdfColors.grey400),
                         borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))
                       ),
-                      // AJUSTE AQUÍ: Se eliminó 'borderRadius' que causaba el error en pw.ClipRRect
                       child: pw.ClipRRect(
                         horizontalRadius: 10,
                         verticalRadius: 10,
@@ -84,8 +83,8 @@ class _ScanResultPageState extends State<ScanResultPage> {
                       children: [
                         pw.Text("DATOS DE IDENTIFICACIÓN", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.grey700)),
                         pw.SizedBox(height: 5),
-                        _pdfRow("Especie:", result.detectedSpecies ?? "N/A"),
-                        _pdfRow("Raza:", breedDisplay),
+                        _pdfRow("Especie:", result.animalType.toUpperCase()),
+                        _pdfRow("Raza:", result.breed),
                         _pdfRow("Microchip:", result.microchipNumber ?? "No detectado", isBold: result.microchipNumber != null),
                         _pdfRow("Estado:", result.healthStatus.toUpperCase()),
                       ],
@@ -102,7 +101,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
               _pdfRow("Hallazgo:", result.diseaseName ?? 'Sano'),
               _pdfRow("Plan Terapéutico:", result.medicationName ?? 'N/A'),
               _pdfRow("Dosificación:", result.medicationDose ?? 'Consultar Veterinario', isBold: true),
-              _pdfRow("Nutrición:", result.foodRecommendation ?? "Dieta habitual"),
+              _pdfRow("Nutrición:", result.suggestedFoodName, isBold: true),
 
               if (result.isPregnant == true) ...[
                  pw.SizedBox(height: 10),
@@ -118,7 +117,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
               pw.Text(result.observations ?? "Analizado mediante visión artificial Vertex AI.", style: const pw.TextStyle(fontSize: 9)),
 
               pw.Spacer(),
-              
+
               pw.Container(
                 padding: const pw.EdgeInsets.all(8),
                 decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
@@ -137,7 +136,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
     final directory = await getTemporaryDirectory();
     final file = File('${directory.path}/ScannerAnimal_${result.id}.pdf');
     await file.writeAsBytes(await pdf.save());
-    await Share.shareXFiles([XFile(file.path)], text: 'Informe Veterinario - ${result.detectedBreed ?? "Mascota"}');
+    await Share.shareXFiles([XFile(file.path)], text: 'Informe Veterinario - ${result.breed}');
   }
 
   pw.Widget _pdfRow(String label, String value, {bool isBold = false}) {
@@ -156,7 +155,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
 
   Future<void> _showObservationsAndSave() async {
     if (!mounted || widget.payload is! ScanResult) return;
-    
+
     final resultText = await showDialog<String?>(
       context: context,
       barrierDismissible: false,
@@ -214,8 +213,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
     final result = widget.payload as ScanResult;
     final bool hasMicrochip = result.microchipNumber != null;
     final Color statusColor = result.healthStatus.toLowerCase().contains('buen') ? Colors.greenAccent : Colors.orangeAccent;
-    
-    final String displayBreed = result.detectedBreed ?? "No identificada";
 
     return FarmBackgroundScaffold(
       title: 'ANÁLISIS COMPLETADO',
@@ -239,22 +236,23 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 children: [
                   _buildHeader(result, statusColor),
                   const Divider(color: Colors.white10, height: 40),
-                  
-                  _buildResultRow('Identidad:', displayBreed, Icons.info_outline),
-                  _buildResultRow('Categoría:', result.detectedSpecies ?? 'Animal', Icons.pets),
-                  
+
+                  // Usamos los Getters inteligentes: animalType y breed
+                  _buildResultRow('Animal:', result.animalType.toUpperCase(), Icons.pets),
+                  _buildResultRow('Raza / Especie:', result.breed, Icons.info_outline, valueColor: Colors.cyanAccent),
+
                   if (result.isPregnant == true)
                     _buildResultRow('Gestación:', result.gestationWeeks ?? 'N/A', Icons.auto_awesome, valueColor: Colors.pinkAccent),
-                  
+
                   _buildResultRow('Hallazgo:', result.diseaseName ?? 'Sano', Icons.healing_outlined),
                   _buildResultRow('Prescripción:', result.medicationName ?? 'N/A', Icons.medication_liquid_rounded),
                   _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.straighten_rounded, valueColor: Colors.greenAccent),
-                  
+
                   const SizedBox(height: 25),
-                  _buildNutritionalBox(result.foodRecommendation),
-                  
+                  _buildNutritionalBox(result), // Pasamos todo el objeto para el cuadro resaltado
+
                   const SizedBox(height: 35),
-                  _buildActionButtons(result, displayBreed),
+                  _buildActionButtons(result),
                 ],
               ),
             ),
@@ -307,28 +305,45 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
-  Widget _buildNutritionalBox(String? text) {
+  Widget _buildNutritionalBox(ScanResult result) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text("RECOMENDACIÓN NUTRICIONAL", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(15)),
-          child: Text(text ?? "Sin dieta específica.", style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
+          decoration: BoxDecoration(
+            color: Colors.orangeAccent.withOpacity(0.05), 
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: Colors.orangeAccent.withOpacity(0.2))
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                result.suggestedFoodName.toUpperCase(), 
+                style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w900, fontSize: 15)
+              ),
+              const SizedBox(height: 8),
+              Text(
+                result.foodRecommendation ?? "Sin dieta específica.", 
+                style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4, fontStyle: FontStyle.italic)
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildActionButtons(ScanResult result, String breed) {
+  Widget _buildActionButtons(ScanResult result) {
     return Row(
       children: [
         Expanded(
           child: TextButton.icon(
-            onPressed: () => _shareAsProfessionalPDF(result, breed),
+            onPressed: () => _shareAsProfessionalPDF(result),
             icon: const Icon(Icons.share_rounded, size: 18),
             label: const Text("COMPARTIR"),
             style: TextButton.styleFrom(foregroundColor: Colors.white70),
@@ -360,7 +375,13 @@ class _ScanResultPageState extends State<ScanResultPage> {
           const SizedBox(width: 12),
           Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
           const Spacer(),
-          Text(value ?? 'N/A', style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+          Flexible(
+            child: Text(
+              value ?? 'N/A', 
+              textAlign: pw.TextAlign.right,
+              style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
+            ),
+          ),
         ],
       ),
     );
