@@ -377,8 +377,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
           Flexible(
             child: Text(
               value ?? 'N/A', 
-              // CORRECCIÓN AQUÍ: Se eliminó pw. para usar el TextAlign estándar de Flutter
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.right, // CORRECTO: TextAlign de Flutter UI
               style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
             ),
           ),
