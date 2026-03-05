@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart'; // IMPORTANTE: Añadir esto
+import 'package:go_router/go_router.dart';
 import '../../../app/auth/auth_controller.dart';
-import '../../../../nav.dart'; // Asegúrate de que esta ruta sea correcta para AppRoutes
+import '../../../../nav.dart'; 
 import '../../../../widgets/farm_background_scaffold.dart';
+
+// Importaciones de las páginas reales
+import '../history/history_page.dart';
+import '../info/medications_page.dart';
+import '../info/diseases_page.dart';
+import '../subscriptions/subscriptions_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -15,12 +21,13 @@ class MainMenuPage extends StatefulWidget {
 class _MainMenuPageState extends State<MainMenuPage> {
   int _selectedIndex = 0;
 
+  // Lista de páginas conectadas a sus archivos reales
   List<Widget> get _pages => [
     const MainMenuContent(),
-    const Center(child: Text("Historial", style: TextStyle(color: Colors.white, fontSize: 18))), 
-    const Center(child: Text("Medicamentos", style: TextStyle(color: Colors.white, fontSize: 18))),
-    const Center(child: Text("Salud", style: TextStyle(color: Colors.white, fontSize: 18))),
-    const Center(child: Text("Suscripciones", style: TextStyle(color: Colors.white, fontSize: 18))),
+    const HistoryPage(),       // Muestra el historial de escaneos real
+    const MedicationsPage(),   // Muestra la base de datos de medicamentos
+    const DiseasesPage(),      // Muestra la base de datos de enfermedades
+    const SubscriptionsPage(), // Muestra las opciones de suscripción
   ];
 
   void _onItemTapped(int index) {
@@ -39,7 +46,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
       actions: [
         IconButton(
           icon: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent),
-          onPressed: () => authController.logout(),
+          // Cambio corregido de logout() a signOut()
+          onPressed: () => authController.signOut(), 
           tooltip: 'Cerrar Sesión',
         ),
       ],
@@ -83,7 +91,7 @@ class MainMenuContent extends StatelessWidget {
 
     final bool isPro = user?.isPro ?? false; 
     final int scansAvailable = user?.scansRemaining ?? 0;
-    final int maxScans = user?.maxScansByPlan ?? 10;
+    final int maxScans = user?.maxScansByPlan ?? 3;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -108,7 +116,6 @@ class MainMenuContent extends StatelessWidget {
               fontSize: 14,
               shadows: [
                 Shadow(offset: Offset(1.5, 1.5), blurRadius: 1, color: Colors.black),
-                Shadow(offset: Offset(-1.5, -1.5), blurRadius: 1, color: Colors.black),
               ],
             ),
           ),
@@ -140,9 +147,9 @@ class MainMenuContent extends StatelessWidget {
 
           const SizedBox(height: 40),
 
+          // Botón de Soporte VIP visible solo para usuarios PRO
           if (isPro) ...[
             _SupportButton(onTap: () {
-              // DIRECCIONAMIENTO AL SOPORTE VIP
               context.push(AppRoutes.support); 
             }),
             const SizedBox(height: 20),
@@ -152,8 +159,6 @@ class MainMenuContent extends StatelessWidget {
     );
   }
 
-  // ... (Los widgets _buildHeader, _buildEnhancedCounter, _ScanButton y _SupportButton se mantienen igual que en tu código original)
-  
   Widget _buildHeader(String name, bool isPro) {
     return Column(
       children: [
@@ -177,11 +182,7 @@ class MainMenuContent extends StatelessWidget {
         const Text(
           '¿Cómo identificaremos a la mascota hoy?',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white, 
-            fontSize: 15, 
-            shadows: [Shadow(blurRadius: 8, color: Colors.black)]
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 15),
         ),
       ],
     );
@@ -246,8 +247,7 @@ class _SupportButton extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(colors: [Colors.blueAccent.withOpacity(0.8), Colors.blue.shade900]),
-        boxShadow: [BoxShadow(color: Colors.blueAccent.withOpacity(0.3), blurRadius: 10)],
+        gradient: LinearGradient(colors: [Colors.blueAccent, Colors.blue.shade900]),
       ),
       child: Material(
         color: Colors.transparent,
@@ -263,7 +263,7 @@ class _SupportButton extends StatelessWidget {
                 SizedBox(width: 12),
                 Text(
                   "ACCEDER A SOPORTE VIP",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
