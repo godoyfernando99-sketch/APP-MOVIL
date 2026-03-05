@@ -2,8 +2,9 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart'; // Importante para usar context.read
 
-// Importaciones de pantallas
+// Asegúrate de que estas rutas sean las reales en tu proyecto
 import 'package:scanneranimal/openai/screens/animals/animals_page.dart';
 import 'package:scanneranimal/openai/screens/auth/login_page.dart';
 import 'package:scanneranimal/openai/screens/auth/register_page.dart';
@@ -17,16 +18,14 @@ import 'package:scanneranimal/openai/screens/subscriptions/subscriptions_page.da
 import 'package:scanneranimal/openai/screens/welcome/welcome_page.dart';
 import 'package:scanneranimal/openai/screens/support/vip_support_page.dart';
 
-// Modelo de datos
+import 'package:scanneranimal/app/auth/auth_controller.dart'; 
 import 'package:scanneranimal/app/history/scan_models.dart';
 
 class AuthStateNotifier extends ChangeNotifier {
   StreamSubscription<User?>? _subscription;
-
   AuthStateNotifier() {
     _subscription = FirebaseAuth.instance.authStateChanges().listen((_) => notifyListeners());
   }
-
   @override
   void dispose() {
     _subscription?.cancel();
@@ -41,13 +40,19 @@ class AppRouter {
     initialLocation: AppRoutes.login,
     refreshListenable: _authNotifier,
     redirect: (context, state) {
-      final user = FirebaseAuth.instance.currentUser;
-      final isLoggedIn = user != null; 
+      final auth = FirebaseAuth.instance.currentUser;
+      final isLoggedIn = auth != null;
+      
       final isOnAuthPage = state.matchedLocation == AppRoutes.login || 
                           state.matchedLocation == AppRoutes.register;
 
-      if (isLoggedIn && isOnAuthPage) return AppRoutes.welcome;
-      if (!isLoggedIn && !isOnAuthPage) return AppRoutes.login;
+      if (!isLoggedIn) {
+        return isOnAuthPage ? null : AppRoutes.login;
+      }
+
+      if (isOnAuthPage) {
+        return AppRoutes.welcome;
+      }
 
       return null;
     },
@@ -93,20 +98,12 @@ class AppRouter {
       GoRoute(path: AppRoutes.subscriptions, name: 'subscriptions', pageBuilder: (context, state) => const MaterialPage(child: SubscriptionsPage())),
       GoRoute(path: AppRoutes.diseases, name: 'diseases', pageBuilder: (context, state) => const MaterialPage(child: DiseasesPage())),
       GoRoute(path: AppRoutes.medications, name: 'medications', pageBuilder: (context, state) => const MaterialPage(child: MedicationsPage())),
-      
-      // RUTA DE SOPORTE VIP CORREGIDA
-      GoRoute(
-        path: AppRoutes.support, 
-        name: 'support', 
-        pageBuilder: (context, state) => const MaterialPage(child: VipSupportPage())
-      ),
+      GoRoute(path: AppRoutes.support, name: 'support', pageBuilder: (context, state) => const MaterialPage(child: VipSupportPage())),
 
       GoRoute(
         path: AppRoutes.profile, 
         name: 'profile', 
-        pageBuilder: (context, state) => MaterialPage(
-          child: _ProfilePlaceholder(),
-        ),
+        pageBuilder: (context, state) => const MaterialPage(child: ProfilePage()),
       ),
     ],
   );
@@ -125,32 +122,38 @@ class AppRoutes {
   static const String diseases = '/diseases';
   static const String medications = '/medications';
   static const String profile = '/profile';
-  
-  // Ruta para Soporte VIP
   static const String support = '/vip_support';
 
-  // Alias para navegación desde botones del Menú
   static const String scanVisual = scanCapture;
   static const String scanNfc = scanCapture;
 }
 
-// Widget auxiliar para no ensuciar el Router
-class _ProfilePlaceholder extends StatelessWidget {
+// Perfil mejorado para usar tu AuthController real
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
+
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthController>();
+    final user = auth.currentUser;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi Perfil'), backgroundColor: Colors.green),
+      backgroundColor: Colors.black,
+      appBar: AppBar(title: const Text('Mi Perfil'), backgroundColor: Colors.transparent),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.account_circle, size: 80, color: Colors.green),
+            const Icon(Icons.account_circle, size: 80, color: Colors.greenAccent),
             const SizedBox(height: 16),
-            Text(FirebaseAuth.instance.currentUser?.email ?? 'Usuario no identificado'),
-            const SizedBox(height: 24),
+            Text(user?.email ?? 'Usuario', style: const TextStyle(color: Colors.white, fontSize: 18)),
+            const SizedBox(height: 8),
+            Text('Plan: ${user?.subscriptionPlan.toUpperCase()}', style: const TextStyle(color: Colors.white54)),
+            const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: () async => await FirebaseAuth.instance.signOut(),
-              child: const Text('Cerrar Sesión'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: () => auth.signOut(), // Usa tu método corregido
+              child: const Text('CERRAR SESIÓN', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
