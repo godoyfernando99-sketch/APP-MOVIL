@@ -105,4 +105,88 @@ class HistoryController extends ChangeNotifier {
           }
 
           firebaseItems.add(ScanResult.fromMap(data));
-        } catch
+        } catch (e) {
+          debugPrint('Error parseando escaneo de Firebase: $e');
+        }
+      }
+
+      _items = firebaseItems;
+      notifyListeners();
+
+      // Guardamos la lista completa actualizada en local
+      await _localDb.setHistory(_items.map((e) => e.toMap()).toList());
+    } catch (e) {
+      debugPrint('[HistoryController] Error Firebase: $e');
+      await _loadFromLocalStorage();
+    }
+  }
+
+  Future<void> _loadFromLocalStorage() async {
+    try {
+      final localHistory = await _localDb.getHistory();
+      final parsed = <ScanResult>[];
+      for (final json in localHistory) {
+        try {
+          parsed.add(ScanResult.fromMap(json));
+        } catch (e) {
+          debugPrint('Error parseando local: $e');
+        }
+      }
+
+      parsed.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      _items = parsed;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[HistoryController] Error local storage: $e');
+    }
+  }
+
+  Future<void> add(ScanResult item) async {
+    try {
+      final user = _auth.currentUser;
+
+      final itemWithOwner = item.copyWith(
+        ownerId: user?.uid ?? 'local',
+      );
+
+      // 1. Actualizar UI inmediatamente
+      _items = [itemWithOwner, ..._items];
+      notifyListeners();
+
+      // 2. Guardar en local (incluye fotos y campos nuevos)
+      final currentHistoryMap = _items.map((e) => e.toMap()).toList();
+      await _localDb.setHistory(currentHistoryMap);
+
+      // 3. Sincronizar con Firebase (sin fotos para ahorrar espacio)
+      if (user != null) {
+        _saveToFirebase(itemWithOwner).catchError((e) {
+          debugPrint('Firebase save failed: $e');
+        });
+      }
+    } catch (e) {
+      debugPrint('[HistoryController] add() failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _saveToFirebase(ScanResult item) async {
+    try {
+      final mapData = item.toMap();
+      
+      // Eliminamos fotos antes de subir a Firestore por límite de 1MB por doc
+      mapData.remove('photosBase64'); 
+
+      // IMPORTANTE: Asegúrate de que tu modelo ScanResult incluya 
+      // animalType, detectedBreed y foodRecommendation en su toMap()
+      await _firestore
+          .collection('scanResults')
+          .doc(item.id)
+          .set(mapData, SetOptions(merge: true));
+
+      debugPrint('[HistoryController] ✓ Sincronizado en la nube');
+    } catch (e) {
+      debugPrint('[HistoryController] Error en sincronización: $e');
+      rethrow;
+    }
+  }
+}
