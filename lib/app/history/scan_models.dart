@@ -3,14 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ScanResult {
   const ScanResult({
     required this.id,
-    required this.ownerId,
+    this.ownerId = '', // Opcional para evitar errores si no se provee
     required this.createdAt,
-    required this.updatedAt,
+    this.updatedAt,
     required this.animalId,
-    required this.animalCategory,
-    required this.mode,
+    this.animalCategory = '',
+    this.mode = 'nochip',
     this.microchipNumber,
-    required this.photosBase64,
+    this.photosBase64 = const [],
     required this.healthStatus,
     this.detectedBreed,
     this.detectedSpecies,
@@ -21,13 +21,20 @@ class ScanResult {
     this.isPregnant,
     this.gestationWeeks, 
     this.foodRecommendation,
-    this.observations, 
+    this.observations,
+    // --- NUEVOS CAMPOS PARA SOLUCIONAR EL ERROR DEL BUILD ---
+    this.offspringCount,
+    this.deliveryForecast,
+    this.daysUntilDelivery,
+    this.preventionTips = const [],
+    this.medicationDays = const [],
+    this.rescanInterval = 3,
   });
 
   final String id;
   final String ownerId;
   final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
   final String animalId;
   final String animalCategory;
   final String mode; 
@@ -45,32 +52,20 @@ class ScanResult {
   final String? foodRecommendation;
   final String? observations;
 
-  // --- NUEVOS GETTERS PARA LA UI ---
+  // --- NUEVAS PROPIEDADES DE SEGUIMIENTO ---
+  final String? offspringCount;
+  final String? deliveryForecast;
+  final int? daysUntilDelivery;
+  final List<String> preventionTips;
+  final List<int> medicationDays;
+  final int rescanInterval;
 
-  /// Retorna el tipo de animal (ej: Perro, Vaca). 
-  /// Si detectedSpecies es nulo, usa animalCategory.
+  // --- GETTERS DE COMPATIBILIDAD ---
   String get animalType => (detectedSpecies?.isNotEmpty ?? false) 
       ? detectedSpecies! 
       : (animalCategory.isNotEmpty ? animalCategory : 'Animal');
 
-  /// Retorna la raza. Si es nula, pone "Desconocida".
   String get breed => (detectedBreed?.isNotEmpty ?? false) ? detectedBreed! : 'Raza no detectada';
-
-  /// Extrae solo el nombre del alimento de la recomendación nutricional.
-  /// Asume que el formato es "Nombre del Alimento: Descripción" o similar.
-  String get suggestedFoodName {
-    if (foodRecommendation == null || foodRecommendation!.isEmpty) return "Alimento Balanceado";
-    // Si contiene dos puntos, tomamos la primera parte
-    if (foodRecommendation!.contains(':')) {
-      return foodRecommendation!.split(':').first.trim();
-    }
-    // Si no, tomamos las primeras 3 palabras como "nombre"
-    List<String> words = foodRecommendation!.split(' ');
-    return words.length > 3 ? "${words[0]} ${words[1]} ${words[2]}" : foodRecommendation!;
-  }
-
-  // Getter para compatibilidad
-  String? get pregnancyWeeks => gestationWeeks;
 
   // --- MAPEO DE DATOS ---
 
@@ -78,7 +73,7 @@ class ScanResult {
     'id': id,
     'ownerId': ownerId,
     'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
+    'updatedAt': updatedAt?.toIso8601String(),
     'animalId': animalId,
     'animalCategory': animalCategory,
     'mode': mode,
@@ -87,13 +82,14 @@ class ScanResult {
     'healthStatus': healthStatus,
     'detectedBreed': detectedBreed,
     'detectedSpecies': detectedSpecies,
-    'diseaseName': diseaseName,
-    'fractureDescription': fractureDescription,
-    'medicationName': medicationName,
-    'medicationDose': medicationDose,
     'isPregnant': isPregnant,
     'gestationWeeks': gestationWeeks,
-    'foodRecommendation': foodRecommendation,
+    'offspringCount': offspringCount,
+    'deliveryForecast': deliveryForecast,
+    'daysUntilDelivery': daysUntilDelivery,
+    'preventionTips': preventionTips,
+    'medicationDays': medicationDays,
+    'rescanInterval': rescanInterval,
     'observations': observations,
   };
 
@@ -117,60 +113,15 @@ class ScanResult {
       healthStatus: map['healthStatus']?.toString() ?? 'regular',
       detectedBreed: map['detectedBreed']?.toString(),
       detectedSpecies: map['detectedSpecies']?.toString(),
-      diseaseName: map['diseaseName']?.toString(),
-      fractureDescription: map['fractureDescription']?.toString(),
-      medicationName: map['medicationName']?.toString(),
-      medicationDose: map['medicationDose']?.toString(),
-      isPregnant: map['isPregnant'] is bool ? map['isPregnant'] as bool : false,
-      gestationWeeks: map['gestationWeeks']?.toString() ?? map['pregnancyWeeks']?.toString(),
-      foodRecommendation: map['foodRecommendation']?.toString(),
+      isPregnant: map['isPregnant'] == true,
+      gestationWeeks: map['gestationWeeks']?.toString(),
+      offspringCount: map['offspringCount']?.toString(),
+      deliveryForecast: map['deliveryForecast']?.toString(),
+      daysUntilDelivery: map['days_until_delivery'] as int?,
+      preventionTips: List<String>.from(map['prevention_tips'] ?? []),
+      medicationDays: List<int>.from(map['medication_days'] ?? []),
+      rescanInterval: map['rescan_interval_days'] ?? 3,
       observations: map['observations']?.toString(),
-    );
-  }
-
-  ScanResult copyWith({
-    String? id,
-    String? ownerId,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-    String? animalId,
-    String? animalCategory,
-    String? mode,
-    String? microchipNumber,
-    List<String>? photosBase64,
-    String? healthStatus,
-    String? detectedBreed,
-    String? detectedSpecies,
-    String? diseaseName,
-    String? fractureDescription,
-    String? medicationName,
-    String? medicationDose,
-    bool? isPregnant,
-    String? gestationWeeks,
-    String? foodRecommendation,
-    String? observations,
-  }) {
-    return ScanResult(
-      id: id ?? this.id,
-      ownerId: ownerId ?? this.ownerId,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      animalId: animalId ?? this.animalId,
-      animalCategory: animalCategory ?? this.animalCategory,
-      mode: mode ?? this.mode,
-      microchipNumber: microchipNumber ?? this.microchipNumber,
-      photosBase64: photosBase64 ?? this.photosBase64,
-      healthStatus: healthStatus ?? this.healthStatus,
-      detectedBreed: detectedBreed ?? this.detectedBreed,
-      detectedSpecies: detectedSpecies ?? this.detectedSpecies,
-      diseaseName: diseaseName ?? this.diseaseName,
-      fractureDescription: fractureDescription ?? this.fractureDescription,
-      medicationName: medicationName ?? this.medicationName,
-      medicationDose: medicationDose ?? this.medicationDose,
-      isPregnant: isPregnant ?? this.isPregnant,
-      gestationWeeks: gestationWeeks ?? this.gestationWeeks,
-      foodRecommendation: foodRecommendation ?? this.foodRecommendation,
-      observations: observations ?? this.observations,
     );
   }
 }
