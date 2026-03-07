@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:in_app_update/in_app_update.dart';
-import 'package:in_app_review/in_app_review.dart'; // Nuevo
-import 'package:shared_preferences/shared_preferences.dart'; // Nuevo
-import 'package:awesome_notifications/awesome_notifications.dart'; // Nuevo
+import 'package:in_app_review/in_app_review.dart'; 
+import 'package:shared_preferences/shared_preferences.dart'; 
+import 'package:awesome_notifications/awesome_notifications.dart'; 
 
 import 'package:scanneranimal/app/app_settings.dart';
 import 'package:scanneranimal/app/auth/auth_controller.dart';
@@ -19,9 +19,9 @@ import 'package:scanneranimal/theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Inicializar Notificaciones (Icono de la campana)
+  // 1. Inicializar Motor de Notificaciones (Alertas de 3 días, Parto y Medicinas)
   AwesomeNotifications().initialize(
-    null, // Icono por defecto (puedes poner 'resource://drawable/res_app_icon')
+    null, 
     [
       NotificationChannel(
         channelKey: 'alerts_channel',
@@ -30,11 +30,14 @@ void main() async {
         defaultColor: const Color(0xFF9D50BB),
         ledColor: Colors.white,
         importance: NotificationImportance.High,
+        criticalAlerts: true,
       )
     ],
+    debug: true
   );
 
   try {
+    // Inicialización compatible con Firebase 3.0.0
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (e) {
     debugPrint('🚨 Firebase initialization failed: $e');
@@ -56,49 +59,69 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
   @override
   void initState() {
     super.initState();
-    
-    // Verificaciones automáticas al iniciar
+
+    // Verificaciones automáticas al iniciar la App
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _checkForUpdate();     // Actualizaciones de Play Store
-      await _checkReviewStatus();  // Pedir calificación si no lo ha hecho
-      _requestNotificationPermissions(); // Pedir permiso para recordatorios
+      await _checkForUpdate();           // Actualizaciones de Google Play
+      await _checkReviewStatus();        // Diálogo de Calificación Inteligente
+      _requestNotificationPermissions(); // Permisos para recordatorios de salud
     });
   }
 
-  // --- LÓGICA DE CALIFICACIÓN (PLAY STORE) ---
+  // --- LÓGICA DE CALIFICACIÓN (PLAY STORE) CON MEMORIA ---
   Future<void> _checkReviewStatus() async {
     final prefs = await SharedPreferences.getInstance();
     bool alreadyRated = prefs.getBool('already_rated') ?? false;
 
     if (!alreadyRated) {
-      // Esperamos 5 segundos después de abrir para no ser invasivos
-      await Future.delayed(const Duration(seconds: 5));
+      // Espera de 6 segundos para que cargue el menú primero
+      await Future.delayed(const Duration(seconds: 6));
       if (!mounted) return;
 
+      // Usamos el contexto del Router para mostrar el diálogo de forma segura
+      final context = AppRouter.router.routerDelegate.navigatorKey.currentContext;
+      if (context == null) return;
+
       showDialog(
-        context: Navigator.of(context).overlay!.context, // Contexto global
+        context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           backgroundColor: Colors.grey.shade900,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("⭐ ¡Tu opinión cuenta!", style: TextStyle(color: Colors.white)),
-          content: const Text("¿Te gusta ScannerAnimal? Califícanos para seguir mejorando el cuidado animal.", 
-            style: TextStyle(color: Colors.white70)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+          title: const Row(
+            children: [
+              Icon(Icons.star_rounded, color: Colors.amber, size: 30),
+              SizedBox(width: 10),
+              Text("¿Te ayuda la App?", style: TextStyle(color: Colors.white, fontSize: 18)),
+            ],
+          ),
+          content: const Text(
+            "Tu calificación nos ayuda a seguir salvando animales. ¡Danos 5 estrellas en Play Store!",
+            style: TextStyle(color: Colors.white70),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text("LUEGO", style: TextStyle(color: Colors.white38)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.greenAccent.shade700,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               onPressed: () async {
+                // Guardamos permanentemente que ya calificó
                 await prefs.setBool('already_rated', true);
+                
                 if (await _inAppReview.isAvailable()) {
                   _inAppReview.requestReview();
+                } else {
+                  // Fallback: Abre la tienda directamente si el diálogo nativo falla
+                  _inAppReview.openStoreListing();
                 }
                 if (mounted) Navigator.pop(context);
               },
-              child: const Text("CALIFICAR"),
+              child: const Text("CALIFICAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -115,6 +138,7 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
     });
   }
 
+  // --- ACTUALIZACIONES IN-APP ---
   Future<void> _checkForUpdate() async {
     try {
       final info = await InAppUpdate.checkForUpdate();
@@ -122,7 +146,7 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
         await InAppUpdate.performImmediateUpdate();
       }
     } catch (e) {
-      debugPrint('⚠️ InAppUpdate error: $e');
+      debugPrint('⚠️ InAppUpdate info: $e');
     }
   }
 
@@ -146,7 +170,7 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
             theme: lightTheme,
             darkTheme: darkTheme,
             themeMode: ThemeMode.system,
-            routerConfig: AppRouter.router,
+            routerConfig: AppRouter.router, // Configuración de lib/nav.dart
             locale: settings.locale,
             supportedLocales: AppStrings.supportedLocales,
             localizationsDelegates: const [
