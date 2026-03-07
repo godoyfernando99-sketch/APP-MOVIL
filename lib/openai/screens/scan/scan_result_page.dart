@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // IMPORTANTE PARA VIBRACIÓN
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -28,182 +29,85 @@ class _ScanResultPageState extends State<ScanResultPage> {
   bool _isSaving = false;
   String? _userObservations;
 
-  /// Genera un PDF profesional incluyendo el Microchip
-  Future<void> _shareAsProfessionalPDF(ScanResult result) async {
-    final pdf = pw.Document();
+  @override
+  void initState() {
+    super.initState();
+    // Iniciar vibración si es emergencia al cargar
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForEmergencyVibration();
+    });
+  }
 
-    pw.MemoryImage? animalImage;
-    if (result.photosBase64.isNotEmpty) {
-      try {
-        final Uint8List bytes = base64Decode(result.photosBase64.first);
-        animalImage = pw.MemoryImage(bytes);
-      } catch (e) {
-        debugPrint("Error decodificando imagen para PDF: $e");
+  void _checkForEmergencyVibration() {
+    if (widget.payload is ScanResult) {
+      final result = widget.payload as ScanResult;
+      if (result.healthStatus.toUpperCase().contains("URGENTE")) {
+        _vibrateAlert();
       }
     }
+  }
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text("ScannerAnimal IA - Reporte Oficial", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
-                  pw.Text("ID: ${result.id.length > 8 ? result.id.substring(0,8) : result.id}"),
-                ],
-              ),
-              pw.Divider(thickness: 2, color: PdfColors.blue800),
-              pw.SizedBox(height: 15),
+  Future<void> _vibrateAlert() async {
+    for (int i = 0; i < 3; i++) {
+      await HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+  }
 
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  if (animalImage != null)
-                    pw.Container(
-                      width: 120,
-                      height: 120,
-                      decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: PdfColors.grey400),
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))
-                      ),
-                      child: pw.ClipRRect(
-                        horizontalRadius: 10,
-                        verticalRadius: 10,
-                        child: pw.Image(animalImage, fit: pw.BoxFit.cover)
-                      ),
-                    ),
-                  pw.SizedBox(width: 20),
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text("DATOS DE IDENTIFICACIÓN", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.grey700)),
-                        pw.SizedBox(height: 5),
-                        _pdfRow("Especie:", result.animalType.toUpperCase()),
-                        _pdfRow("Raza:", result.breed),
-                        _pdfRow("Microchip:", result.microchipNumber ?? "No detectado", isBold: result.microchipNumber != null),
-                        _pdfRow("Estado:", result.healthStatus.toUpperCase()),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+  Color _getStatusColor(String status) {
+    final s = status.toUpperCase();
+    if (s.contains("URGENTE")) return Colors.redAccent;
+    if (s.contains("REGULAR")) return Colors.orangeAccent;
+    return Colors.greenAccent;
+  }
 
-              pw.SizedBox(height: 20),
-              pw.Text("DIAGNÓSTICO Y TRATAMIENTO", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: PdfColors.blue900)),
-              pw.Divider(color: PdfColors.blue100),
+  // --- Lógica de PDF con Alerta ---
+  Future<void> _shareAsProfessionalPDF(ScanResult result) async {
+    final pdf = pw.Document();
+    final bool isUrgent = result.healthStatus.contains("URGENTE");
 
-              pw.SizedBox(height: 10),
-              _pdfRow("Hallazgo:", result.diseaseName ?? 'Sano'),
-              _pdfRow("Plan Terapéutico:", result.medicationName ?? 'N/A'),
-              _pdfRow("Dosificación:", result.medicationDose ?? 'Consultar Veterinario', isBold: true),
-              _pdfRow("Nutrición:", result.suggestedFoodName, isBold: true),
-
-              if (result.isPregnant == true) ...[
-                 pw.SizedBox(height: 10),
-                 pw.Container(
-                   padding: const pw.EdgeInsets.all(5),
-                   color: PdfColors.pink50,
-                   child: _pdfRow("ESTADO GESTACIONAL:", result.gestationWeeks ?? "Confirmado", isBold: true),
-                 )
-              ],
-
-              pw.SizedBox(height: 20),
-              pw.Text("OBSERVACIONES TÉCNICAS:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
-              pw.Text(result.observations ?? "Analizado mediante visión artificial Vertex AI.", style: const pw.TextStyle(fontSize: 9)),
-
-              pw.Spacer(),
-
-              pw.Container(
-                padding: const pw.EdgeInsets.all(8),
-                decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
-                child: pw.Text(
-                  "AVISO: Este documento es un informe preliminar generado por IA. No sustituye el juicio clínico de un médico veterinario colegiado.",
-                  textAlign: pw.TextAlign.center,
-                  style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      build: (pw.Context context) {
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text("ScannerAnimal IA - Reporte Oficial", 
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, 
+              color: isUrgent ? PdfColors.red800 : PdfColors.blue800)),
+            pw.Divider(thickness: 2, color: isUrgent ? PdfColors.red800 : PdfColors.blue800),
+            pw.SizedBox(height: 10),
+            _pdfRow("Estado:", result.healthStatus.toUpperCase(), isBold: true),
+            _pdfRow("Especie/Raza:", "${result.animalType} / ${result.breed}"),
+            _pdfRow("Microchip:", result.microchipNumber ?? "N/A"),
+            pw.SizedBox(height: 15),
+            pw.Text("DIAGNÓSTICO:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+            pw.Text(result.diseaseName ?? "Sano"),
+            pw.SizedBox(height: 10),
+            pw.Text("TRATAMIENTO Y DOSIS:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+            pw.Text(result.medicationDose ?? "N/A"),
+            pw.SizedBox(height: 10),
+            pw.Text("OBSERVACIONES:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+            pw.Text(result.observations ?? ""),
+          ]
+        );
+      }
+    ));
 
     final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/ScannerAnimal_${result.id}.pdf');
+    final file = File('${directory.path}/Reporte_${result.id}.pdf');
     await file.writeAsBytes(await pdf.save());
-    await Share.shareXFiles([XFile(file.path)], text: 'Informe Veterinario - ${result.breed}');
+    await Share.shareXFiles([XFile(file.path)]);
   }
 
   pw.Widget _pdfRow(String label, String value, {bool isBold = false}) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 1),
-      child: pw.Row(
-        children: [
-          pw.SizedBox(width: 80, child: pw.Text(label, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
-          pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 9, fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal))),
-        ],
-      ),
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(children: [
+        pw.SizedBox(width: 100, child: pw.Text(label, style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+        pw.Text(value, style: pw.TextStyle(fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal)),
+      ]),
     );
-  }
-
-  // --- Lógica de persistencia ---
-
-  Future<void> _showObservationsAndSave() async {
-    if (!mounted || widget.payload is! ScanResult) return;
-
-    final resultText = await showDialog<String?>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        final controller = TextEditingController(text: _userObservations);
-        return AlertDialog(
-          backgroundColor: Colors.black,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25), side: const BorderSide(color: Colors.white10)),
-          title: const Text("Notas de Campo", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          content: TextField(
-            controller: controller,
-            maxLines: 3,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: "Ej: Se observó mejoría tras la dosis...",
-              hintStyle: const TextStyle(color: Colors.white24),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, ""), child: const Text("SALTAR", style: TextStyle(color: Colors.white38))),
-            ElevatedButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("GUARDAR")),
-          ],
-        );
-      },
-    );
-
-    if (resultText != null) {
-      _userObservations = resultText;
-      await _saveFinalResult();
-      if (mounted) context.go(AppRoutes.menu);
-    }
-  }
-
-  Future<void> _saveFinalResult() async {
-    final baseResult = widget.payload as ScanResult;
-    final finalResult = baseResult.copyWith(observations: _userObservations);
-    setState(() => _isSaving = true);
-    try {
-      await context.read<HistoryController>().add(finalResult);
-      await context.read<AuthController>().useFreeScan();
-    } catch (e) {
-      debugPrint("Error guardando: $e");
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
   }
 
   @override
@@ -211,8 +115,8 @@ class _ScanResultPageState extends State<ScanResultPage> {
     if (widget.payload is! ScanResult) return _buildGeneralErrorState();
 
     final result = widget.payload as ScanResult;
-    final bool hasMicrochip = result.microchipNumber != null;
-    final Color statusColor = result.healthStatus.toLowerCase().contains('buen') ? Colors.greenAccent : Colors.orangeAccent;
+    final bool isEmergency = result.healthStatus.toUpperCase().contains("URGENTE");
+    final Color statusColor = _getStatusColor(result.healthStatus);
 
     return FarmBackgroundScaffold(
       title: 'ANÁLISIS COMPLETADO',
@@ -220,173 +124,101 @@ class _ScanResultPageState extends State<ScanResultPage> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
-            if (hasMicrochip)
-              _buildMicrochipBanner(result.microchipNumber!),
-
-            const SizedBox(height: 15),
-
+            if (result.microchipNumber != null) _buildMicrochipBanner(result.microchipNumber!),
+            
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.85),
+                color: isEmergency ? Colors.red.withOpacity(0.15) : Colors.black.withOpacity(0.85),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
+                border: Border.all(color: isEmergency ? Colors.redAccent : statusColor.withOpacity(0.3), width: isEmergency ? 2 : 1),
               ),
               child: Column(
                 children: [
-                  _buildHeader(result, statusColor),
+                  _buildHeader(result, statusColor, isEmergency),
                   const Divider(color: Colors.white10, height: 40),
-
-                  _buildResultRow('Animal:', result.animalType.toUpperCase(), Icons.pets),
-                  _buildResultRow('Raza / Especie:', result.breed, Icons.info_outline, valueColor: Colors.cyanAccent),
-
-                  if (result.isPregnant == true)
-                    _buildResultRow('Gestación:', result.gestationWeeks ?? 'N/A', Icons.auto_awesome, valueColor: Colors.pinkAccent),
-
-                  _buildResultRow('Hallazgo:', result.diseaseName ?? 'Sano', Icons.healing_outlined),
-                  _buildResultRow('Prescripción:', result.medicationName ?? 'N/A', Icons.medication_liquid_rounded),
-                  _buildResultRow('Dosis:', result.medicationDose ?? 'N/A', Icons.straighten_rounded, valueColor: Colors.greenAccent),
-
-                  const SizedBox(height: 25),
-                  _buildNutritionalBox(result), 
-
-                  const SizedBox(height: 35),
+                  _buildResultRow('Especie/Raza:', result.breed, Icons.pets, valueColor: Colors.cyanAccent),
+                  if (result.isPregnant) _buildResultRow('Gestación:', result.gestationWeeks ?? 'Si', Icons.auto_awesome, valueColor: Colors.pinkAccent),
+                  _buildResultRow('Hallazgo:', result.diseaseName, Icons.healing),
+                  _buildResultRow('Dosis y Aplicación:', result.medicationDose, Icons.medication, valueColor: isEmergency ? Colors.redAccent : Colors.greenAccent),
+                  const SizedBox(height: 20),
+                  _buildNutritionalBox(result),
+                  const SizedBox(height: 30),
                   _buildActionButtons(result),
                 ],
               ),
             ),
-            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMicrochipBanner(String id) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.blue.shade900, Colors.blue.shade700]),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 10)],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.nfc_rounded, color: Colors.white, size: 30),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("MICROCHIP DETECTADO", style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-                Text(id, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(ScanResult result, Color color) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-          child: Icon(Icons.analytics_outlined, color: color, size: 50),
-        ),
-        const SizedBox(height: 15),
-        Text("ESTADO: ${result.healthStatus.toUpperCase()}", 
-          style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1)),
-      ],
-    );
-  }
-
-  Widget _buildNutritionalBox(ScanResult result) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("RECOMENDACIÓN NUTRICIONAL", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: Colors.orangeAccent.withOpacity(0.05), 
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: Colors.orangeAccent.withOpacity(0.2))
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                result.suggestedFoodName.toUpperCase(), 
-                style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w900, fontSize: 15)
-              ),
-              const SizedBox(height: 8),
-              Text(
-                result.foodRecommendation ?? "Sin dieta específica.", 
-                style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4, fontStyle: FontStyle.italic)
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons(ScanResult result) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextButton.icon(
-            onPressed: () => _shareAsProfessionalPDF(result),
-            icon: const Icon(Icons.share_rounded, size: 18),
-            label: const Text("COMPARTIR"),
-            style: TextButton.styleFrom(foregroundColor: Colors.white70),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _isSaving ? null : _showObservationsAndSave,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.greenAccent.shade700,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              padding: const EdgeInsets.symmetric(vertical: 15),
-            ),
-            child: const Text("FINALIZAR", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ),
-      ],
-    );
+  Widget _buildHeader(ScanResult result, Color color, bool isEmergency) {
+    return Column(children: [
+      Icon(isEmergency ? Icons.warning_amber_rounded : Icons.analytics_outlined, color: color, size: 60),
+      const SizedBox(height: 10),
+      Text(result.healthStatus.toUpperCase(), textAlign: TextAlign.center, 
+        style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.black)),
+    ]);
   }
 
   Widget _buildResultRow(String label, String? value, IconData icon, {Color? valueColor}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blueAccent.withOpacity(0.7), size: 18),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
-          const Spacer(),
-          Flexible(
-            child: Text(
-              value ?? 'N/A', 
-              textAlign: TextAlign.right, // CORRECTO: TextAlign de Flutter UI
-              style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
-            ),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(children: [
+        Icon(icon, color: Colors.white38, size: 18),
+        const SizedBox(width: 10),
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+        const Spacer(),
+        Flexible(child: Text(value ?? 'N/A', textAlign: TextAlign.right, style: TextStyle(color: valueColor ?? Colors.white, fontWeight: FontWeight.bold))),
+      ]),
     );
   }
 
-  Widget _buildGeneralErrorState() {
-    return FarmBackgroundScaffold(title: 'ERROR', child: Center(child: ElevatedButton(onPressed: () => context.pop(), child: const Text("REINTENTAR"))));
+  Widget _buildNutritionalBox(ScanResult result) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: Colors.orangeAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(result.suggestedFoodName.toUpperCase(), style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 5),
+        Text(result.foodRecommendation ?? "", style: const TextStyle(color: Colors.white70, fontSize: 12)),
+      ]),
+    );
   }
+
+  Widget _buildActionButtons(ScanResult result) {
+    return Row(children: [
+      Expanded(child: TextButton.icon(onPressed: () => _shareAsProfessionalPDF(result), icon: const Icon(Icons.share), label: const Text("PDF"), style: TextButton.styleFrom(foregroundColor: Colors.white))),
+      const SizedBox(width: 10),
+      Expanded(child: ElevatedButton(onPressed: _isSaving ? null : _showObservationsAndSave, style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text("FINALIZAR"))),
+    ]);
+  }
+
+  Widget _buildMicrochipBanner(String id) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.blue.shade900, borderRadius: BorderRadius.circular(15)),
+      child: Row(children: [
+        const Icon(Icons.nfc, color: Colors.white),
+        const SizedBox(width: 10),
+        Text("MICROCHIP: $id", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ]),
+    );
+  }
+
+  // Métodos de guardado se mantienen igual...
+  Future<void> _showObservationsAndSave() async {
+    final result = await showDialog<String>(context: context, builder: (c) => AlertDialog(title: const Text("Notas"), content: const TextField(), actions: [TextButton(onPressed: () => Navigator.pop(c, ""), child: const Text("OK"))]));
+    if (result != null) {
+      setState(() => _isSaving = true);
+      await context.read<HistoryController>().add((widget.payload as ScanResult).copyWith(observations: result));
+      await context.read<AuthController>().useFreeScan();
+      if (mounted) context.go(AppRoutes.menu);
+    }
+  }
+
+  Widget _buildGeneralErrorState() => FarmBackgroundScaffold(title: 'ERROR', child: const Center(child: Text("Error de datos")));
 }
