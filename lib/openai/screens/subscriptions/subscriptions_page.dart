@@ -48,21 +48,19 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           orElse: () => _subscriptionService.products.first,
         );
 
-        // --- CORRECCIÓN DEL ERROR DE ARGUMENTOS ---
-        // Llamamos a buyProduct solo con el producto.
-        final success = await _subscriptionService.buyProduct(product);
+        // --- CORRECCIÓN CLAVE: Se elimina 'final success =' porque la función devuelve void ---
+        await _subscriptionService.buyProduct(product);
         
-        if (success) {
-          // Si la compra fue exitosa en la tienda, actualizamos nuestra DB
-          await auth.updateSubscription(planId);
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: Colors.green.shade800,
-              content: Text('¡Plan ${planId.toUpperCase()} activado correctamente!'),
-            ),
-          );
-        }
+        // Si el código llega aquí sin lanzar excepción, procesamos la actualización
+        await auth.updateSubscription(planId);
+        
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.green.shade800,
+            content: Text('¡Plan ${planId.toUpperCase()} activado correctamente!'),
+          ),
+        );
       } else {
         // MODO DESARROLLO / WEB (Simulación)
         await auth.updateSubscription(planId);
