@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
@@ -29,7 +28,15 @@ class SubscriptionService {
 
       if (_isAvailable) {
         await _loadProducts();
-        _subscription = _iap.purchaseStream.listen(_onPurchaseUpdate);
+        // Escuchamos el stream de compras
+        _subscription = _iap.purchaseStream.listen(
+          (List<PurchaseDetails> purchases) {
+            _onPurchaseUpdate(purchases);
+          },
+          onError: (error) {
+            debugPrint('[SubscriptionService] Stream error: $error');
+          },
+        );
       }
     } catch (e) {
       debugPrint('[SubscriptionService] Initialize failed: $e');
@@ -38,50 +45,39 @@ class SubscriptionService {
 
   Future<void> _loadProducts() async {
     try {
-      final response = await _iap.queryProductDetails(_productIds);
+      final ProductDetailsResponse response = await _iap.queryProductDetails(_productIds);
       if (response.error != null) {
         debugPrint('[SubscriptionService] Query products error: ${response.error}');
         return;
       }
-      
+
       _products = response.productDetails;
       debugPrint('[SubscriptionService] Loaded ${_products.length} products');
-      
-      for (final product in _products) {
-        debugPrint('[SubscriptionService] Product: ${product.id} - ${product.title} - ${product.price}');
-      }
     } catch (e) {
       debugPrint('[SubscriptionService] Load products failed: $e');
     }
   }
 
-  Future<void> buyProduct(ProductDetails product, Function(String planId) onSuccess) async {
+  Future<void> buyProduct(ProductDetails product) async {
     try {
-      if (!_isAvailable) {
-        debugPrint('[SubscriptionService] In-app purchases not available');
-        return;
-      }
-
-      final purchaseParam = PurchaseParam(productDetails: product);
+      if (!_isAvailable) return;
+      final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
       
-      if (product.id.contains('subscription')) {
-        await _iap.buyNonConsumable(purchaseParam: purchaseParam);
-      } else {
-        await _iap.buyNonConsumable(purchaseParam: purchaseParam);
-      }
+      // En Android/iOS las suscripciones se manejan como NonConsumable
+      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
     } catch (e) {
       debugPrint('[SubscriptionService] Buy product failed: $e');
     }
   }
 
   void _onPurchaseUpdate(List<PurchaseDetails> purchases) {
-    for (final purchase in purchases) {
-      debugPrint('[SubscriptionService] Purchase update: ${purchase.productID} - ${purchase.status}');
-      
-      if (purchase.status == PurchaseStatus.purchased) {
+    for (final PurchaseDetails purchase in purchases) {
+      if (purchase.status == PurchaseStatus.purchased || purchase.status == PurchaseStatus.restored) {
         _handlePurchaseSuccess(purchase);
-      } else if (purchase.status == PurchaseStatus.error) {
-        debugPrint('[SubscriptionService] Purchase error: ${purchase.error}');
+      } 
+
+      if (purchase.status == PurchaseStatus.error) {
+        debugPrint('[SubscriptionService] Error: ${purchase.error}');
       }
 
       if (purchase.pendingCompletePurchase) {
@@ -91,7 +87,8 @@ class SubscriptionService {
   }
 
   void _handlePurchaseSuccess(PurchaseDetails purchase) {
-    debugPrint('[SubscriptionService] Purchase successful: ${purchase.productID}');
+    debugPrint('[SubscriptionService] SUCCESS: ${purchase.productID}');
+    // Aquí es donde conectarías con tu AuthController para subir el nivel a PRO
   }
 
   String getPlanIdFromProductId(String productId) {
@@ -99,16 +96,6 @@ class SubscriptionService {
     if (productId.contains('intermediate')) return 'intermediate';
     if (productId.contains('pro')) return 'pro';
     return 'free';
-  }
-
-  Future<void> restorePurchases() async {
-    try {
-      if (!_isAvailable) return;
-      await _iap.restorePurchases();
-      debugPrint('[SubscriptionService] Restore purchases completed');
-    } catch (e) {
-      debugPrint('[SubscriptionService] Restore purchases failed: $e');
-    }
   }
 
   void dispose() {
