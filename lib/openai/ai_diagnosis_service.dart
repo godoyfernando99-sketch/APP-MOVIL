@@ -27,33 +27,35 @@ class AiDiagnosisService {
           ? "IDENTIFICADOR DETECTADO POR NFC: $microchipId." 
           : "Sin identificador electrónico.";
 
-      // --- PROMPT OPTIMIZADO PARA LOS NUEVOS CAMPOS ---
       final prompt = """
-      ACTÚA COMO: Especialista en Medicina Veterinaria y Nutrición Animal.
-      CONTEXTO: $idContext
-      CATEGORÍA SELECCIONADA: $animalCategory.
+      ACTÚA COMO: Especialista en Cirugía Veterinaria, Oncología y Medicina de Emergencias.
 
-      TAREAS CRÍTICAS:
-      1. IDENTIFICACIÓN: Determina la especie exacta (Ej: Perro, Gato, Vaca, Caballo) y su raza.
-      2. NUTRICIÓN (CLAVE): Sugiere un alimento específico. 
-         - Debes escribir el nombre del producto en MAYÚSCULAS seguido de dos puntos y luego la explicación.
-         - Ejemplo: "ROYAL CANIN PUPPY: Alimento diseñado para el crecimiento óseo..."
-      3. SALUD: Detecta signos de enfermedad, parásitos o lesiones.
-      4. GESTACIÓN: Si es hembra, evalúa signos de preñez y estima semanas.
+      REGLAS DE SEGURIDAD:
+      - Si la imagen muestra humanos u objetos, 'is_animal': false.
 
-      ESQUEMA DE RESPUESTA JSON OBLIGATORIO:
+      REGLAS DE DIAGNÓSTICO (Si 'is_animal': true):
+      1. TRIAGE Y CIRUGÍA: Si detectas Tumores, Fracturas expuestas, Obstrucciones, Heridas profundas o Desnutrición extrema:
+         - El campo 'health_status_text' DEBE SER EXACTAMENTE: "🚨 ALERTA: URGENTE LLEVAR AL VETERINARIO".
+      2. DOLOR: Estima Nivel de Dolor (Bajo, Moderado, Alto).
+      3. GESTACIÓN: Tiempo estimado en DÍAS, SEMANAS o MESES.
+      4. TRATAMIENTO Y COLOCACIÓN: 
+         - 'medicationDose' debe decir la dosis Y dónde aplicarla (ej: "10ml - Intramuscular en la tabla del cuello", "Gotas en el ojo izquierdo").
+      5. ALIMENTO: Formato NOMBRE PRODUCTO: Explicación.
+
+      ESQUEMA JSON OBLIGATORIO:
       {
         "is_animal": true,
-        "species": "Especie detectada (ej: Perro)",
-        "breed": "Raza detectada",
-        "healthStatus": "bueno | regular | crítico",
-        "diseaseName": "Nombre de patología o 'Sano'",
-        "medicationName": "Medicamento y vía",
-        "medicationDose": "Dosis exacta (ej: 1ml/10kg)",
-        "isPregnant": false,
-        "gestationWeeks": "N/A",
-        "foodRecommendation": "NOMBRE DEL ALIMENTO: Explicación detallada de por qué este alimento.",
-        "observations": "Análisis clínico breve."
+        "species": "Especie",
+        "breed": "Raza",
+        "health_status_text": "🚨 ALERTA: URGENTE OPERAR / LLEVAR AL VETERINARIO | bueno | regular",
+        "pain_level": "Bajo | Moderado | Alto",
+        "diseaseName": "Nombre patología",
+        "medicationName": "Medicamento",
+        "medicationDose": "Dosis y zona de aplicación (ej. Intramuscular pierna)",
+        "isPregnant": true/false,
+        "gestationWeeks": "Tiempo de preñez",
+        "foodRecommendation": "NOMBRE: Detalle",
+        "observations": "Análisis clínico técnico."
       }
       """;
 
@@ -72,32 +74,31 @@ class AiDiagnosisService {
       final Map<String, dynamic> aiJson = jsonDecode(rawText.trim());
 
       if (aiJson['is_animal'] == false) {
-        throw 'No se detectó un animal en las imágenes.';
+        throw '⚠️ No se detectó un animal. Por favor, enfoca al ejemplar.';
       }
 
       final now = DateTime.now();
 
-      // Construcción con mapeo a los campos de ScanResult
       return ScanResult(
         id: now.millisecondsSinceEpoch.toString(),
         ownerId: 'user_active',
         createdAt: now,
         updatedAt: now,
         animalId: animalId,
-        animalCategory: animalCategory, // Categoría del catálogo
+        animalCategory: animalCategory,
         mode: mode,
         microchipNumber: microchipId,
         photosBase64: photos.map((p) => base64Encode(p)).toList(),
-        healthStatus: aiJson['healthStatus'] ?? 'regular',
+        healthStatus: aiJson['health_status_text'] ?? 'regular',
         detectedBreed: aiJson['breed'] ?? 'No identificada',
-        detectedSpecies: aiJson['species'] ?? animalCategory, // IA corrige la especie
+        detectedSpecies: aiJson['species'] ?? animalCategory,
         diseaseName: aiJson['diseaseName'],
         medicationName: aiJson['medicationName'],
         medicationDose: aiJson['medicationDose'],
         isPregnant: aiJson['isPregnant'] ?? false,
-        gestationWeeks: aiJson['gestationWeeks'], 
-        foodRecommendation: aiJson['foodRecommendation'], // Aquí viene el formato NOMBRE: INFO
-        observations: aiJson['observations'],
+        gestationWeeks: aiJson['gestationWeeks'],
+        foodRecommendation: aiJson['foodRecommendation'],
+        observations: "DOLOR: ${aiJson['pain_level']}. ${aiJson['observations']}",
       );
     } catch (e) {
       print('🚨 ERROR IA SERVICE: $e');
