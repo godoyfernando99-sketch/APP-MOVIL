@@ -27,7 +27,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
       if (result.daysUntilDelivery! <= 7) {
         _scheduleNotification(
           title: "🚨 PARTO INMINENTE",
-          body: "Faltan aprox. ${result.daysUntilDelivery} días. Prepara el nido y contacta a tu veterinario.",
+          body: "Faltan aprox. ${result.daysUntilDelivery} días. Prepara el nido.",
           daysFromNow: 1,
         );
       }
@@ -42,11 +42,13 @@ class _ScanResultPageState extends State<ScanResultPage> {
   }
 
   void _scheduleNotification({required String title, required String body, required int daysFromNow}) {
-    print("🔔 Alerta Programada: $title | $body | T+$daysFromNow días");
+    // Simulación de log de notificación
+    debugPrint("🔔 Alerta Programada: $title | $body | T+$daysFromNow días");
   }
 
   @override
   Widget build(BuildContext context) {
+    // Cast del objeto ScanResult desde el payload
     final result = widget.payload as ScanResult;
 
     return FarmBackgroundScaffold(
@@ -62,7 +64,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
 
             const SizedBox(height: 15),
 
-            // AHORA ESTE MÉTODO SÍ EXISTE ABAJO
             _buildFollowUpCard(result),
 
             const SizedBox(height: 15),
@@ -70,47 +71,16 @@ class _ScanResultPageState extends State<ScanResultPage> {
             if (result.preventionTips.isNotEmpty)
               _buildInfoBox("🛡️ PROTOCOLO DE CUIDADOS", result.preventionTips, Colors.tealAccent),
 
+            const SizedBox(height: 15),
+            
+            // Sección de alimentación (Usa el campo suggestedFoodName)
+            _buildInfoBox("🍎 ALIMENTACIÓN RECOMENDADA", [result.suggestedFoodName], Colors.orangeAccent),
+
             const SizedBox(height: 30),
 
             _buildActionButtons(result),
           ],
         ),
-      ),
-    );
-  }
-
-  // --- MÉTODOS QUE FALTABAN ---
-
-  Widget _buildFollowUpCard(ScanResult res) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white10)
-      ),
-      child: Column(
-        children: [
-          _followUpRow(Icons.calendar_today_rounded, "Próximo escaneo:", "En ${res.rescanInterval} días"),
-          if (res.isPregnant == true)
-            _followUpRow(Icons.auto_awesome_motion, "Estado de gestación:", "Monitoreo activo"),
-          _followUpRow(Icons.security_update_good_rounded, "Protocolo IA:", "Seguimiento activado"),
-        ],
-      ),
-    );
-  }
-
-  Widget _followUpRow(IconData icon, String label, String val) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blueAccent, size: 18),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-          const Spacer(),
-          Text(val, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-        ],
       ),
     );
   }
@@ -123,46 +93,17 @@ class _ScanResultPageState extends State<ScanResultPage> {
           Text(r.animalType.toUpperCase(), 
             style: const TextStyle(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 2)),
           const SizedBox(height: 5),
+          // CORRECCIÓN: FontWeight.w900 en lugar de .black
           Text(r.healthStatus.toUpperCase(), 
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.black)),
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
         ],
       ),
     );
   }
-
-  Widget _buildInfoBox(String title, List<String> items, Color accentColor) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.left(color: accentColor, width: 4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 14)),
-          const SizedBox(height: 12),
-          ...items.map((item) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("• ", style: TextStyle(color: Colors.white70)),
-                Expanded(child: Text(item, style: const TextStyle(color: Colors.white70, fontSize: 13))),
-              ],
-            ),
-          )),
-        ],
-      ),
-    );
-  }
-
-  // --- RESTO DE WIDGETS YA DEFINIDOS ---
 
   Widget _buildPregnancyCard(ScanResult res) {
     final bool isUrgent = (res.daysUntilDelivery ?? 100) <= 7;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -182,7 +123,8 @@ class _ScanResultPageState extends State<ScanResultPage> {
             children: [
               Icon(Icons.auto_awesome, color: Colors.amberAccent, size: 20),
               SizedBox(width: 8),
-              Text("DETALLES DE GESTACIÓN", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text("DETALLES DE GESTACIÓN", 
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 15),
@@ -210,12 +152,74 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
+  Widget _buildFollowUpCard(ScanResult res) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white10)
+      ),
+      child: Column(
+        children: [
+          _followUpRow(Icons.calendar_today_rounded, "Próximo escaneo:", "En ${res.rescanInterval} días"),
+          _followUpRow(Icons.security_update_good_rounded, "Protocolo IA:", "Monitoreo activo"),
+        ],
+      ),
+    );
+  }
+
+  Widget _followUpRow(IconData icon, String label, String val) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blueAccent, size: 18),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          const Spacer(),
+          Text(val, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoBox(String title, List<String> items, Color accentColor) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        borderRadius: BorderRadius.circular(20),
+        // CORRECCIÓN: BorderSide específico para el lateral
+        border: Border(left: BorderSide(color: accentColor, width: 4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 12),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("• ", style: TextStyle(color: Colors.white70)),
+                Expanded(child: Text(item, style: const TextStyle(color: Colors.white70, fontSize: 13))),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActionButtons(ScanResult result) {
     return ElevatedButton(
       onPressed: () {
         _setAutomatedReminders(result);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("🚀 Seguimiento IA activado")),
+          const SnackBar(content: Text("🚀 Inteligencia de seguimiento activada")),
         );
       },
       style: ElevatedButton.styleFrom(
