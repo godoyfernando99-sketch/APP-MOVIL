@@ -19,43 +19,35 @@ class AiDiagnosisService {
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
           temperature: 0.1, 
-          topP: 0.95,
         ),
       );
 
       final prompt = """
-      ACTÚA COMO: Especialista en Reproducción Animal, Ecografía y Medicina Preventiva.
+      ACTÚA COMO: Especialista en Medicina Veterinaria, Obstetricia y Seguimiento Clínico.
 
-      REGLAS CRÍTICAS:
-      1. GESTACIÓN PRO: Si detectas embarazo:
-         - 'gestationWeeks': Indica tiempo transcurrido (días/semanas/meses).
-         - 'offspringCount': Estima el número de crías (ej: "3-4 crías" o "1 cría").
-         - 'totalGestationPeriod': Indica cuánto dura el embarazo en esta especie (ej: "63 días", "9 meses").
-         - 'deliveryForecast': Calcula cuánto falta para el parto.
+      TAREAS DE SEGUIMIENTO INTELIGENTE:
+      1. GESTACIÓN: 
+         - Si está embarazada, calcula 'days_until_delivery' (número de días faltantes).
+         - Estima 'offspringCount' y 'delivery_alert_date' (fecha sugerida para alerta de parto).
+      2. PROTOCOLOS: Genera 3 cuidados preventivos obligatorios.
+      3. CRONOGRAMA DE NOTIFICACIONES:
+         - Genera 'medication_reminders': [días para medicinas].
+         - Genera 'rescan_reminder': true (siempre true para seguimiento cada 3 días).
+         - Genera 'protocol_check_days': [días para preguntar si cumplió los cuidados].
 
-      2. ALERTAS DE EMERGENCIA: Si hay tumores, fracturas o desnutrición severa, inicia 'health_status_text' con "🚨 ALERTA: URGENTE OPERAR / VETERINARIO".
-
-      3. PREVENCIÓN: Además del tratamiento, indica 'prevention_tips': 3 pasos para evitar que esta enfermedad regrese.
-
-      4. RECORDATORIOS: Lista de días [1, 7, 30] para notificaciones de tratamiento.
-
-      ESQUEMA JSON OBLIGATORIO:
+      ESQUEMA JSON:
       {
         "is_animal": true,
-        "species": "Especie",
-        "breed": "Raza",
-        "health_status_text": "Estado o Alerta URGENTE",
-        "diseaseName": "Patología",
-        "medicationDose": "Dosis y guía de aplicación",
+        "health_status_text": "...",
         "isPregnant": true/false,
-        "gestationWeeks": "Tiempo actual",
-        "offspringCount": "Número de crías estimado",
-        "totalGestationPeriod": "Duración total especie",
-        "deliveryForecast": "Tiempo restante para parto",
-        "prevention_tips": ["Paso 1", "Paso 2"],
-        "reminder_days": [1, 7, 14],
-        "care_instructions": ["Cuidado post-tratamiento"],
-        "observations": "Análisis clínico."
+        "gestationWeeks": "...",
+        "offspringCount": "...",
+        "days_until_delivery": 15,
+        "delivery_forecast_text": "Faltan aprox. 15 días para el parto",
+        "prevention_tips": ["...", "..."],
+        "medication_days": [1, 3, 7],
+        "rescan_interval_days": 3,
+        "observations": "..."
       }
       """;
 
@@ -66,8 +58,6 @@ class AiDiagnosisService {
       final response = await model.generateContent(content);
       final Map<String, dynamic> aiJson = jsonDecode(response.text!.trim());
 
-      if (aiJson['is_animal'] == false) throw 'No se detectó un animal.';
-
       final now = DateTime.now();
 
       return ScanResult(
@@ -75,23 +65,17 @@ class AiDiagnosisService {
         createdAt: now,
         animalId: animalId,
         healthStatus: aiJson['health_status_text'],
-        detectedBreed: aiJson['breed'],
-        detectedSpecies: aiJson['species'],
-        diseaseName: aiJson['diseaseName'],
-        medicationDose: aiJson['medicationDose'],
         isPregnant: aiJson['isPregnant'] ?? false,
         gestationWeeks: aiJson['gestationWeeks'],
-        // Campos nuevos para reproducción y prevención
         offspringCount: aiJson['offspringCount'],
-        totalGestationPeriod: aiJson['totalGestationPeriod'],
-        deliveryForecast: aiJson['deliveryForecast'],
+        deliveryForecast: aiJson['delivery_forecast_text'],
+        daysUntilDelivery: aiJson['days_until_delivery'],
         preventionTips: List<String>.from(aiJson['prevention_tips'] ?? []),
-        reminderDays: List<int>.from(aiJson['reminder_days'] ?? []),
-        careInstructions: List<String>.from(aiJson['care_instructions'] ?? []),
+        // Estos campos activarán las notificaciones en la UI
+        medicationDays: List<int>.from(aiJson['medication_days'] ?? []),
+        rescanInterval: aiJson['rescan_interval_days'] ?? 3,
         observations: aiJson['observations'],
       );
-    } catch (e) {
-      rethrow;
-    }
+    } catch (e) { rethrow; }
   }
 }
