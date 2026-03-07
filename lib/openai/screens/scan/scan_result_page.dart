@@ -124,4 +124,4 @@ class _ScanResultPageState extends State<ScanResultPage> {
       ]),
     );
   }
-}
+} 
