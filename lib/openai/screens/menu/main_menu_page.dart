@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:in_app_review/in_app_review.dart';
+
 import '../../../app/auth/auth_controller.dart';
 import '../../../../nav.dart'; 
 import '../../../../widgets/farm_background_scaffold.dart';
@@ -20,14 +23,81 @@ class MainMenuPage extends StatefulWidget {
 
 class _MainMenuPageState extends State<MainMenuPage> {
   int _selectedIndex = 0;
+  final InAppReview _inAppReview = InAppReview.instance;
 
-  // Lista de páginas conectadas a sus archivos reales
+  @override
+  void initState() {
+    super.initState();
+    // Verificación de calificación al iniciar el menú
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkReviewStatus();
+    });
+  }
+
+  // Lógica para pedir calificación solo si no se ha hecho antes
+  Future<void> _checkReviewStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    bool alreadyRated = prefs.getBool('already_rated') ?? false;
+
+    if (!alreadyRated) {
+      // Espera de cortesía para no interrumpir el flujo inicial
+      await Future.delayed(const Duration(seconds: 5));
+      if (!mounted) return;
+
+      _showRateDialog(prefs);
+    }
+  }
+
+  void _showRateDialog(SharedPreferences prefs) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey.shade900,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        title: const Row(
+          children: [
+            Icon(Icons.star_rounded, color: Colors.amber, size: 30),
+            SizedBox(width: 10),
+            Text("¿Te gusta la App?", style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: const Text(
+          "Tu calificación en la Play Store nos ayuda a seguir mejorando ScannerAnimal y salvar más ejemplares.",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("MÁS TARDE", style: TextStyle(color: Colors.white38)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.greenAccent.shade700,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              // Marcamos como calificado para que no aparezca más
+              await prefs.setBool('already_rated', true);
+              
+              if (await _inAppReview.isAvailable()) {
+                _inAppReview.requestReview();
+              }
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text("CALIFICAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   List<Widget> get _pages => [
     const MainMenuContent(),
-    const HistoryPage(),       // Muestra el historial de escaneos real
-    const MedicationsPage(),   // Muestra la base de datos de medicamentos
-    const DiseasesPage(),      // Muestra la base de datos de enfermedades
-    const SubscriptionsPage(), // Muestra las opciones de suscripción
+    const HistoryPage(),       
+    const MedicationsPage(),   
+    const DiseasesPage(),      
+    const SubscriptionsPage(), 
   ];
 
   void _onItemTapped(int index) {
@@ -46,7 +116,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       actions: [
         IconButton(
           icon: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent),
-          // Cambio corregido de logout() a signOut()
           onPressed: () => authController.signOut(), 
           tooltip: 'Cerrar Sesión',
         ),
@@ -100,13 +169,9 @@ class MainMenuContent extends StatelessWidget {
         children: [
           const SizedBox(height: 30),
           _buildHeader(user?.fullName ?? user?.username ?? 'Usuario', isPro),
-
           const SizedBox(height: 30),
-
           _buildEnhancedCounter(isPro, scansAvailable, maxScans),
-
           const SizedBox(height: 40),
-
           const Text(
             "MODO DE ESCANEO",
             style: TextStyle(
@@ -120,7 +185,6 @@ class MainMenuContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 25),
-
           _ScanButton(
             title: "Escaneo por Microchip",
             subtitle: "Detectar ID mediante fotos y proximidad",
@@ -131,9 +195,7 @@ class MainMenuContent extends StatelessWidget {
               extra: {'animalId': 'generic', 'mode': 'nochip'}
             ), 
           ),
-
           const SizedBox(height: 16),
-
           _ScanButton(
             title: "Escaneo Visual",
             subtitle: "Análisis completo por fotografía",
@@ -144,10 +206,7 @@ class MainMenuContent extends StatelessWidget {
               extra: {'animalId': 'generic', 'mode': 'visual'}
             ),
           ),
-
           const SizedBox(height: 40),
-
-          // Botón de Soporte VIP visible solo para usuarios PRO
           if (isPro) ...[
             _SupportButton(onTap: () {
               context.push(AppRoutes.support); 
