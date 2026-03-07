@@ -78,4 +78,4 @@ class AiDiagnosisService {
       );
     } catch (e) { rethrow; }
   }
-}
+} 
