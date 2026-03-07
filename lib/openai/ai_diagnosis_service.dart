@@ -23,85 +23,74 @@ class AiDiagnosisService {
         ),
       );
 
-      final String idContext = (microchipId != null) 
-          ? "IDENTIFICADOR DETECTADO POR NFC: $microchipId." 
-          : "Sin identificador electrónico.";
-
       final prompt = """
-      ACTÚA COMO: Especialista en Cirugía Veterinaria, Oncología y Medicina de Emergencias.
+      ACTÚA COMO: Especialista en Reproducción Animal, Ecografía y Medicina Preventiva.
 
-      REGLAS DE SEGURIDAD:
-      - Si la imagen muestra humanos, comida u objetos inanimados, establece 'is_animal': false.
+      REGLAS CRÍTICAS:
+      1. GESTACIÓN PRO: Si detectas embarazo:
+         - 'gestationWeeks': Indica tiempo transcurrido (días/semanas/meses).
+         - 'offspringCount': Estima el número de crías (ej: "3-4 crías" o "1 cría").
+         - 'totalGestationPeriod': Indica cuánto dura el embarazo en esta especie (ej: "63 días", "9 meses").
+         - 'deliveryForecast': Calcula cuánto falta para el parto.
 
-      REGLAS DE DIAGNÓSTICO (Si 'is_animal': true):
-      1. TRIAGE Y CIRUGÍA: Si detectas Tumores, Fracturas, Heridas profundas, Desnutrición extrema o Parásitos críticos:
-         - El campo 'health_status_text' DEBE SER EXACTAMENTE: "🚨 ALERTA: URGENTE OPERAR / LLEVAR AL VETERINARIO".
-      2. DOLOR: Estima Nivel de Dolor (Bajo, Moderado, Alto).
-      3. GESTACIÓN: Indica tiempo estimado en DÍAS, SEMANAS o MESES.
-      4. TRATAMIENTO Y COLOCACIÓN: 
-         - 'medicationDose' DEBE detallar la dosis Y EL LUGAR/FORMA DE COLOCACIÓN (ej: "5ml - Inyectable Intramuscular en la tabla del cuello", "Pomada tópica en zona afectada").
-      5. ALIMENTO: Formato NOMBRE PRODUCTO EN MAYÚSCULAS: Explicación detallada.
+      2. ALERTAS DE EMERGENCIA: Si hay tumores, fracturas o desnutrición severa, inicia 'health_status_text' con "🚨 ALERTA: URGENTE OPERAR / VETERINARIO".
+
+      3. PREVENCIÓN: Además del tratamiento, indica 'prevention_tips': 3 pasos para evitar que esta enfermedad regrese.
+
+      4. RECORDATORIOS: Lista de días [1, 7, 30] para notificaciones de tratamiento.
 
       ESQUEMA JSON OBLIGATORIO:
       {
         "is_animal": true,
-        "species": "Especie detectada",
-        "breed": "Raza detectada",
-        "health_status_text": "🚨 ALERTA: URGENTE OPERAR / LLEVAR AL VETERINARIO | bueno | regular",
-        "pain_level": "Bajo | Moderado | Alto",
-        "diseaseName": "Nombre patología o 'Sano'",
-        "medicationName": "Medicamento",
-        "medicationDose": "Dosis y guía de aplicación detallada",
+        "species": "Especie",
+        "breed": "Raza",
+        "health_status_text": "Estado o Alerta URGENTE",
+        "diseaseName": "Patología",
+        "medicationDose": "Dosis y guía de aplicación",
         "isPregnant": true/false,
-        "gestationWeeks": "Tiempo de preñez (ej: 45 días)",
-        "foodRecommendation": "NOMBRE: Detalle",
-        "observations": "Análisis clínico técnico."
+        "gestationWeeks": "Tiempo actual",
+        "offspringCount": "Número de crías estimado",
+        "totalGestationPeriod": "Duración total especie",
+        "deliveryForecast": "Tiempo restante para parto",
+        "prevention_tips": ["Paso 1", "Paso 2"],
+        "reminder_days": [1, 7, 14],
+        "care_instructions": ["Cuidado post-tratamiento"],
+        "observations": "Análisis clínico."
       }
       """;
 
       final List<Content> content = [
-        Content.multi([
-          TextPart(prompt),
-          ...photos.map((bytes) => InlineDataPart('image/jpeg', bytes))
-        ])
+        Content.multi([TextPart(prompt), ...photos.map((b) => InlineDataPart('image/jpeg', b))])
       ];
 
       final response = await model.generateContent(content);
-      final String? rawText = response.text;
+      final Map<String, dynamic> aiJson = jsonDecode(response.text!.trim());
 
-      if (rawText == null) throw 'Error de comunicación con IA.';
-
-      final Map<String, dynamic> aiJson = jsonDecode(rawText.trim());
-
-      if (aiJson['is_animal'] == false) {
-        throw '⚠️ No se detectó un animal. Por favor, enfoca bien al ejemplar.';
-      }
+      if (aiJson['is_animal'] == false) throw 'No se detectó un animal.';
 
       final now = DateTime.now();
 
       return ScanResult(
         id: now.millisecondsSinceEpoch.toString(),
-        ownerId: 'user_active',
         createdAt: now,
-        updatedAt: now,
         animalId: animalId,
-        animalCategory: animalCategory,
-        mode: mode,
-        microchipNumber: microchipId,
-        photosBase64: photos.map((p) => base64Encode(p)).toList(),
-        healthStatus: aiJson['health_status_text'] ?? 'regular',
-        detectedBreed: aiJson['breed'] ?? 'No identificada',
-        detectedSpecies: aiJson['species'] ?? animalCategory,
+        healthStatus: aiJson['health_status_text'],
+        detectedBreed: aiJson['breed'],
+        detectedSpecies: aiJson['species'],
         diseaseName: aiJson['diseaseName'],
-        medicationName: aiJson['medicationName'],
         medicationDose: aiJson['medicationDose'],
         isPregnant: aiJson['isPregnant'] ?? false,
         gestationWeeks: aiJson['gestationWeeks'],
-        foodRecommendation: aiJson['foodRecommendation'],
-        observations: "NIVEL DE DOLOR: ${aiJson['pain_level']}. ${aiJson['observations']}",
+        // Campos nuevos para reproducción y prevención
+        offspringCount: aiJson['offspringCount'],
+        totalGestationPeriod: aiJson['totalGestationPeriod'],
+        deliveryForecast: aiJson['deliveryForecast'],
+        preventionTips: List<String>.from(aiJson['prevention_tips'] ?? []),
+        reminderDays: List<int>.from(aiJson['reminder_days'] ?? []),
+        careInstructions: List<String>.from(aiJson['care_instructions'] ?? []),
+        observations: aiJson['observations'],
       );
     } catch (e) {
-      print('🚨 ERROR IA SERVICE: $e');
       rethrow;
     }
   }
