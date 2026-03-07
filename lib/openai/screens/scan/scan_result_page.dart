@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:scanneranimal/app/history/scan_models.dart'; // Importante
+import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 
 class ScanResultPage extends StatefulWidget {
   const ScanResultPage({super.key, this.payload});
@@ -10,53 +11,46 @@ class ScanResultPage extends StatefulWidget {
 }
 
 class _ScanResultPageState extends State<ScanResultPage> {
-  
-  // Función maestra para programar el seguimiento completo
+
   void _setAutomatedReminders(ScanResult result) {
-    // 1. Recordatorio de Medicamentos (IA definie los días)
-    for (int day in result.medicationDays ?? []) {
+    // 1. Recordatorio de Medicamentos
+    for (int day in result.medicationDays) {
       _scheduleNotification(
         title: "💊 Aplicar Tratamiento",
-        body: "Recordatorio de dosis para ${result.detectedSpecies}. Revisa el plan de la IA.",
+        body: "Dosis programada para ${result.animalType}. Revisa el plan de cuidados.",
         daysFromNow: day,
       );
     }
 
-    // 2. Alerta de Parto (Si faltan menos de 7 días, avisar a diario)
-    if (result.isPregnant && result.daysUntilDelivery != null) {
+    // 2. Alerta de Parto Crítica
+    if (result.isPregnant == true && result.daysUntilDelivery != null) {
       if (result.daysUntilDelivery! <= 7) {
         _scheduleNotification(
-          title: "🚨 PARTO CERCANO",
-          body: "El parto de tu animal está previsto para dentro de ${result.daysUntilDelivery} días. ¡Prepara el área!",
-          daysFromNow: 1, // Avisar mañana mismo
+          title: "🚨 PARTO INMINENTE",
+          body: "Faltan aprox. ${result.daysUntilDelivery} días. Prepara el nido y contacta a tu veterinario.",
+          daysFromNow: 1,
         );
       }
     }
 
-    // 3. Seguimiento de Evolución (Cada 3 días)
+    // 3. Seguimiento Estándar (3 días)
     _scheduleNotification(
-      title: "🔍 Seguimiento Necesario",
-      body: "Han pasado 3 días. Realiza un nuevo escaneo para verificar la evolución de la salud/gestación.",
-      daysFromNow: 3,
-    );
-    
-    // 4. Verificación de Protocolos
-    _scheduleNotification(
-      title: "🛡️ ¿Cumpliste los cuidados?",
-      body: "Verifica si has seguido los protocolos de prevención sugeridos por la IA.",
-      daysFromNow: 2,
+      title: "🔍 Seguimiento de Evolución",
+      body: "Es momento de realizar un nuevo escaneo para monitorear a tu ${result.animalType}.",
+      daysFromNow: result.rescanInterval,
     );
   }
 
   void _scheduleNotification({required String title, required String body, required int daysFromNow}) {
-    // Aquí se integra con awesome_notifications o tu servicio local
-    print("🔔 Programada: $title para dentro de $daysFromNow días.");
+    // Integración futura con AwesomeNotifications.instance.createNotification(...)
+    print("🔔 Alerta Programada: $title | $body | T+$daysFromNow días");
   }
 
   @override
   Widget build(BuildContext context) {
+    // Cast seguro del objeto ScanResult
     final result = widget.payload as ScanResult;
-    
+
     return FarmBackgroundScaffold(
       title: 'INFORME DE SEGUIMIENTO',
       child: SingleChildScrollView(
@@ -66,62 +60,115 @@ class _ScanResultPageState extends State<ScanResultPage> {
             _buildStatusHeader(result),
             const SizedBox(height: 15),
 
-            // Burbuja informativa de seguimiento
-            _buildFollowUpCard(result),
+            // Nueva sección: Card de Gestación Avanzada
+            if (result.isPregnant == true) _buildPregnancyCard(result),
 
             const SizedBox(height: 15),
             
-            _buildInfoBox("🛡️ PROTOCOLO DE CUIDADOS", result.preventionTips!, Colors.tealAccent),
-            
+            // Sección de Seguimiento y Próximos Pasos
+            _buildFollowUpCard(result),
+
+            const SizedBox(height: 15),
+
+            if (result.preventionTips.isNotEmpty)
+              _buildInfoBox("🛡️ PROTOCOLO DE CUIDADOS", result.preventionTips, Colors.tealAccent),
+
             const SizedBox(height: 30),
 
-            ElevatedButton(
-              onPressed: () {
-                _setAutomatedReminders(result); // ACTIVA TODO EL SISTEMA DE ALERTAS
-                _saveAndFinish(result);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent.shade700,
-                minimumSize: const Size(double.infinity, 60),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
-              ),
-              child: const Text("ACTIVAR SEGUIMIENTO E INTELIGENCIA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
+            _buildActionButtons(result),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFollowUpCard(ScanResult res) {
+  Widget _buildPregnancyCard(ScanResult res) {
+    // Si faltan pocos días, usamos un color de alerta (Ambar/Rojo)
+    final bool isUrgent = (res.daysUntilDelivery ?? 100) <= 7;
+    
     return Container(
-      padding: const EdgeInsets.all(15),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white24)
+        gradient: LinearGradient(
+          colors: isUrgent 
+            ? [Colors.orange.withOpacity(0.2), Colors.red.withOpacity(0.1)]
+            : [Colors.blue.withOpacity(0.2), Colors.purple.withOpacity(0.1)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: isUrgent ? Colors.orangeAccent : Colors.white24),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _followUpRow(Icons.calendar_month, "Próximo escaneo:", "En 3 días"),
-          if (res.isPregnant)
-            _followUpRow(Icons.child_care, "Alerta de parto:", res.deliveryForecast ?? "Pendiente"),
-          _followUpRow(Icons.verified_user_outlined, "Protocolo:", "Monitoreo activo"),
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: Colors.amberAccent, size: 20),
+              const SizedBox(width: 8),
+              Text("DETALLES DE GESTACIÓN", 
+                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _dataCol("Crías estimadas", res.offspringCount ?? "---", Icons.pets),
+              _dataCol("Semanas", res.gestationWeeks ?? "---", Icons.timer),
+              _dataCol("Días restantes", "${res.daysUntilDelivery ?? '---'}", Icons.event),
+            ],
+          ),
+          if (res.deliveryForecast != null) ...[
+            const Divider(color: Colors.white12, height: 30),
+            Text(res.deliveryForecast!, 
+              style: const TextStyle(color: Colors.white, fontSize: 14, fontStyle: FontStyle.italic)),
+          ]
         ],
       ),
     );
   }
 
-  Widget _followUpRow(IconData icon, String label, String val) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(children: [
-        Icon(icon, color: Colors.blueAccent, size: 16),
-        const SizedBox(width: 10),
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-        const Spacer(),
-        Text(val, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-      ]),
+  Widget _dataCol(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.blueAccent, size: 18),
+        const SizedBox(height: 5),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+      ],
     );
   }
-} 
+
+  Widget _buildActionButtons(ScanResult result) {
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            _setAutomatedReminders(result);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("🚀 Inteligencia de seguimiento activada")),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blueAccent.shade700,
+            minimumSize: const Size(double.infinity, 64),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 8,
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.bolt, color: Colors.amber),
+              SizedBox(width: 10),
+              Text("ACTIVAR SEGUIMIENTO IA", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- Widgets de apoyo omitidos por brevedad pero asumiendo su existencia ---
+  Widget _buildStatusHeader(ScanResult r) => Text(r.healthStatus, style: const TextStyle(color: Colors.white, fontSize: 20));
+  Widget _buildInfoBox(String t, List<String> items, Color c) => Column(children: items.map((i) => Text(i)).toList());
+}
