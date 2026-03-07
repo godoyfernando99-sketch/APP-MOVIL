@@ -38,7 +38,7 @@ class AuthController extends ChangeNotifier {
     });
   }
 
-  /// MÉTODO: init llamado desde main.dart
+  /// MÉTODO: Inicialización global
   Future<void> init() async {
     try {
       _isLoading = true;
@@ -89,6 +89,8 @@ class AuthController extends ChangeNotifier {
         .listen((doc) async {
       if (doc.exists && doc.data() != null) {
         _currentUser = UserProfile.fromJson(doc.data()!);
+        
+        // Verificamos si toca resetear los escaneos mensuales (cada 30 días)
         if (!isPro) {
           await checkAndResetMonthlyScans();
         }
@@ -97,22 +99,41 @@ class AuthController extends ChangeNotifier {
     }, onError: (e) => debugPrint('Error en el Stream de usuario: $e'));
   }
 
-  /// MÉTODO: updateSubscription para la página de planes
+  /// MÉTODO: Actualiza el plan y los límites de escaneo en Firestore
   Future<void> updateSubscription(String plan) async {
     if (_currentUser == null) return;
     try {
       _isLoading = true;
       notifyListeners();
+      
       final now = DateTime.now();
+      final planId = plan.toLowerCase();
 
-      int scans = (plan.toLowerCase() == 'pro' || plan.toLowerCase() == 'gold') ? 9999 : 3;
+      // Mapeo de escaneos según el plan seleccionado en la SubscriptionsPage
+      int scans;
+      switch (planId) {
+        case 'pro':
+          scans = 9999;
+          break;
+        case 'intermediate':
+        case 'premium':
+          scans = 30;
+          break;
+        case 'basic':
+          scans = 15;
+          break;
+        default:
+          scans = 3; // Plan Gratuito por defecto
+      }
 
       await _firestore.collection('users').doc(_currentUser!.uid).update({
-        'subscriptionPlan': plan.toLowerCase(),
+        'subscriptionPlan': planId,
         'monthlyScans': scans,
         'lastReset': Timestamp.fromDate(now),
         'updatedAt': Timestamp.fromDate(now),
       });
+      
+      debugPrint('[Auth] Plan actualizado a $planId ($scans escaneos)');
     } catch (e) {
       debugPrint('Error al actualizar suscripción: $e');
     } finally {
@@ -121,9 +142,11 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// MÉTODO: Descontar un escaneo tras el uso de la IA
   Future<void> useFreeScan() async {
     final user = _currentUser;
-    if (user == null || isPro) return;
+    if (user == null || isPro) return; // Si es PRO o Gold, no descontamos nada
+
     if (user.scansRemaining > 0) {
       try {
         await _firestore.collection('users').doc(user.uid).update({
@@ -131,16 +154,20 @@ class AuthController extends ChangeNotifier {
           'updatedAt': FieldValue.serverTimestamp(),
         });
       } catch (e) {
-        debugPrint('Error al descontar: $e');
+        debugPrint('Error al descontar escaneo: $e');
       }
     }
   }
 
+  /// MÉTODO: Reset mensual automático
   Future<void> checkAndResetMonthlyScans() async {
     final user = _currentUser;
     if (user == null || isPro) return;
+    
     final now = DateTime.now();
     final lastReset = user.lastReset ?? user.createdAt;
+    
+    // Si han pasado 30 días o más desde el último reset
     if (now.difference(lastReset).inDays >= 30) {
       await _firestore.collection('users').doc(user.uid).update({
         'monthlyScans': user.maxScansByPlan,
@@ -160,11 +187,14 @@ class AuthController extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
+      
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(), 
         password: password
       );
+      
       await credential.user!.sendEmailVerification();
+      
       final now = DateTime.now();
       final profile = UserProfile(
         uid: credential.user!.uid,
@@ -179,8 +209,9 @@ class AuthController extends ChangeNotifier {
         subscriptionPlan: 'free',
         scansRemaining: 3, 
       );
+      
       await _firestore.collection('users').doc(profile.uid).set(profile.toJson());
-      await signOut(); // Se usa el nuevo nombre del método
+      await signOut(); // Cerramos sesión para obligar a verificar correo
       return null;
     } on FirebaseAuthException catch (e) {
       return e.message;
@@ -194,7 +225,10 @@ class AuthController extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
+      
       String email = username.trim();
+      
+      // Búsqueda por nombre de usuario si no se ingresó un email
       if (!email.contains('@')) {
         final query = await _firestore
             .collection('users')
@@ -204,13 +238,15 @@ class AuthController extends ChangeNotifier {
         if (query.docs.isEmpty) return 'Usuario no encontrado.';
         email = query.docs.first.data()['email'] as String;
       }
+      
       final credential = await _auth.signInWithEmailAndPassword(
         email: email, 
         password: password
       );
+      
       if (!credential.user!.emailVerified) {
-        await signOut(); // Se usa el nuevo nombre del método
-        return 'Verifica tu correo electrónico.';
+        await signOut();
+        return 'Por favor, verifica tu correo electrónico antes de ingresar.';
       }
       return null;
     } catch (e) {
@@ -225,21 +261,27 @@ class AuthController extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
+      
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return 'Cancelado.';
+      if (googleUser == null) return 'Cancelado por el usuario.';
+      
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
+      
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user!;
+      
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      
+      // Si el usuario de Google no existe en Firestore, creamos su perfil
       if (!userDoc.exists) {
         final now = DateTime.now();
         final profile = UserProfile(
           uid: user.uid,
-          username: user.email?.split('@').first ?? 'user',
+          username: user.email?.split('@').first ?? 'user_${user.uid.substring(0,5)}',
           firstName: user.displayName?.split(' ').first ?? '',
           lastName: user.displayName?.split(' ').skip(1).join(' ') ?? '',
           email: user.email ?? '',
@@ -261,11 +303,10 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  /// CORRECCIÓN: Nombre cambiado de logout a signOut para coincidir con el Router y Menú
+  /// MÉTODO: Cierre de sesión (Actualizado de logout a signOut)
   Future<void> signOut() async {
     try {
       _userSubscription?.cancel();
-      // Cerramos sesión de Google solo si hubo una sesión activa
       if (await _googleSignIn.isSignedIn()) {
         await _googleSignIn.signOut();
       }
