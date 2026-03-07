@@ -16,8 +16,11 @@ dependencies:
   provider: ^6.1.1
 
   # --- INTELIGENCIA ARTIFICIAL (Versiones Sincronizadas) ---
-  firebase_core: ^3.0.0      # <--- CORREGIDO: Subido de 2.24.2 a 3.0.0 para evitar el error
+  firebase_core: ^3.0.0
   firebase_vertexai: ^0.2.0 
+
+  # --- SISTEMA DE PAGOS Y SUSCRIPCIONES ---
+  in_app_purchase: ^3.2.0  # <--- ESTA LÍNEA ES LA QUE CORRIGE EL ERROR DEL BUILD
 
   # --- NOTIFICACIONES Y RECORDATORIOS ---
   awesome_notifications: ^0.7.0 
