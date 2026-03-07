@@ -31,29 +31,29 @@ class AiDiagnosisService {
       ACTÚA COMO: Especialista en Cirugía Veterinaria, Oncología y Medicina de Emergencias.
 
       REGLAS DE SEGURIDAD:
-      - Si la imagen muestra humanos u objetos, 'is_animal': false.
+      - Si la imagen muestra humanos, comida u objetos inanimados, establece 'is_animal': false.
 
       REGLAS DE DIAGNÓSTICO (Si 'is_animal': true):
-      1. TRIAGE Y CIRUGÍA: Si detectas Tumores, Fracturas expuestas, Obstrucciones, Heridas profundas o Desnutrición extrema:
-         - El campo 'health_status_text' DEBE SER EXACTAMENTE: "🚨 ALERTA: URGENTE LLEVAR AL VETERINARIO".
+      1. TRIAGE Y CIRUGÍA: Si detectas Tumores, Fracturas, Heridas profundas, Desnutrición extrema o Parásitos críticos:
+         - El campo 'health_status_text' DEBE SER EXACTAMENTE: "🚨 ALERTA: URGENTE OPERAR / LLEVAR AL VETERINARIO".
       2. DOLOR: Estima Nivel de Dolor (Bajo, Moderado, Alto).
-      3. GESTACIÓN: Tiempo estimado en DÍAS, SEMANAS o MESES.
+      3. GESTACIÓN: Indica tiempo estimado en DÍAS, SEMANAS o MESES.
       4. TRATAMIENTO Y COLOCACIÓN: 
-         - 'medicationDose' debe decir la dosis Y dónde aplicarla (ej: "10ml - Intramuscular en la tabla del cuello", "Gotas en el ojo izquierdo").
-      5. ALIMENTO: Formato NOMBRE PRODUCTO: Explicación.
+         - 'medicationDose' DEBE detallar la dosis Y EL LUGAR/FORMA DE COLOCACIÓN (ej: "5ml - Inyectable Intramuscular en la tabla del cuello", "Pomada tópica en zona afectada").
+      5. ALIMENTO: Formato NOMBRE PRODUCTO EN MAYÚSCULAS: Explicación detallada.
 
       ESQUEMA JSON OBLIGATORIO:
       {
         "is_animal": true,
-        "species": "Especie",
-        "breed": "Raza",
+        "species": "Especie detectada",
+        "breed": "Raza detectada",
         "health_status_text": "🚨 ALERTA: URGENTE OPERAR / LLEVAR AL VETERINARIO | bueno | regular",
         "pain_level": "Bajo | Moderado | Alto",
-        "diseaseName": "Nombre patología",
+        "diseaseName": "Nombre patología o 'Sano'",
         "medicationName": "Medicamento",
-        "medicationDose": "Dosis y zona de aplicación (ej. Intramuscular pierna)",
+        "medicationDose": "Dosis y guía de aplicación detallada",
         "isPregnant": true/false,
-        "gestationWeeks": "Tiempo de preñez",
+        "gestationWeeks": "Tiempo de preñez (ej: 45 días)",
         "foodRecommendation": "NOMBRE: Detalle",
         "observations": "Análisis clínico técnico."
       }
@@ -74,7 +74,7 @@ class AiDiagnosisService {
       final Map<String, dynamic> aiJson = jsonDecode(rawText.trim());
 
       if (aiJson['is_animal'] == false) {
-        throw '⚠️ No se detectó un animal. Por favor, enfoca al ejemplar.';
+        throw '⚠️ No se detectó un animal. Por favor, enfoca bien al ejemplar.';
       }
 
       final now = DateTime.now();
@@ -98,7 +98,7 @@ class AiDiagnosisService {
         isPregnant: aiJson['isPregnant'] ?? false,
         gestationWeeks: aiJson['gestationWeeks'],
         foodRecommendation: aiJson['foodRecommendation'],
-        observations: "DOLOR: ${aiJson['pain_level']}. ${aiJson['observations']}",
+        observations: "NIVEL DE DOLOR: ${aiJson['pain_level']}. ${aiJson['observations']}",
       );
     } catch (e) {
       print('🚨 ERROR IA SERVICE: $e');
