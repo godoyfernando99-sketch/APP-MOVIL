@@ -1,127 +1,63 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:typed_data';
 
 class ScanResult {
-  const ScanResult({
-    required this.id,
-    this.ownerId = '', // Opcional para evitar errores si no se provee
-    required this.createdAt,
-    this.updatedAt,
-    required this.animalId,
-    this.animalCategory = '',
-    this.mode = 'nochip',
-    this.microchipNumber,
-    this.photosBase64 = const [],
-    required this.healthStatus,
-    this.detectedBreed,
-    this.detectedSpecies,
-    this.diseaseName,
-    this.fractureDescription,
-    this.medicationName,
-    this.medicationDose,
-    this.isPregnant,
-    this.gestationWeeks, 
-    this.foodRecommendation,
-    this.observations,
-    // --- NUEVOS CAMPOS PARA SOLUCIONAR EL ERROR DEL BUILD ---
-    this.offspringCount,
-    this.deliveryForecast,
-    this.daysUntilDelivery,
-    this.preventionTips = const [],
-    this.medicationDays = const [],
-    this.rescanInterval = 3,
-  });
-
-  final String id;
-  final String ownerId;
-  final DateTime createdAt;
-  final DateTime? updatedAt;
-  final String animalId;
-  final String animalCategory;
-  final String mode; 
-  final String? microchipNumber;
-  final List<String> photosBase64;
+  final String animalType;
   final String healthStatus;
-  final String? detectedBreed;
-  final String? detectedSpecies;
-  final String? diseaseName;
-  final String? fractureDescription;
-  final String? medicationName;
-  final String? medicationDose;
-  final bool? isPregnant;
-  final String? gestationWeeks; 
-  final String? foodRecommendation;
-  final String? observations;
-
-  // --- NUEVAS PROPIEDADES DE SEGUIMIENTO ---
-  final String? offspringCount;
-  final String? deliveryForecast;
-  final int? daysUntilDelivery;
   final List<String> preventionTips;
-  final List<int> medicationDays;
+  final bool isPregnant;
+  
+  // Datos de Gestación
+  final String? offspringCount;
+  final String? gestationWeeks;
+  final int? daysUntilDelivery;
+  final String? deliveryForecast;
+
+  // Seguimiento e IA
   final int rescanInterval;
+  final List<int> medicationDays;
+  
+  // --- EL CAMPO QUE FALTABA ---
+  final String suggestedFoodName; 
 
-  // --- GETTERS DE COMPATIBILIDAD ---
-  String get animalType => (detectedSpecies?.isNotEmpty ?? false) 
-      ? detectedSpecies! 
-      : (animalCategory.isNotEmpty ? animalCategory : 'Animal');
+  // Metadatos de la captura
+  final List<Uint8List> photos;
+  final String? microchipId;
+  final DateTime timestamp;
 
-  String get breed => (detectedBreed?.isNotEmpty ?? false) ? detectedBreed! : 'Raza no detectada';
+  ScanResult({
+    required this.animalType,
+    required this.healthStatus,
+    required this.preventionTips,
+    this.isPregnant = false,
+    this.offspringCount,
+    this.gestationWeeks,
+    this.daysUntilDelivery,
+    this.deliveryForecast,
+    this.rescanInterval = 7,
+    this.medicationDays = const [],
+    // Valor por defecto para evitar errores si la IA no lo envía
+    this.suggestedFoodName = "Dieta Nutricional Estándar", 
+    required this.photos,
+    this.microchipId,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
 
-  // --- MAPEO DE DATOS ---
-
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'ownerId': ownerId,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt?.toIso8601String(),
-    'animalId': animalId,
-    'animalCategory': animalCategory,
-    'mode': mode,
-    'microchipNumber': microchipNumber,
-    'photosBase64': photosBase64,
-    'healthStatus': healthStatus,
-    'detectedBreed': detectedBreed,
-    'detectedSpecies': detectedSpecies,
-    'isPregnant': isPregnant,
-    'gestationWeeks': gestationWeeks,
-    'offspringCount': offspringCount,
-    'deliveryForecast': deliveryForecast,
-    'daysUntilDelivery': daysUntilDelivery,
-    'preventionTips': preventionTips,
-    'medicationDays': medicationDays,
-    'rescanInterval': rescanInterval,
-    'observations': observations,
-  };
-
-  static ScanResult fromMap(Map<String, dynamic> map) {
-    DateTime parse(dynamic r) {
-      if (r is Timestamp) return r.toDate();
-      if (r == null) return DateTime.now();
-      return DateTime.tryParse(r.toString()) ?? DateTime.now();
-    }
-
+  // Método para convertir de JSON (útil si usas Firebase o una API de IA)
+  factory ScanResult.fromJson(Map<String, dynamic> json) {
     return ScanResult(
-      id: map['id']?.toString() ?? '',
-      ownerId: map['ownerId']?.toString() ?? '',
-      createdAt: parse(map['createdAt']),
-      updatedAt: parse(map['updatedAt']),
-      animalId: map['animalId']?.toString() ?? '',
-      animalCategory: map['animalCategory']?.toString() ?? '',
-      mode: map['mode']?.toString() ?? 'nochip',
-      microchipNumber: map['microchipNumber']?.toString(),
-      photosBase64: List<String>.from(map['photosBase64'] ?? []),
-      healthStatus: map['healthStatus']?.toString() ?? 'regular',
-      detectedBreed: map['detectedBreed']?.toString(),
-      detectedSpecies: map['detectedSpecies']?.toString(),
-      isPregnant: map['isPregnant'] == true,
-      gestationWeeks: map['gestationWeeks']?.toString(),
-      offspringCount: map['offspringCount']?.toString(),
-      deliveryForecast: map['deliveryForecast']?.toString(),
-      daysUntilDelivery: map['days_until_delivery'] as int?,
-      preventionTips: List<String>.from(map['prevention_tips'] ?? []),
-      medicationDays: List<int>.from(map['medication_days'] ?? []),
-      rescanInterval: map['rescan_interval_days'] ?? 3,
-      observations: map['observations']?.toString(),
+      animalType: json['animalType'] ?? 'Desconocido',
+      healthStatus: json['healthStatus'] ?? 'No disponible',
+      preventionTips: List<String>.from(json['preventionTips'] ?? []),
+      isPregnant: json['isPregnant'] ?? false,
+      offspringCount: json['offspringCount']?.toString(),
+      gestationWeeks: json['gestationWeeks']?.toString(),
+      daysUntilDelivery: json['daysUntilDelivery'],
+      deliveryForecast: json['deliveryForecast'],
+      rescanInterval: json['rescanInterval'] ?? 7,
+      medicationDays: List<int>.from(json['medicationDays'] ?? []),
+      suggestedFoodName: json['suggestedFoodName'] ?? "Dieta Nutricional Estándar",
+      photos: [], // Las fotos suelen manejarse por separado del JSON puro
+      microchipId: json['microchipId'],
     );
   }
 }
