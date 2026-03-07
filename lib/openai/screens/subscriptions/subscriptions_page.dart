@@ -19,7 +19,7 @@ class SubscriptionsPage extends StatefulWidget {
 class _SubscriptionsPageState extends State<SubscriptionsPage> {
   final _subscriptionService = SubscriptionService();
   bool _isLoading = false;
-  bool _isPurchasing = false; // Nuevo: Evita clics dobles
+  bool _isPurchasing = false; 
 
   @override
   void initState() {
@@ -41,6 +41,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     setState(() => _isPurchasing = true);
 
     try {
+      // Si estamos en un dispositivo real con la tienda disponible
       if (_subscriptionService.isAvailable && _subscriptionService.products.isNotEmpty) {
         final product = _subscriptionService.products.firstWhere(
           (p) => p.id.contains(planId),
@@ -48,6 +49,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         );
 
         await _subscriptionService.buyProduct(product, (purchasedPlanId) async {
+          // Esta callback se activa cuando la compra es exitosa en el servicio
           await auth.updateSubscription(purchasedPlanId);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -58,23 +60,24 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           );
         });
       } else {
-        // Modo Desarrollo / Web
+        // MODO DESARROLLO / WEB (Simulación)
         await auth.updateSubscription(planId);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               Platform.isAndroid || Platform.isIOS
-                  ? 'Modo prueba: Plan activado.'
+                  ? 'Modo prueba: Plan activado localmente.'
                   : 'Plan activado para prueba web.',
             ),
           ),
         );
       }
     } catch (e) {
+      debugPrint('🚨 Error en compra: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al procesar la compra')),
+          const SnackBar(content: Text('Error al procesar la compra. Inténtalo de nuevo.')),
         );
       }
     } finally {
@@ -98,7 +101,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       backgroundColor: Colors.transparent,
       child: _isLoading 
         ? const Center(child: CircularProgressIndicator(color: Colors.white))
-        : Stack( // Usamos stack para mostrar un loader sobre los planes al comprar
+        : Stack( 
             children: [
               ListView(
                 padding: AppSpacing.paddingLg,
@@ -154,11 +157,19 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   const SizedBox(height: 40),
                 ],
               ),
+              // Pantalla de carga mientras se procesa el pago
               if (_isPurchasing)
                 Container(
-                  color: Colors.black45,
+                  color: Colors.black54,
                   child: const Center(
-                    child: CircularProgressIndicator(color: Colors.amber),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: Colors.amber),
+                        SizedBox(height: 16),
+                        Text("Procesando pago...", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
                   ),
                 ),
             ],
@@ -170,9 +181,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.2),
+        color: Colors.green.withOpacity(0.15),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green.withOpacity(0.5)),
+        border: Border.all(color: Colors.green.withOpacity(0.4)),
       ),
       child: Row(
         children: [
@@ -200,7 +211,6 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   }
 }
 
-// Clase _PlanCard se mantiene igual, es correcta.
 class _PlanCard extends StatelessWidget {
   const _PlanCard({
     required this.name,
@@ -224,15 +234,15 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
+        color: Colors.black.withOpacity(0.7),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: recommended ? accent : Colors.white.withOpacity(0.1),
+          color: recommended ? accent : Colors.white.withOpacity(0.08),
           width: recommended ? 2 : 1,
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -247,41 +257,42 @@ class _PlanCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                Text(priceLabel, style: TextStyle(color: accent, fontSize: 20, fontWeight: FontWeight.w900)),
+                Text(priceLabel, style: TextStyle(color: accent, fontSize: 22, fontWeight: FontWeight.w900)),
               ],
             ),
             const Divider(color: Colors.white12, height: 30),
             ...features.map((f) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 10),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle_outline_rounded, size: 18, color: accent),
-                  const SizedBox(width: 10),
+                  Icon(Icons.check_circle_rounded, size: 18, color: accent),
+                  const SizedBox(width: 12),
                   Expanded(child: Text(f, style: const TextStyle(color: Colors.white70, fontSize: 14))),
                 ],
               ),
             )),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 52,
               child: isCurrentPlan
                 ? OutlinedButton(
                     onPressed: null,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white24), 
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                      side: const BorderSide(color: Colors.white12), 
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))
                     ),
-                    child: const Text('PLAN ACTUAL', style: TextStyle(color: Colors.white38)),
+                    child: const Text('TU PLAN ACTUAL', style: TextStyle(color: Colors.white24)),
                   )
                 : FilledButton(
                     onPressed: onSelectPlan,
                     style: FilledButton.styleFrom(
                       backgroundColor: accent, 
                       foregroundColor: Colors.black, 
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
                     ),
-                    child: const Text('ADQUIRIR AHORA', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text('ADQUIRIR AHORA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
             ),
           ],
