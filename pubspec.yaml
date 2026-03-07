@@ -15,12 +15,12 @@ dependencies:
   go_router: ^13.1.0
   provider: ^6.1.1
 
-  # --- INTELIGENCIA ARTIFICIAL (Versiones Sincronizadas) ---
+  # --- INTELIGENCIA ARTIFICIAL ---
   firebase_core: ^3.0.0
   firebase_vertexai: ^0.2.0 
 
   # --- SISTEMA DE PAGOS Y SUSCRIPCIONES ---
-  in_app_purchase: ^3.2.0  # <--- ESTA LÍNEA ES LA QUE CORRIGE EL ERROR DEL BUILD
+  in_app_purchase: ^3.2.0
 
   # --- NOTIFICACIONES Y RECORDATORIOS ---
   awesome_notifications: ^0.7.0 
@@ -50,7 +50,6 @@ flutter:
     - assets/icons/
     - assets/video/
 
-# CORRECCIÓN EN LA GENERACIÓN DE ICONOS
 flutter_launcher_icons:
   android: true 
   ios: true
