@@ -36,7 +36,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   Future<void> _purchasePlan(String planId) async {
     if (_isPurchasing) return;
-    
+
     final auth = context.read<AuthController>();
     setState(() => _isPurchasing = true);
 
@@ -48,17 +48,21 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           orElse: () => _subscriptionService.products.first,
         );
 
-        await _subscriptionService.buyProduct(product, (purchasedPlanId) async {
-          // Esta callback se activa cuando la compra es exitosa en el servicio
-          await auth.updateSubscription(purchasedPlanId);
+        // --- CORRECCIÓN DEL ERROR DE ARGUMENTOS ---
+        // Llamamos a buyProduct solo con el producto.
+        final success = await _subscriptionService.buyProduct(product);
+        
+        if (success) {
+          // Si la compra fue exitosa en la tienda, actualizamos nuestra DB
+          await auth.updateSubscription(planId);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: Colors.green.shade800,
-              content: Text('¡Plan $purchasedPlanId activado correctamente!'),
+              content: Text('¡Plan ${planId.toUpperCase()} activado correctamente!'),
             ),
           );
-        });
+        }
       } else {
         // MODO DESARROLLO / WEB (Simulación)
         await auth.updateSubscription(planId);
@@ -91,7 +95,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     final strings = (String key) => AppStrings.of(context, key);
     final settings = context.watch<AppSettings>();
     final auth = context.watch<AuthController>();
-    
+
     final currency = settings.currency;
     final locale = settings.locale;
     final currentPlan = auth.currentUser?.subscriptionPlan?.toLowerCase() ?? 'free';
@@ -110,7 +114,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                     _buildCurrentPlanBanner(t, currentPlan),
                     const SizedBox(height: 20),
                   ],
-                  
+
                   _PlanCard(
                     name: 'Plan Básico',
                     priceLabel: currency.formatUsd(5.99, locale),
@@ -157,7 +161,6 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   const SizedBox(height: 40),
                 ],
               ),
-              // Pantalla de carga mientras se procesa el pago
               if (_isPurchasing)
                 Container(
                   color: Colors.black54,
