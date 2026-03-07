@@ -11,9 +11,8 @@ class UserProfile {
     required this.createdAt,
     required this.updatedAt,
     this.subscriptionPlan = 'free',
-    this.monthlyScans = 10, 
+    this.monthlyScans = 3, // Cambiado a 3 para coincidir con el inicio gratuito
     this.lastReset,
-    // --- SOLUCIÓN AL ERROR: Parámetro opcional en el constructor ---
     int? scansRemaining, 
   }) : _scansRemainingParam = scansRemaining;
 
@@ -28,35 +27,37 @@ class UserProfile {
   final String subscriptionPlan;
   final int monthlyScans; 
   final DateTime? lastReset;
-  final int? _scansRemainingParam; // Variable interna temporal
+  final int? _scansRemainingParam; 
 
   // --- GETTERS DE COMPATIBILIDAD ---
-
-  // Si se pasó 'scansRemaining' al constructor, lo usamos; si no, usamos 'monthlyScans'
   int get scansRemaining => _scansRemainingParam ?? monthlyScans;
 
-  bool get isPro => subscriptionPlan.toLowerCase() == 'pro' || subscriptionPlan.toLowerCase() == 'premium';
+  // Ajustado para reconocer 'intermediate' (el nombre técnico usado en el servicio)
+  bool get isPro => 
+    subscriptionPlan.toLowerCase() == 'pro' || 
+    subscriptionPlan.toLowerCase() == 'premium' ||
+    subscriptionPlan.toLowerCase() == 'intermediate';
 
   // --- GETTERS DE LÓGICA DE NEGOCIO ---
-
   String get fullName => '$firstName $lastName'.trim();
   String get displayName => username.isNotEmpty ? username : firstName;
-  
-  bool get hasVipSupport => subscriptionPlan == 'basico' || subscriptionPlan == 'premium';
-  
+
+  bool get hasVipSupport => isPro; // Simplificado: Si paga, tiene soporte VIP
+
   bool get hasScansAvailable => isPro || scansRemaining > 0;
 
+  // Sincronizado con los nombres de la UI y AuthController
   int get maxScansByPlan {
     switch (subscriptionPlan.toLowerCase()) {
-      case 'basico': return 15;
-      case 'premium': return 999999; 
+      case 'basic': return 15;
+      case 'intermediate': 
+      case 'premium': return 30; 
       case 'pro': return 999999;
-      default: return 10; 
+      default: return 3; 
     }
   }
 
   // --- MAPEO DE DATOS ---
-
   Map<String, dynamic> toJson() => {
     'uid': uid,
     'username': username,
@@ -76,7 +77,7 @@ class UserProfile {
     final updatedAtRaw = json['updatedAt'];
     final lastResetRaw = json['lastReset'];
 
-    int scans = 10;
+    int scans = 3;
     if (json['monthlyScans'] != null) {
       scans = (json['monthlyScans'] as num).toInt();
     } else if (json['scansRemaining'] != null) {
