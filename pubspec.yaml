@@ -15,8 +15,8 @@ dependencies:
   go_router: ^13.1.0
   provider: ^6.1.1
 
-  # --- INTELIGENCIA ARTIFICIAL ---
-  firebase_core: ^2.24.2
+  # --- INTELIGENCIA ARTIFICIAL (Versiones Sincronizadas) ---
+  firebase_core: ^3.0.0      # <--- CORREGIDO: Subido de 2.24.2 a 3.0.0 para evitar el error
   firebase_vertexai: ^0.2.0 
 
   # --- NOTIFICACIONES Y RECORDATORIOS ---
