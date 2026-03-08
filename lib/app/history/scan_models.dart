@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 class ScanResult {
+  final String? id; // Identificador único para el historial
   final String animalType;
   final String healthStatus;
   final List<String> preventionTips;
@@ -15,16 +16,16 @@ class ScanResult {
   // Seguimiento e IA
   final int rescanInterval;
   final List<int> medicationDays;
-  
-  // --- EL CAMPO QUE FALTABA ---
+  final String? foodRecommendation; 
   final String suggestedFoodName; 
 
-  // Metadatos de la captura
+  // Metadatos
   final List<Uint8List> photos;
   final String? microchipId;
   final DateTime timestamp;
 
   ScanResult({
+    this.id,
     required this.animalType,
     required this.healthStatus,
     required this.preventionTips,
@@ -35,16 +36,16 @@ class ScanResult {
     this.deliveryForecast,
     this.rescanInterval = 7,
     this.medicationDays = const [],
-    // Valor por defecto para evitar errores si la IA no lo envía
-    this.suggestedFoodName = "Dieta Nutricional Estándar", 
+    this.foodRecommendation,
+    this.suggestedFoodName = "Dieta Balanceada",
     required this.photos,
     this.microchipId,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 
-  // Método para convertir de JSON (útil si usas Firebase o una API de IA)
   factory ScanResult.fromJson(Map<String, dynamic> json) {
     return ScanResult(
+      id: json['id']?.toString(),
       animalType: json['animalType'] ?? 'Desconocido',
       healthStatus: json['healthStatus'] ?? 'No disponible',
       preventionTips: List<String>.from(json['preventionTips'] ?? []),
@@ -55,8 +56,9 @@ class ScanResult {
       deliveryForecast: json['deliveryForecast'],
       rescanInterval: json['rescanInterval'] ?? 7,
       medicationDays: List<int>.from(json['medicationDays'] ?? []),
-      suggestedFoodName: json['suggestedFoodName'] ?? "Dieta Nutricional Estándar",
-      photos: [], // Las fotos suelen manejarse por separado del JSON puro
+      foodRecommendation: json['foodRecommendation'],
+      suggestedFoodName: json['suggestedFoodName'] ?? "Dieta Balanceada",
+      photos: [], 
       microchipId: json['microchipId'],
     );
   }
