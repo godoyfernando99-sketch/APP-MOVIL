@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '2.1.0'
+    ext.kotlin_version = '1.9.24'
     repositories {
         google()
         mavenCentral()
@@ -18,24 +18,20 @@ allprojects {
     }
 }
 
-// ESTA ES LA CLAVE PARA MATAR EL ERROR DE NFC_MANAGER
 subprojects {
     afterEvaluate { project ->
-        if (project.hasProperty('android')) {
+        if (project.name == "nfc_manager") {
             project.android {
+                // Forzamos a que compile con una versión que acepte su código viejo
                 compileSdk = 34
-                compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
-                }
             }
         }
-        // Fuerza a Kotlin a ignorar errores de "deprecación"
+        
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "17"
+                // Esto es lo que evita que el error de 'toLowerCase' detenga el build
                 allWarningsAsErrors = false
-                freeCompilerArgs += ["-nowarn", "-Xlint:none"]
             }
         }
     }
