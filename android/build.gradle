@@ -18,35 +18,22 @@ allprojects {
     }
 }
 
-// ESTE BLOQUE ES EL QUE SALVARÁ EL BUILD #167
 subprojects {
-    project.configurations.all {
-        resolutionStrategy.eachDependency { details ->
-            if (details.requested.group == 'androidx.core' && details.requested.name == 'core-ktx') {
-                details.useVersion '1.13.1'
-            }
-        }
-    }
-    
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
-                if (namespace == "io.flutter.plugins.nfcmanager") {
-                    // Forzamos a NFC Manager a no ser tan estricto
-                    compileOptions {
-                        sourceCompatibility = JavaVersion.VERSION_17
-                        targetCompatibility = JavaVersion.VERSION_17
-                    }
+                compileSdk = 34
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
                 }
             }
         }
-        
-        // ESTO SILENCIA EL ERROR 'toLowerCase' DEFINITIVAMENTE
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "17"
-                allWarningsAsErrors = false // <--- VITAL
-                freeCompilerArgs += ["-nowarn", "-Xlint:none"] // <--- SILENCIO TOTAL
+                allWarningsAsErrors = false
+                freeCompilerArgs += ["-nowarn", "-Xlint:none"]
             }
         }
     }
@@ -55,6 +42,8 @@ subprojects {
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
     project.evaluationDependsOn(":app")
 }
 
