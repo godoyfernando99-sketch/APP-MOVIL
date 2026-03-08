@@ -1,0 +1,128 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:flutter/material.dart';
+import 'package:scanneranimal/app/history/scan_models.dart';
+import 'package:vibration/vibration.dart';
+
+class NotificationService {
+  /// Inicializa los canales de notificación (Ejecutar en el main.dart)
+  static Future<void> initialize() async {
+    await AwesomeNotifications().initialize(
+      null, // Icono por defecto
+      [
+        NotificationChannel(
+          channelKey: 'emergency_channel',
+          channelName: 'Alertas de Emergencia',
+          channelDescription: 'Notificaciones para casos urgentes o cirugías',
+          defaultColor: const Color(0xFF9D50BB),
+          ledColor: Colors.red,
+          importance: NotificationImportance.Max,
+          channelShowBadge: true,
+          vibrationPattern: lowVibrationPattern,
+          criticalAlerts: true,
+        ),
+        NotificationChannel(
+          channelKey: 'treatment_channel',
+          channelName: 'Tratamientos y Dosis',
+          channelDescription: 'Recordatorios de medicamentos y aplicaciones',
+          defaultColor: const Color(0xFF2196F3),
+          ledColor: Colors.blue,
+          importance: NotificationImportance.High,
+        ),
+        NotificationChannel(
+          channelKey: 'gestation_channel',
+          channelName: 'Seguimiento de Gestación',
+          channelDescription: 'Alertas de parto y evolución de crías',
+          defaultColor: const Color(0xFFE91E63),
+          ledColor: Colors.pink,
+          importance: NotificationImportance.High,
+        ),
+      ],
+    );
+  }
+
+  /// PROGRAMA TODA LA LÓGICA DE ALERTAS BASADA EN EL ESCANEO
+  static Future<void> programarAlertasSegunResultado(ScanResult result) async {
+    final String animalName = "${result.animalType} (${result.breed})";
+
+    // 1. ALERTA URGENTE CON VIBRACIÓN SOS
+    if (result.isUrgent) {
+      // Vibración personalizada: [pausa, vibra, pausa, vibra...]
+      if (await Vibration.hasVibrator() ?? false) {
+        Vibration.vibrate(
+          pattern: [500, 1000, 500, 1000, 500, 2000],
+          intensities: [128, 255, 128, 255, 128, 255],
+        );
+      }
+
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: 911,
+          channelKey: 'emergency_channel',
+          title: '🚨 ATENCIÓN VETERINARIA URGENTE',
+          body: 'Se detectó una condición grave en $animalName: ${result.healthStatus}. ¡Llevar al veterinario!',
+          notificationLayout: NotificationLayout.BigText,
+          backgroundColor: Colors.red,
+          fullScreenIntent: true,
+          wakeUpScreen: true,
+        ),
+      );
+    }
+
+    // 2. RECORDATORIOS DE DOSIS (SEGÚN VÍA Y LUGAR)
+    // Se programan dosis basadas en medicationDays (ej: cada 3 días)
+    if (result.medicationRoute != null) {
+      for (int dia in result.medicationDays) {
+        await AwesomeNotifications().createNotification(
+          content: NotificationContent(
+            id: DateTime.now().millisecond + dia,
+            channelKey: 'treatment_channel',
+            title: '💊 Toca Dosis: $animalName',
+            body: 'Aplicar ${result.medicationDosage} vía ${result.medicationRoute} en ${result.applicationSite}.',
+            notificationLayout: NotificationLayout.Default,
+          ),
+          schedule: NotificationInterval(
+            interval: dia * 24 * 3600, // Días convertidos a segundos
+            repeats: false,
+            timeZone: await AwesomeNotifications().getLocalTimeZoneIdentifier(),
+          ),
+        );
+      }
+    }
+
+    // 3. RE-ESCANEO CADA 3 DÍAS (CONTROL DE EVOLUCIÓN)
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 333,
+        channelKey: 'treatment_channel',
+        title: '📸 Toca Escaneo de Control',
+        body: 'Han pasado ${result.rescanInterval} días. Escanea de nuevo para ver cómo mejora de su lesión/tumor.',
+        notificationLayout: NotificationLayout.Default,
+      ),
+      schedule: NotificationInterval(
+        interval: result.rescanInterval * 24 * 3600, 
+        repeats: true,
+        timeZone: await AwesomeNotifications().getLocalTimeZoneIdentifier(),
+      ),
+    );
+
+    // 4. NOTIFICACIÓN DE GESTACIÓN Y PARTO
+    if (result.isPregnant && result.daysUntilDelivery != null) {
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: 777,
+          channelKey: 'gestation_channel',
+          title: '🐣 Cuenta Regresiva: Parto Próximo',
+          body: 'Faltan ${result.daysUntilDelivery} días para el parto de las crías (${result.offspringCount}). ¡Prepárate!',
+          notificationLayout: NotificationLayout.BigText,
+        ),
+        schedule: NotificationCalendar(
+          day: DateTime.now().add(Duration(days: result.daysUntilDelivery! - 1)).day,
+          hour: 8,
+          minute: 0,
+          second: 0,
+          repeats: false,
+        ),
+      );
+    }
+  }
+}
