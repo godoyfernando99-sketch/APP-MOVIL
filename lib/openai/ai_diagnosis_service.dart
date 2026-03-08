@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:firebase_vertexai/firebase_vertexai.dart';
+// CAMBIO CRÍTICO: Nueva librería oficial
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 
@@ -15,14 +16,15 @@ class AiDiagnosisService {
     String? microchipId,
   }) async {
     try {
-      final model = FirebaseVertexAI.instance.generativeModel(
+      // Ajustado a la nueva clase FirebaseAI
+      final model = FirebaseAI.instance.generativeModel(
         model: 'gemini-1.5-flash',
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
       );
 
-      // CAMBIO TÉCNICO: Se usa InlineDataPart para compatibilidad con el build
+      // Mantenemos InlineDataPart para enviar las fotos como bytes
       final imageParts = photos.map((bytes) => InlineDataPart('image/jpeg', bytes)).toList();
 
       // --- PROMPT MAESTRO (SIN ALTERACIONES) ---
@@ -62,7 +64,7 @@ class AiDiagnosisService {
         ...imageParts,
       ];
 
-      // CAMBIO TÉCNICO: Se envuelve correctamente en la lista de Content
+      // Envío de contenido al modelo Gemini
       final response = await model.generateContent([Content.multi(promptParts)]);
       
       final responseText = response.text;
@@ -92,7 +94,7 @@ class AiDiagnosisService {
       );
 
     } catch (e) {
-      debugPrint("🚨 Error en Vertex AI: $e");
+      debugPrint("🚨 Error en Firebase AI: $e");
       rethrow;
     }
   }
