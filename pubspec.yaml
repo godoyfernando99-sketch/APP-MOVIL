@@ -20,7 +20,8 @@ dependencies:
   video_player: ^2.8.1
 
   # --- HARDWARE Y SENSORES ---
-  nfc_manager: ^3.3.0
+  # ACTUALIZADO: La versión 3.5.0 corrige el error de Kotlin toLowerCase que viste en el log
+  nfc_manager: ^3.5.0
   vibration: ^1.8.4
 
   # --- NAVEGACIÓN Y ESTADO ---
@@ -39,7 +40,7 @@ dependencies:
   in_app_purchase: ^3.2.0
 
   # --- NOTIFICACIONES Y UPDATES ---
-  # Actualizado a 0.11.0 para compatibilidad con intl 0.20.x
+  # Versión 0.11.0 es la correcta para trabajar con intl 0.20.x
   awesome_notifications: ^0.11.0 
   in_app_update: ^4.2.1
 
@@ -60,7 +61,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
 
-# ESTO FUERZA A TODAS LAS LIBRERÍAS A USAR LA MISMA VERSIÓN DE INTL
+# FUERZA A TODAS LAS LIBRERÍAS A USAR LA MISMA VERSIÓN DE INTL PARA EVITAR CONFLICTOS
 dependency_overrides:
   intl: ^0.20.2
 
