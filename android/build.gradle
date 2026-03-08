@@ -22,6 +22,7 @@ subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
+                // Parche automático de Namespace
                 if (namespace == null || namespace.isEmpty()) {
                     def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
                     if (manifestFile.exists()) {
@@ -38,17 +39,11 @@ subprojects {
                 }
             }
         }
-
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "11"
                 allWarningsAsErrors = false
-                // Parches para que el código viejo no detenga el build
-                freeCompilerArgs += [
-                    "-Xskip-prerelease-check",
-                    "-nowarn",
-                    "-Xsuppress-version-warnings"
-                ]
+                freeCompilerArgs += ["-nowarn", "-Xsuppress-version-warnings"]
             }
         }
     }
