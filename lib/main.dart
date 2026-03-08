@@ -24,6 +24,7 @@ void main() async {
   await NotificationService.initialize();
 
   try {
+    // Inicialización de Firebase con las opciones generadas
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (e) {
     debugPrint('🚨 Firebase initialization failed: $e');
@@ -46,25 +47,24 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
   void initState() {
     super.initState();
 
+    // Ejecutar lógica de post-frame para evitar errores de montado de widgets
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _checkForUpdate();           
-      _requestNotificationPermissions(); // AJUSTADO PARA TUS CANALES REALES
+      _requestNotificationPermissions(); 
       await _checkReviewStatus();        
     });
   }
 
-  // --- SOLICITUD DE PERMISOS (AJUSTE CRÍTICO) ---
+  // --- SOLICITUD DE PERMISOS DE NOTIFICACIÓN ---
   void _requestNotificationPermissions() {
     AwesomeNotifications().isNotificationAllowed().then((isAllowed) async {
       if (!isAllowed) {
-        // Esto abre el diálogo del sistema para permitir notificaciones
         await AwesomeNotifications().requestPermissionToSendNotifications();
       }
       
-      // SOLUCIÓN: Pedir permisos críticos para los canales que REALMENTE existen
-      // Esto asegura que la vibración SOS y las alarmas de dosis funcionen.
+      // Permisos para canales específicos (Crítico para Android 13+)
       await AwesomeNotifications().checkPermissionList(
-        channelKey: 'emergency_channel', // Canal de urgencias/tumores
+        channelKey: 'emergency_channel', 
         permissions: [
           NotificationPermission.PreciseAlarms,
           NotificationPermission.Vibration,
@@ -75,22 +75,24 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
     });
   }
 
-  // --- LÓGICA DE CALIFICACIÓN INTELIGENTE ---
+  // --- LÓGICA DE CALIFICACIÓN (STORE REVIEW) ---
   Future<void> _checkReviewStatus() async {
     final prefs = await SharedPreferences.getInstance();
     bool alreadyRated = prefs.getBool('already_rated') ?? false;
 
     if (!alreadyRated) {
-      // Esperar 15 segundos para no molestar al abrir la app
+      // Delay de cortesía
       await Future.delayed(const Duration(seconds: 15));
       if (!mounted) return;
 
-      // Intentar obtener el contexto del Navigator de forma segura
-      final context = AppRouter.router.routerDelegate.navigatorKey.currentContext;
-      if (context == null) return;
+      // Obtener el contexto de navegación de forma segura desde tu AppRouter
+      final navigatorContext = AppRouter.router.routerDelegate.navigatorKey.currentContext;
+      if (navigatorContext == null) return;
 
+      if (!mounted) return;
+      
       showDialog(
-        context: context,
+        context: navigatorContext,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           backgroundColor: Colors.grey.shade900,
@@ -118,7 +120,8 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
               ),
               onPressed: () async {
                 await prefs.setBool('already_rated', true);
-                Navigator.pop(context); // Cerrar antes de llamar a la Review
+                if (mounted) Navigator.pop(context); 
+                
                 if (await _inAppReview.isAvailable()) {
                   _inAppReview.requestReview();
                 } else {
@@ -133,10 +136,13 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
     }
   }
 
+  // --- ACTUALIZACIÓN DE LA APP (IN APP UPDATE) ---
   Future<void> _checkForUpdate() async {
     try {
+      // InAppUpdate requiere Java 11 (ya configurado en tu build.gradle)
       final info = await InAppUpdate.checkForUpdate();
       if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+        // Realiza actualización inmediata si hay una disponible
         await InAppUpdate.performImmediateUpdate();
       }
     } catch (e) {
