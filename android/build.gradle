@@ -22,7 +22,7 @@ subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
-                // Corrige el error de Namespaces en Firestore y Notifications
+                // Parche de Namespaces para Firebase y Notifications
                 if (namespace == null || namespace.isEmpty()) {
                     def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
                     if (manifestFile.exists()) {
@@ -34,7 +34,7 @@ subprojects {
                 compileSdk = 34
                 buildToolsVersion = "34.0.0"
 
-                // Unificamos a Java 11 para máxima compatibilidad
+                // Forzamos Java 11 para evitar conflictos con in_app_review
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_11
                     targetCompatibility = JavaVersion.VERSION_11
@@ -42,7 +42,7 @@ subprojects {
             }
         }
 
-        // Parche para silenciar errores de librerías antiguas como nfc_manager
+        // Parche de silencio para Kotlin (Fundamental para nfc_manager)
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "11"
