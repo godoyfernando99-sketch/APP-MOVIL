@@ -1,13 +1,12 @@
 buildscript {
-    // CORRECCIÓN DEFINITIVA: 1.9.22 es perfecta para el SDK 36 y nfc_manager
+    // Versión estable para evitar conflictos con librerías como nfc_manager
     ext.kotlin_version = '1.9.22' 
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        // ACTUALIZACIÓN: Subimos a 8.2.1 para soportar mejor el SDK 36
-        // Esta versión de Gradle es necesaria cuando compileSdk es 35 o 36
+        // Gradle 8.2.1 es ideal para Java 17 y SDK 34/35
         classpath 'com.android.tools.build:gradle:8.2.1' 
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.google.gms:google-services:4.4.1'
@@ -33,9 +32,33 @@ tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
 
-// Bloque de carga de llaves para el firmado en producción
+// Bloque de carga de llaves para el firmado
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+// --- PARCHE DEFINITIVO PARA ERRORES DE LIBRERÍAS (NFC_MANAGER FIX) ---
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                // Forzamos a que las librerías no intenten usar SDKs experimentales
+                if (compileSdkVersion > 34) {
+                    compileSdkVersion 34
+                }
+            }
+        }
+        // Obligamos al compilador de Kotlin a ignorar advertencias de "toLowerCase" y similares
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+            kotlinOptions {
+                jvmTarget = "17"
+                freeCompilerArgs += [
+                    "-Xlint:deprecation", 
+                    "-Xjvm-default=all"
+                ]
+            }
+        }
+    }
 }
