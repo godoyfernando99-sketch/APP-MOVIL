@@ -22,7 +22,7 @@ dependencies:
   # --- HARDWARE Y SENSORES ---
   # ACTUALIZADO: La versión 4.1.1 ya no tiene el error de toLowerCase
   nfc_manager: ^4.1.1
-  vibration: ^1.9.0
+  vibration: ^2.0.1
 
   # --- NAVEGACIÓN Y ESTADO ---
   go_router: ^13.1.0
