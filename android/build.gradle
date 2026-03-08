@@ -1,11 +1,14 @@
 buildscript {
-    // Sincronizado con settings.gradle
+    // Sincronizado con settings.gradle para evitar conflictos de versiones
     ext.kotlin_version = '2.1.0' 
+    
     repositories {
         google()
         mavenCentral()
     }
+
     dependencies {
+        // Gradle 8.2.1 es el motor ideal para Java 17 y Kotlin 2.1.x
         classpath 'com.android.tools.build:gradle:8.2.1' 
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.google.gms:google-services:4.4.1'
@@ -19,6 +22,7 @@ allprojects {
     }
 }
 
+// Configuración de directorios de build para Flutter
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
@@ -27,12 +31,26 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+// Tarea para limpiar el proyecto antes de un nuevo build
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
 
+// Carga de credenciales para el firmado del APK/AAB
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+// --- PARCHE DE COMPATIBILIDAD ANDROIDX ---
+// Asegura que todas las librerías de terceros usen versiones de AndroidX compatibles
+subprojects {
+    project.configurations.all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'androidx.core' && details.requested.name == 'core-ktx') {
+                details.useVersion '1.12.0'
+            }
+        }
+    }
 }
