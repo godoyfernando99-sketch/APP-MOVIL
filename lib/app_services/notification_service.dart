@@ -41,12 +41,10 @@ class NotificationService {
   }
 
   static Future<void> programarAlertasSegunResultado(ScanResult result) async {
-    // 1. VERIFICACIÓN DE PERMISOS ANTES DE PROGRAMAR
-    // Esto evita que la app se cierre si no tiene permiso de alarmas precisas
+    // 1. VERIFICACIÓN DE PERMISOS
     bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
     if (!isAllowed) {
       await AwesomeNotifications().requestPermissionToSendNotifications();
-      // Si después de pedirlo sigue sin permiso, salimos para evitar crash
       if (!(await AwesomeNotifications().isNotificationAllowed())) return;
     }
 
@@ -55,7 +53,8 @@ class NotificationService {
 
     // 2. VIBRACIÓN SOS E INFORME URGENTE
     if (result.isUrgent) {
-      if (await Vibration.hasVibrator() ?? false) {
+      bool? hasVib = await Vibration.hasVibrator();
+      if (hasVib == true) {
         Vibration.vibrate(
           pattern: [500, 1000, 500, 1000, 500, 2000],
           intensities: [128, 255, 128, 255, 128, 255],
@@ -79,7 +78,8 @@ class NotificationService {
     // 3. RECORDATORIOS DE MEDICACIÓN (Dosis y Vía)
     if (result.medicationRoute != null) {
       for (int dia in result.medicationDays) {
-        int segundos = (dia * 24 * 3600).clamp(60, 9999999);
+        // CORRECCIÓN: Usar Duration en lugar de int
+        int segundosCalculados = (dia * 24 * 3600).clamp(60, 9999999);
         
         await AwesomeNotifications().createNotification(
           content: NotificationContent(
@@ -89,7 +89,7 @@ class NotificationService {
             body: 'Aplicar ${result.medicationDosage} por vía ${result.medicationRoute} en ${result.applicationSite}.',
           ),
           schedule: NotificationInterval(
-            interval: segundos,
+            interval: Duration(seconds: segundosCalculados),
             repeats: false,
             timeZone: localTimeZone,
             preciseAlarm: true, 
@@ -99,6 +99,9 @@ class NotificationService {
     }
 
     // 4. CONTROL CADA 3 DÍAS
+    // CORRECCIÓN: Usar Duration
+    int intervaloSegundos = (result.rescanInterval * 24 * 3600).clamp(60, 9999999);
+    
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: 333,
@@ -107,7 +110,7 @@ class NotificationService {
         body: 'Es hora de re-escanear a $animalName para evaluar mejoría.',
       ),
       schedule: NotificationInterval(
-        interval: (result.rescanInterval * 24 * 3600).clamp(60, 9999999),
+        interval: Duration(seconds: intervaloSegundos),
         repeats: true,
         timeZone: localTimeZone,
         preciseAlarm: true,
@@ -127,7 +130,7 @@ class NotificationService {
           notificationLayout: NotificationLayout.BigText,
         ),
         schedule: NotificationInterval(
-          interval: diasAviso * 24 * 3600,
+          interval: Duration(seconds: diasAviso * 24 * 3600),
           repeats: false,
           timeZone: localTimeZone,
           preciseAlarm: true,
@@ -136,4 +139,5 @@ class NotificationService {
     }
   }
 }
-update for build.
+
+// Build final verificado
