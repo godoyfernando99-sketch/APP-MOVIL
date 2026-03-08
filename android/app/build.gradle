@@ -13,27 +13,29 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.scanneranimal.app"
-    
-    // CORRECCIÓN: Subimos a 36 para cumplir con los requisitos de androidx.core 1.17.0
-    compileSdk = 36 
+
+    // AJUSTE: Bajamos a 35 (Estable) para evitar errores de librerías como NFC
+    compileSdk = 35 
     ndkVersion = "27.0.12077973"
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // AJUSTE: Usamos Java 17 para total compatibilidad con Gradle 8.2+
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "11"
+        // AJUSTE: El jvmTarget debe coincidir con la versión de Java
+        jvmTarget = "17"
     }
 
     defaultConfig {
         applicationId = "com.scanneranimal.app"
         minSdk = 24
-        
-        // Google Play exige al menos 35, así que con 35 estamos perfectos
+
+        // Ajustado a 35 para cumplir con Google Play 2024/2025
         targetSdk = 35 
-        
+
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true
@@ -66,4 +68,7 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1' 
+    
+    // Forzamos una versión de core-ktx compatible con SDK 35
+    implementation "androidx.core:core-ktx:1.12.0"
 }
