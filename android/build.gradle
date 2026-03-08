@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.9.24'
+    ext.kotlin_version = '1.9.24' 
     repositories {
         google()
         mavenCentral()
@@ -20,18 +20,25 @@ allprojects {
 
 subprojects {
     afterEvaluate { project ->
-        if (project.name == "nfc_manager") {
+        if (project.hasProperty('android')) {
             project.android {
-                // Forzamos a que compile con una versión que acepte su código viejo
                 compileSdk = 34
+                // Esto ayuda a in_app_purchase y nfc_manager a no chocar
+                namespace = project.group.toString() + "." + project.name.replace("-", "_")
+                
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
             }
         }
         
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "17"
-                // Esto es lo que evita que el error de 'toLowerCase' detenga el build
                 allWarningsAsErrors = false
+                // Parámetro extra para ignorar el código antiguo de nfc_manager
+                freeCompilerArgs += ["-Xskip-prerelease-check", "-nowarn"]
             }
         }
     }
