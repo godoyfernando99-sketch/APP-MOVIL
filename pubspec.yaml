@@ -10,13 +10,20 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # REQUERIDO: Para solucionar el error de StandardFileSystem / localizations
+  flutter_localizations:
+    sdk: flutter
+
+  # --- AUTENTICACIÓN ---
+  # REQUERIDO: Para solucionar el error 'GoogleSignInAuthentication' en auth_controller.dart
+  google_sign_in: ^6.2.1
 
   # --- MULTIMEDIA Y VIDEO ---
   video_player: ^2.8.1
 
   # --- HARDWARE Y SENSORES ---
   nfc_manager: ^3.3.0
-  vibration: ^1.8.4        # REQUERIDO: Vibración SOS para urgencias
+  vibration: ^1.8.4
 
   # --- NAVEGACIÓN Y ESTADO ---
   go_router: ^13.1.0
@@ -28,14 +35,14 @@ dependencies:
   cloud_firestore: ^5.0.2
 
   # --- INTELIGENCIA ARTIFICIAL ---
-  firebase_vertexai: ^0.2.1 
+  firebase_vertexai: ^1.1.0 # Actualizado a versión estable para evitar conflictos con Firebase Core
 
   # --- SISTEMA DE PAGOS ---
   in_app_purchase: ^3.2.0
 
   # --- NOTIFICACIONES Y UPDATES ---
   awesome_notifications: ^0.9.3+1 
-  in_app_update: ^4.2.1    # REQUERIDO: Por tu lógica en main.dart
+  in_app_update: ^4.2.1
 
   # --- CALIFICACIÓN Y MEMORIA ---
   in_app_review: ^2.0.9
