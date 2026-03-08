@@ -18,12 +18,10 @@ pluginManagement {
 
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-    // AJUSTE: Usamos la 8.2.1 para que coincida con tu build.gradle raíz
     id "com.android.application" version "8.2.1" apply false
-    // AJUSTE: Versión estable de Google Services
     id "com.google.gms.google-services" version "4.4.1" apply false
-    // AJUSTE: Bajamos de 2.2.20 (muy nueva) a 1.9.22 para evitar el error de nfc_manager
-    id "org.jetbrains.kotlin.android" version "1.9.22" apply false
+    // CAMBIO CLAVE: Sincronizado a 2.1.0 para que in_app_update compile
+    id "org.jetbrains.kotlin.android" version "2.1.0" apply false
 }
 
 include ":app"
