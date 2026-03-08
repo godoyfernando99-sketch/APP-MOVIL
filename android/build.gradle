@@ -18,29 +18,35 @@ allprojects {
     }
 }
 
-// PARCHE DEFINITIVO DE COMPATIBILIDAD
+// ESTE BLOQUE ES EL QUE SALVARÁ EL BUILD #167
 subprojects {
+    project.configurations.all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'androidx.core' && details.requested.name == 'core-ktx') {
+                details.useVersion '1.13.1'
+            }
+        }
+    }
+    
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
-                compileSdk = 34
-                // Esto fuerza a las librerías a usar Java 17 sí o sí
-                compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
+                if (namespace == "io.flutter.plugins.nfcmanager") {
+                    // Forzamos a NFC Manager a no ser tan estricto
+                    compileOptions {
+                        sourceCompatibility = JavaVersion.VERSION_17
+                        targetCompatibility = JavaVersion.VERSION_17
+                    }
                 }
             }
         }
-        // Esto silencia a nfc_manager y su error de 'toLowerCase'
+        
+        // ESTO SILENCIA EL ERROR 'toLowerCase' DEFINITIVAMENTE
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "17"
-                // Desactivamos el modo estricto para que ignore advertencias
-                allWarningsAsErrors = false
-                freeCompilerArgs += [
-                    "-Xlint:none",
-                    "-nowarn"
-                ]
+                allWarningsAsErrors = false // <--- VITAL
+                freeCompilerArgs += ["-nowarn", "-Xlint:none"] // <--- SILENCIO TOTAL
             }
         }
     }
@@ -49,8 +55,6 @@ subprojects {
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
     project.evaluationDependsOn(":app")
 }
 
