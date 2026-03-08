@@ -30,8 +30,8 @@ dependencies:
 
   # --- BACKEND Y CLOUD ---
   firebase_core: ^4.5.0
-  firebase_auth: ^5.1.1
-  cloud_firestore: ^5.0.2
+  firebase_auth: ^6.2.0
+  cloud_firestore: ^6.1.3
 
   # --- INTELIGENCIA ARTIFICIAL ---
   # ACTUALIZADO: Reemplazamos la librería descontinuada
