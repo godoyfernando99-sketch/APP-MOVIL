@@ -22,7 +22,6 @@ subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
-                // PARCHE 1: Corrige el error de Namespace/Package en Firestore y Notifications
                 if (namespace == null || namespace.isEmpty()) {
                     def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
                     if (manifestFile.exists()) {
@@ -35,26 +34,30 @@ subprojects {
                 }
                 compileSdk = 34
                 buildToolsVersion = "34.0.0"
-
-                compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
-                }
             }
         }
 
-        // PARCHE 2: Silencia los errores de nfc_manager y versiones incompatibles
+        // --- EL PARCHE DEFINITIVO PARA NFC_MANAGER ---
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "17"
-                allWarningsAsErrors = false
+                // Esto le dice a Kotlin: "Ignora que el código sea viejo, compila igual"
+                allWarningsAsErrors = false 
                 freeCompilerArgs += [
-                    "-Xskip-prerelease-check", 
-                    "-nowarn", 
+                    "-Xskip-prerelease-check",
                     "-Xsuppress-version-warnings",
-                    "-Xallow-unstable-dependencies"
+                    "-P", "plugin:org.jetbrains.kotlin.android:enabled=false" // Desactiva verificaciones estrictas
                 ]
             }
+        }
+    }
+}
+
+// Bloque especial para forzar a nfc_manager a no fallar
+subprojects {
+    if (project.name == "nfc_manager") {
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions.freeCompilerArgs += ["-nowarn"] 
         }
     }
 }
