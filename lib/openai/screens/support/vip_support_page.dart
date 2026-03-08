@@ -33,6 +33,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
   @override
   void initState() {
     super.initState();
+    // Inicialización del modelo Gemini 1.5 Flash
     _model = FirebaseVertexAI.instance.generativeModel(
       model: 'gemini-1.5-flash',
     );
@@ -51,44 +52,45 @@ class _VipSupportPageState extends State<VipSupportPage> {
   }
 
   Future<void> _getAiResponse(String userText, File? imageFile) async {
+    if (!mounted) return;
     setState(() => _isTyping = true);
     _scrollToBottom();
 
     try {
-      final List<Part> parts = []; // Usaremos DataPart genérico para la lista si es necesario, o directamente InlineDataPart
+      GenerateContentResponse response;
 
       if (imageFile != null) {
         final Uint8List imageBytes = await imageFile.readAsBytes();
-        // --- CAMBIO TÉCNICO PARA EL BUILD: InlineDataPart ---
+        
+        // Formato Multi-Part para Imagen + Texto (Vertex AI compatible)
         final content = [
           Content.multi([
             TextPart("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText"),
             InlineDataPart('image/jpeg', imageBytes),
           ])
         ];
-        final response = await _model.generateContent(content);
-        _processResponse(response);
+        response = await _model.generateContent(content);
       } else {
-        final response = await _model.generateContent([
+        // Formato simple para Texto solo
+        response = await _model.generateContent([
           Content.text("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText")
         ]);
-        _processResponse(response);
+      }
+
+      if (response.text != null) {
+        _addMessage(false, response.text!.trim(), null);
+      } else {
+        _addMessage(false, "No pude procesar la respuesta. Intenta de nuevo.", null);
       }
 
     } catch (e) {
       debugPrint("Error en Chat VIP: $e");
       _addMessage(false, "El servicio VIP está experimentando una alta demanda. Reintenta en un momento.", null);
     } finally {
-      if (mounted) setState(() => _isTyping = false);
-      _scrollToBottom();
-    }
-  }
-
-  void _processResponse(GenerateContentResponse response) {
-    if (response.text != null) {
-      _addMessage(false, response.text!.trim(), null);
-    } else {
-      _addMessage(false, "No pude procesar la respuesta. Intenta de nuevo.", null);
+      if (mounted) {
+        setState(() => _isTyping = false);
+        _scrollToBottom();
+      }
     }
   }
 
@@ -140,6 +142,12 @@ class _VipSupportPageState extends State<VipSupportPage> {
               ),
             ),
           ),
+          if (_isTyping)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text("Dr. Julián está escribiendo...", 
+                style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontStyle: FontStyle.italic)),
+            ),
           _buildInputArea(),
         ],
       ),
@@ -148,32 +156,40 @@ class _VipSupportPageState extends State<VipSupportPage> {
 
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-      color: Colors.black,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      color: Colors.black.withOpacity(0.8),
       child: SafeArea(
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.camera_alt, color: Colors.greenAccent),
+              icon: const Icon(Icons.image_outlined, color: Colors.greenAccent),
               onPressed: _isTyping ? null : _pickImage,
             ),
             Expanded(
               child: TextField(
                 controller: _messageController,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: "Escribe tu consulta...",
                   hintStyle: const TextStyle(color: Colors.white38),
                   filled: true,
                   fillColor: Colors.white10,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
                 onSubmitted: (_) => _isTyping ? null : _sendMessage(),
               ),
             ),
-            IconButton(
-              icon: Icon(Icons.send, color: _isTyping ? Colors.grey : Colors.greenAccent),
-              onPressed: _isTyping ? null : _sendMessage,
+            const SizedBox(width: 8),
+            CircleAvatar(
+              backgroundColor: _isTyping ? Colors.grey : Colors.greenAccent.shade700,
+              child: IconButton(
+                icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                onPressed: _isTyping ? null : _sendMessage,
+              ),
             ),
           ],
         ),
@@ -195,32 +211,36 @@ class _ChatBubble extends StatelessWidget {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-        padding: const EdgeInsets.all(12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        padding: const EdgeInsets.all(14),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
         decoration: BoxDecoration(
-          color: isMe ? Colors.green.shade900 : Colors.white12,
+          color: isMe ? const Color(0xFF1B5E20) : Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(15),
-            topRight: const Radius.circular(15),
-            bottomLeft: Radius.circular(isMe ? 15 : 0),
-            bottomRight: Radius.circular(isMe ? 0 : 15),
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(isMe ? 20 : 0),
+            bottomRight: Radius.circular(isMe ? 0 : 20),
           ),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (image != null) 
               Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.file(image!, width: 200),
+                  borderRadius: BorderRadius.circular(15),
+                  child: Image.file(image!, fit: BoxFit.cover),
                 ),
               ),
-            Text(text, style: const TextStyle(color: Colors.white)),
-            const SizedBox(height: 5),
-            Text(time, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+            Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4)),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Text(time, style: const TextStyle(color: Colors.white38, fontSize: 9)),
+            ),
           ],
         ),
       ),
