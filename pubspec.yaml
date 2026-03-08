@@ -1,80 +1,60 @@
-name: scanneranimal
-description: "IA Veterinaria - Diagnóstico, Gestación y Seguimiento"
-publish_to: 'none'
+buildscript {
+    ext.kotlin_version = '1.9.24' // Bajamos a 1.9.24 para máxima compatibilidad
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.1'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.google.gms:google-services:4.4.1'
+    }
+}
 
-version: 1.0.24+27 
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
 
-environment:
-  sdk: '>=3.2.0 <4.0.0'
+// ESTO ES LO QUE ARREGLA EL ERROR DE NFC_MANAGER
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                // Forzamos a que todas las librerías usen el mismo nivel de SDK
+                compileSdk = 34
+                buildToolsVersion = "34.0.0"
+                
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            }
+        }
+        
+        // ESTA ES LA "MORDAZA" PARA EL COMPILADOR
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = "17"
+                // IMPORTANTE: Le decimos a Kotlin que NO trate los warnings como errores
+                allWarningsAsErrors = false
+                // Ignoramos warnings específicos de APIs viejas
+                freeCompilerArgs += ["-nowarn", "-Xlint:none"]
+            }
+        }
+    }
+}
 
-dependencies:
-  flutter:
-    sdk: flutter
-  flutter_localizations:
-    sdk: flutter
+rootProject.buildDir = "../build"
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(":app")
+}
 
-  # --- AUTENTICACIÓN ---
-  google_sign_in: ^6.2.1
-
-  # --- MULTIMEDIA Y VIDEO ---
-  video_player: ^2.8.1
-
-  # --- HARDWARE Y SENSORES ---
-  # ACTUALIZADO: La versión 3.5.0 corrige el error de Kotlin toLowerCase que viste en el log
-  nfc_manager: ^3.5.0
-  vibration: ^1.8.4
-
-  # --- NAVEGACIÓN Y ESTADO ---
-  go_router: ^13.1.0
-  provider: ^6.1.1
-
-  # --- BACKEND Y CLOUD ---
-  firebase_core: ^3.1.1
-  firebase_auth: ^5.1.1
-  cloud_firestore: ^5.0.2
-
-  # --- INTELIGENCIA ARTIFICIAL ---
-  firebase_vertexai: ^1.1.0 
-
-  # --- SISTEMA DE PAGOS ---
-  in_app_purchase: ^3.2.0
-
-  # --- NOTIFICACIONES Y UPDATES ---
-  # Versión 0.11.0 es la correcta para trabajar con intl 0.20.x
-  awesome_notifications: ^0.11.0 
-  in_app_update: ^4.2.1
-
-  # --- CALIFICACIÓN Y MEMORIA ---
-  in_app_review: ^2.0.9
-  shared_preferences: ^2.2.2
-
-  # --- GENERACIÓN DE PDF Y REPORTES ---
-  pdf: ^3.10.8
-  printing: ^5.11.0
-  image_picker: ^1.0.7
-  path_provider: ^2.1.2
-  share_plus: ^7.2.2
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.13.1
-
-# FUERZA A TODAS LAS LIBRERÍAS A USAR LA MISMA VERSIÓN DE INTL PARA EVITAR CONFLICTOS
-dependency_overrides:
-  intl: ^0.20.2
-
-flutter:
-  uses-material-design: true
-  assets:
-    - assets/images/
-    - assets/icons/
-    - assets/video/
-
-flutter_launcher_icons:
-  android: true 
-  ios: true
-  image_path: "assets/icons/logo_app.png"
-  adaptive_icon_background: "#121212"
-  adaptive_icon_foreground: "assets/icons/logo_app.png"
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
