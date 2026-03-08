@@ -15,29 +15,18 @@ import 'package:scanneranimal/firebase_options.dart';
 import 'package:scanneranimal/l10n/app_strings.dart';
 import 'package:scanneranimal/nav.dart';
 import 'package:scanneranimal/theme.dart';
+// IMPORTANTE: Importar el nuevo servicio de notificaciones
+import 'package:scanneranimal/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Inicializar Motor de Notificaciones (Alertas de 3 días, Parto y Medicinas)
-  AwesomeNotifications().initialize(
-    null, 
-    [
-      NotificationChannel(
-        channelKey: 'alerts_channel',
-        channelName: 'Alertas Veterinarias',
-        channelDescription: 'Notificaciones de seguimiento, parto y medicación',
-        defaultColor: const Color(0xFF9D50BB),
-        ledColor: Colors.white,
-        importance: NotificationImportance.High,
-        criticalAlerts: true,
-      )
-    ],
-    debug: true
-  );
+  // 1. Inicializar el Servicio de Notificaciones Profesional
+  // Esto crea los canales para Emergencias (Vibración), Parto y Medicinas
+  await NotificationService.initialize();
 
   try {
-    // Inicialización compatible con Firebase 3.0.0
+    // Inicialización compatible con Firebase
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (e) {
     debugPrint('🚨 Firebase initialization failed: $e');
@@ -64,7 +53,7 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _checkForUpdate();           // Actualizaciones de Google Play
       await _checkReviewStatus();        // Diálogo de Calificación Inteligente
-      _requestNotificationPermissions(); // Permisos para recordatorios de salud
+      _requestNotificationPermissions(); // Permisos para recordatorios y alertas SOS
     });
   }
 
@@ -74,11 +63,9 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
     bool alreadyRated = prefs.getBool('already_rated') ?? false;
 
     if (!alreadyRated) {
-      // Espera de 6 segundos para que cargue el menú primero
       await Future.delayed(const Duration(seconds: 6));
       if (!mounted) return;
 
-      // Usamos el contexto del Router para mostrar el diálogo de forma segura
       final context = AppRouter.router.routerDelegate.navigatorKey.currentContext;
       if (context == null) return;
 
@@ -110,13 +97,10 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () async {
-                // Guardamos permanentemente que ya calificó
                 await prefs.setBool('already_rated', true);
-                
                 if (await _inAppReview.isAvailable()) {
                   _inAppReview.requestReview();
                 } else {
-                  // Fallback: Abre la tienda directamente si el diálogo nativo falla
                   _inAppReview.openStoreListing();
                 }
                 if (mounted) Navigator.pop(context);
@@ -129,10 +113,11 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
     }
   }
 
-  // --- LÓGICA DE NOTIFICACIONES ---
+  // --- LÓGICA DE PERMISOS DE NOTIFICACIONES ---
   void _requestNotificationPermissions() {
     AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
       if (!isAllowed) {
+        // Pedir permiso para mostrar alertas, vibrar y notificaciones críticas
         AwesomeNotifications().requestPermissionToSendNotifications();
       }
     });
@@ -170,7 +155,7 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
             theme: lightTheme,
             darkTheme: darkTheme,
             themeMode: ThemeMode.system,
-            routerConfig: AppRouter.router, // Configuración de lib/nav.dart
+            routerConfig: AppRouter.router, 
             locale: settings.locale,
             supportedLocales: AppStrings.supportedLocales,
             localizationsDelegates: const [
