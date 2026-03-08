@@ -10,12 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # REQUERIDO: Para solucionar el error de StandardFileSystem / localizations
   flutter_localizations:
     sdk: flutter
 
   # --- AUTENTICACIÓN ---
-  # REQUERIDO: Para solucionar el error 'GoogleSignInAuthentication' en auth_controller.dart
   google_sign_in: ^6.2.1
 
   # --- MULTIMEDIA Y VIDEO ---
@@ -35,13 +33,14 @@ dependencies:
   cloud_firestore: ^5.0.2
 
   # --- INTELIGENCIA ARTIFICIAL ---
-  firebase_vertexai: ^1.1.0 # Actualizado a versión estable para evitar conflictos con Firebase Core
+  firebase_vertexai: ^1.1.0 
 
   # --- SISTEMA DE PAGOS ---
   in_app_purchase: ^3.2.0
 
   # --- NOTIFICACIONES Y UPDATES ---
-  awesome_notifications: ^0.9.3+1 
+  # Actualizado a 0.11.0 para compatibilidad con intl 0.20.x
+  awesome_notifications: ^0.11.0 
   in_app_update: ^4.2.1
 
   # --- CALIFICACIÓN Y MEMORIA ---
@@ -61,19 +60,20 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
 
+# ESTO FUERZA A TODAS LAS LIBRERÍAS A USAR LA MISMA VERSIÓN DE INTL
+dependency_overrides:
+  intl: ^0.20.2
+
 flutter:
   uses-material-design: true
-
   assets:
     - assets/images/
     - assets/icons/
     - assets/video/
 
-# CONFIGURACIÓN DE ICONOS DE LANZAMIENTO
 flutter_launcher_icons:
   android: true 
   ios: true
   image_path: "assets/icons/logo_app.png"
-  remove_alpha_ios: true
   adaptive_icon_background: "#121212"
   adaptive_icon_foreground: "assets/icons/logo_app.png"
