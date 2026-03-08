@@ -1,42 +1,71 @@
-buildscript {
-    ext.kotlin_version = '2.1.0' 
-    repositories {
-        google()
-        mavenCentral()
+plugins {
+    id "com.android.application"
+    id "com.google.gms.google-services"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace = "com.scanneranimal.app"
+
+    // ACTUALIZACIÓN: Subimos a 36 para satisfacer a video_player
+    compileSdk = 36 
+    ndkVersion = "27.0.12077973"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.1' 
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.google.gms:google-services:4.4.1'
+
+    kotlinOptions {
+        jvmTarget = "17"
+        // PARCHE: Esto evita que el build falle por el "toLowerCase" de nfc_manager
+        freeCompilerArgs += ["-Xlint:none", "-nowarn"]
     }
-}
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
+    defaultConfig {
+        applicationId = "com.scanneranimal.app"
+        minSdk = 24
+        // Mantenemos 35 aquí para Google Play
+        targetSdk = 35 
+
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+        multiDexEnabled true
     }
-}
 
-rootProject.buildDir = "../build"
-subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(":app")
-}
-
-tasks.register("clean", Delete) {
-    delete rootProject.buildDir
-}
-
-// BLOQUE DE FUERZA BRUTA: Aplica a todas las librerías hijas
-subprojects {
-    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
-        kotlinOptions {
-            jvmTarget = "17"
-            // Obliga a nfc_manager a compilar aunque use código viejo
-            freeCompilerArgs += ["-Xlint:none", "-nowarn"]
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword keystoreProperties['storePassword']
         }
     }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release 
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:33.1.2')
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'androidx.multidex:multidex:2.0.1' 
+    implementation "androidx.core:core-ktx:1.13.1"
 }
