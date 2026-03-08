@@ -55,7 +55,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
     _scrollToBottom();
 
     try {
-      final List<DataPart> parts = []; // Usaremos DataPart genérico para la lista si es necesario, o directamente InlineDataPart
+      final List<Part> parts = []; // Usaremos DataPart genérico para la lista si es necesario, o directamente InlineDataPart
 
       if (imageFile != null) {
         final Uint8List imageBytes = await imageFile.readAsBytes();
