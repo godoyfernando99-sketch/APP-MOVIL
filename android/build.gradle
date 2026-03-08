@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '2.1.0'
+    ext.kotlin_version = '1.9.24'
     repositories {
         google()
         mavenCentral()
@@ -32,7 +32,6 @@ subprojects {
                 }
                 compileSdk = 34
                 buildToolsVersion = "34.0.0"
-
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_11
                     targetCompatibility = JavaVersion.VERSION_11
@@ -40,18 +39,12 @@ subprojects {
             }
         }
 
-        // PARCHE DEFINITIVO: Obligamos a Kotlin a ignorar errores de sintaxis obsoleta
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "11"
-                allWarningsAsErrors = false // Desactiva que los avisos sean errores
-                
-                // Estos argumentos silencian específicamente el error de nfc_manager
-                freeCompilerArgs += [
-                    "-nowarn", 
-                    "-Xsuppress-version-warnings",
-                    "-Xskip-prerelease-check"
-                ]
+                // LA CLAVE: Desactivar que los warnings sean errores
+                allWarningsAsErrors = false 
+                freeCompilerArgs += ["-nowarn", "-Xsuppress-version-warnings"]
             }
         }
     }
