@@ -20,12 +20,10 @@ import 'package:scanneranimal/services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Inicializar el Servicio de Notificaciones Profesional
-  // Configura canales de Emergencia, Dosis e Inyecciones
+  // 1. Inicializar Notificaciones antes que cualquier otra cosa
   await NotificationService.initialize();
 
   try {
-    // Inicialización de Firebase para IA y Sincronización
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (e) {
     debugPrint('🚨 Firebase initialization failed: $e');
@@ -48,23 +46,46 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
   void initState() {
     super.initState();
 
-    // Verificaciones automáticas al iniciar la App
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _checkForUpdate();           // Actualizaciones de Google Play
-      await _checkReviewStatus();        // Diálogo de Calificación Inteligente
-      _requestNotificationPermissions(); // Permisos con AJUSTE FINO para alertas críticas
+      await _checkForUpdate();           
+      _requestNotificationPermissions(); // AJUSTADO PARA TUS CANALES REALES
+      await _checkReviewStatus();        
     });
   }
 
-  // --- LÓGICA DE CALIFICACIÓN (PLAY STORE) ---
+  // --- SOLICITUD DE PERMISOS (AJUSTE CRÍTICO) ---
+  void _requestNotificationPermissions() {
+    AwesomeNotifications().isNotificationAllowed().then((isAllowed) async {
+      if (!isAllowed) {
+        // Esto abre el diálogo del sistema para permitir notificaciones
+        await AwesomeNotifications().requestPermissionToSendNotifications();
+      }
+      
+      // SOLUCIÓN: Pedir permisos críticos para los canales que REALMENTE existen
+      // Esto asegura que la vibración SOS y las alarmas de dosis funcionen.
+      await AwesomeNotifications().checkPermissionList(
+        channelKey: 'emergency_channel', // Canal de urgencias/tumores
+        permissions: [
+          NotificationPermission.PreciseAlarms,
+          NotificationPermission.Vibration,
+          NotificationPermission.CriticalAlert,
+          NotificationPermission.Sound,
+        ],
+      );
+    });
+  }
+
+  // --- LÓGICA DE CALIFICACIÓN INTELIGENTE ---
   Future<void> _checkReviewStatus() async {
     final prefs = await SharedPreferences.getInstance();
     bool alreadyRated = prefs.getBool('already_rated') ?? false;
 
     if (!alreadyRated) {
-      await Future.delayed(const Duration(seconds: 8));
+      // Esperar 15 segundos para no molestar al abrir la app
+      await Future.delayed(const Duration(seconds: 15));
       if (!mounted) return;
 
+      // Intentar obtener el contexto del Navigator de forma segura
       final context = AppRouter.router.routerDelegate.navigatorKey.currentContext;
       if (context == null) return;
 
@@ -82,7 +103,7 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
             ],
           ),
           content: const Text(
-            "Tu calificación nos ayuda a seguir salvando animales. ¡Danos 5 estrellas!",
+            "Tu calificación nos ayuda a seguir salvando animales. ¡Danos 5 estrellas en la Play Store!",
             style: TextStyle(color: Colors.white70),
           ),
           actions: [
@@ -97,12 +118,12 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
               ),
               onPressed: () async {
                 await prefs.setBool('already_rated', true);
+                Navigator.pop(context); // Cerrar antes de llamar a la Review
                 if (await _inAppReview.isAvailable()) {
                   _inAppReview.requestReview();
                 } else {
                   _inAppReview.openStoreListing();
                 }
-                if (mounted) Navigator.pop(context);
               },
               child: const Text("CALIFICAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ),
@@ -112,28 +133,6 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
     }
   }
 
-  // --- AJUSTE FINO: PERMISOS PARA ALERTAS DE 3 DÍAS Y DOSIS ---
-  void _requestNotificationPermissions() {
-    AwesomeNotifications().isNotificationAllowed().then((isAllowed) async {
-      if (!isAllowed) {
-        // Solicitar permiso de notificaciones estándar
-        await AwesomeNotifications().requestPermissionToSendNotifications();
-      }
-      
-      // REQUISITO: Permisos críticos para evitar retrasos por ahorro de batería
-      // Garantiza que la vibración SOS y las alarmas de 3 días sean EXACTAS
-      await AwesomeNotifications().checkPermissionList(
-        channelKey: 'alerts_channel',
-        permissions: [
-          NotificationPermission.PreciseAlarms, // Alarmas exactas para dosis
-          NotificationPermission.Vibration,      // Vibración para tumores/heridas
-          NotificationPermission.CriticalAlert,  // Notificación audible en emergencias
-        ],
-      );
-    });
-  }
-
-  // --- ACTUALIZACIONES IN-APP ---
   Future<void> _checkForUpdate() async {
     try {
       final info = await InAppUpdate.checkForUpdate();
@@ -141,7 +140,7 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
         await InAppUpdate.performImmediateUpdate();
       }
     } catch (e) {
-      debugPrint('⚠️ InAppUpdate info: $e');
+      debugPrint('⚠️ InAppUpdate: $e');
     }
   }
 
