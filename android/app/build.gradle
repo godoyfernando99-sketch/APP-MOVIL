@@ -14,7 +14,6 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.scanneranimal.app"
     compileSdk = 34
-    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -34,7 +33,6 @@ android {
         multiDexEnabled true
     }
 
-    // EL ORDEN IMPORTA: Definir antes de usar en buildTypes
     signingConfigs {
         release {
             keyAlias keystoreProperties['keyAlias']
@@ -46,7 +44,7 @@ android {
 
     buildTypes {
         release {
-            // Usa release si existe el archivo, si no, usa debug para no fallar
+            // Si el archivo de firmas no existe, usa debug para que el build NO falle
             signingConfig (keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug)
             minifyEnabled true
             shrinkResources true
