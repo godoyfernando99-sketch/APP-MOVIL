@@ -14,28 +14,33 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.scanneranimal.app"
 
-    // CAMBIO: Usamos 34 para compilar (es la versión que nfc_manager entiende)
+    // Mantenemos 34 para compilar y evitar errores de librerías como NFC
     compileSdk = 34 
     ndkVersion = "27.0.12077973"
 
     compileOptions {
+        // Java 17 es obligatorio para Kotlin 2.1.0 y Gradle 8.2+
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
+        // Debe coincidir con la versión de Java anterior
         jvmTarget = "17"
     }
 
     defaultConfig {
         applicationId = "com.scanneranimal.app"
+        // SDK mínimo para soportar las librerías de IA y Notificaciones
         minSdk = 24
 
-        // Mantenemos 35 para cumplir con los requisitos de la tienda
+        // Cumplimos con el requisito de Google Play (SDK 35)
         targetSdk = 35 
 
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Evita errores de límite de métodos en apps con Firebase
         multiDexEnabled true
     }
 
@@ -51,6 +56,7 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release 
+            // Optimizaciones de tamaño para el APK final
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -63,10 +69,13 @@ flutter {
 }
 
 dependencies {
+    // Firebase BoM para gestionar versiones automáticamente
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
+    
+    // Soporte para multidex
     implementation 'androidx.multidex:multidex:2.0.1' 
     
-    // Bajamos ligeramente esta versión para que coincida con el SDK 34
-    implementation "androidx.core:core-ktx:1.10.1"
+    // Librería base de Android KTX compatible con el SDK 34/35
+    implementation "androidx.core:core-ktx:1.12.0"
 }
