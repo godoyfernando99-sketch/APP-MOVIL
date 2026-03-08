@@ -22,6 +22,8 @@ android {
 
     kotlinOptions {
         jvmTarget = "11"
+        // Evita que warnings de librerías externas detengan el build
+        freeCompilerArgs += ["-nowarn"]
     }
 
     defaultConfig {
@@ -44,7 +46,9 @@ android {
 
     buildTypes {
         release {
+            // Usa la firma de release si existe el archivo, si no, usa debug para no fallar
             signingConfig (keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug)
+            
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -53,6 +57,7 @@ android {
 }
 
 dependencies {
+    // Firebase BOM para gestionar versiones automáticamente
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1'
