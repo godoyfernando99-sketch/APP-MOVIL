@@ -1,4 +1,4 @@
-Name: scanneranimal
+name: scanneranimal
 description: "IA Veterinaria - Diagnóstico, Gestación y Seguimiento"
 publish_to: 'none'
 
@@ -14,15 +14,16 @@ dependencies:
     sdk: flutter
 
   # --- AUTENTICACIÓN ---
-  google_sign_in: ^6.2.1
+  # Actualizado a 6.3.2 para mejor compatibilidad con Java 17
+  google_sign_in: ^6.3.2
 
   # --- MULTIMEDIA Y VIDEO ---
   video_player: ^2.8.1
 
   # --- HARDWARE Y SENSORES ---
-  # ACTUALIZADO: La versión 3.5.0 corrige el error de Kotlin toLowerCase que viste en el log
-  nfc_manager: ^3.5.0
-  vibration: ^1.8.4
+  # Forzamos la 3.5.0 exacta sin el ^ para evitar que traiga parches incompatibles
+  nfc_manager: 3.5.0
+  vibration: ^1.9.0
 
   # --- NAVEGACIÓN Y ESTADO ---
   go_router: ^13.1.0
@@ -40,7 +41,6 @@ dependencies:
   in_app_purchase: ^3.2.0
 
   # --- NOTIFICACIONES Y UPDATES ---
-  # Versión 0.11.0 es la correcta para trabajar con intl 0.20.x
   awesome_notifications: ^0.11.0 
   in_app_update: ^4.2.1
 
@@ -61,7 +61,6 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
 
-# FUERZA A TODAS LAS LIBRERÍAS A USAR LA MISMA VERSIÓN DE INTL PARA EVITAR CONFLICTOS
 dependency_overrides:
   intl: ^0.20.2
 
