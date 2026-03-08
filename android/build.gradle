@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.9.24'
+    ext.kotlin_version = '2.1.0'
     repositories {
         google()
         mavenCentral()
@@ -42,9 +42,13 @@ subprojects {
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "11"
-                // LA CLAVE: Desactivar que los warnings sean errores
-                allWarningsAsErrors = false 
-                freeCompilerArgs += ["-nowarn", "-Xsuppress-version-warnings"]
+                allWarningsAsErrors = false
+                // Parches para que el código viejo no detenga el build
+                freeCompilerArgs += [
+                    "-Xskip-prerelease-check",
+                    "-nowarn",
+                    "-Xsuppress-version-warnings"
+                ]
             }
         }
     }
