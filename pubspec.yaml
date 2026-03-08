@@ -16,13 +16,13 @@ dependencies:
 
   # --- HARDWARE Y SENSORES ---
   nfc_manager: ^3.3.0
-  vibration: ^1.8.4        # <--- AGREGADO PARA VIBRACIÓN SOS Y ALERTAS URGENTES
+  vibration: ^1.8.4        # REQUERIDO: Vibración SOS para urgencias
 
   # --- NAVEGACIÓN Y ESTADO ---
   go_router: ^13.1.0
   provider: ^6.1.1
 
-  # --- BACKEND Y CLOUD (Sincronización de Historial) ---
+  # --- BACKEND Y CLOUD ---
   firebase_core: ^3.1.1
   firebase_auth: ^5.1.1
   cloud_firestore: ^5.0.2
@@ -30,12 +30,12 @@ dependencies:
   # --- INTELIGENCIA ARTIFICIAL ---
   firebase_vertexai: ^0.2.1 
 
-  # --- SISTEMA DE PAGOS Y SUSCRIPCIONES ---
+  # --- SISTEMA DE PAGOS ---
   in_app_purchase: ^3.2.0
 
-  # --- NOTIFICACIONES, UPDATES Y RECORDATORIOS ---
+  # --- NOTIFICACIONES Y UPDATES ---
   awesome_notifications: ^0.9.3+1 
-  in_app_update: ^4.2.1    # <--- AGREGADO (Lo usas en tu main.dart para Google Play)
+  in_app_update: ^4.2.1    # REQUERIDO: Por tu lógica en main.dart
 
   # --- CALIFICACIÓN Y MEMORIA ---
   in_app_review: ^2.0.9
