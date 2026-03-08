@@ -14,24 +14,27 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.scanneranimal.app"
 
-    // Mantenemos 34 para compilar y evitar errores de librerías antiguas
-    compileSdk = 34 
+    // ACTUALIZACIÓN: Subimos a 36 para satisfacer a video_player
+    compileSdk = 36 
     ndkVersion = "27.0.12077973"
 
     compileOptions {
-        // Java 17 es obligatorio para Kotlin 2.1.0
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
         jvmTarget = "17"
+        // PARCHE: Esto evita que el build falle por el "toLowerCase" de nfc_manager
+        freeCompilerArgs += ["-Xlint:none", "-nowarn"]
     }
 
     defaultConfig {
         applicationId = "com.scanneranimal.app"
         minSdk = 24
-        targetSdk = 35 // Cumplimos con Google Play 2024/2025
+        // Mantenemos 35 aquí para Google Play
+        targetSdk = 35 
+
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true
@@ -64,5 +67,5 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1' 
-    implementation "androidx.core:core-ktx:1.12.0"
+    implementation "androidx.core:core-ktx:1.13.1"
 }
