@@ -34,7 +34,7 @@ android {
         multiDexEnabled true
     }
 
-    // PRIMERO DEFINIMOS LAS FIRMAS
+    // EL ORDEN IMPORTA: Definir antes de usar en buildTypes
     signingConfigs {
         release {
             keyAlias keystoreProperties['keyAlias']
@@ -46,7 +46,7 @@ android {
 
     buildTypes {
         release {
-            // AHORA SÍ PODEMOS USARLA
+            // Usa release si existe el archivo, si no, usa debug para no fallar
             signingConfig (keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug)
             minifyEnabled true
             shrinkResources true
