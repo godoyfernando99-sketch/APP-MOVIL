@@ -15,13 +15,16 @@ android {
     namespace = "com.scanneranimal.app"
     compileSdk = 34
 
+    // UNIFICACIÓN: Forzamos Java 11 para evitar el error de "Inconsistent JVM-target"
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        // Sincronizado con Java 11 para que in_app_review no falle
+        jvmTarget = "11"
+        freeCompilerArgs += ["-Xskip-prerelease-check", "-nowarn"]
     }
 
     defaultConfig {
@@ -44,7 +47,9 @@ android {
 
     buildTypes {
         release {
+            // Usa firma de release si existe el archivo, si no, usa debug para no romper el build
             signingConfig (keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug)
+            
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -53,6 +58,7 @@ android {
 }
 
 dependencies {
+    // Firebase BoM para asegurar que todas las librerías de Firebase usen versiones compatibles entre sí
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1'
