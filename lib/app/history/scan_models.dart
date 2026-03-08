@@ -3,39 +3,36 @@ import 'dart:convert';
 
 class ScanResult {
   final String? id;
+  final String? ownerId;
   final String animalType;
   final String healthStatus;
   final List<String> preventionTips;
   final bool isPregnant;
   
-  // Datos de Gestación
   final String? offspringCount;
   final String? gestationWeeks;
   final int? daysUntilDelivery;
   final String? deliveryForecast;
 
-  // Seguimiento e IA
   final int rescanInterval;
   final List<int> medicationDays;
   final String? foodRecommendation; 
   final String suggestedFoodName; 
 
-  // Metadatos y Compatibilidad con HistoryPage
   final List<Uint8List> photos;
   final String? microchipId;
   final DateTime timestamp;
 
-  // --- GETTERS DE COMPATIBILIDAD PARA HISTORY PAGE ---
+  // Getters de compatibilidad para la UI
   DateTime get createdAt => timestamp;
-  String get breed => animalType; // Mapeo simple para evitar error de 'breed'
-  String? get diseaseName => healthStatus.contains('SANO') ? null : healthStatus;
+  String get breed => animalType;
+  String? get diseaseName => healthStatus.toLowerCase().contains('sano') ? null : healthStatus;
   String? get microchipNumber => microchipId;
-  
-  // Convierte las fotos de bytes a Base64 para el historial si es necesario
   List<String> get photosBase64 => photos.map((p) => base64Encode(p)).toList();
 
   ScanResult({
     this.id,
+    this.ownerId,
     required this.animalType,
     required this.healthStatus,
     required this.preventionTips,
@@ -53,24 +50,76 @@ class ScanResult {
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 
-  factory ScanResult.fromJson(Map<String, dynamic> json) {
+  // --- MÉTODO PARA COPIAR EL OBJETO (Requerido por Controller) ---
+  ScanResult copyWith({String? ownerId, String? id}) {
     return ScanResult(
-      id: json['id']?.toString(),
-      animalType: json['animalType'] ?? 'Desconocido',
-      healthStatus: json['healthStatus'] ?? 'No disponible',
-      preventionTips: List<String>.from(json['preventionTips'] ?? []),
-      isPregnant: json['isPregnant'] ?? false,
-      offspringCount: json['offspringCount']?.toString(),
-      gestationWeeks: json['gestationWeeks']?.toString(),
-      daysUntilDelivery: json['daysUntilDelivery'],
-      deliveryForecast: json['deliveryForecast'],
-      rescanInterval: json['rescanInterval'] ?? 7,
-      medicationDays: List<int>.from(json['medicationDays'] ?? []),
-      foodRecommendation: json['foodRecommendation'],
-      suggestedFoodName: json['suggestedFoodName'] ?? "Dieta Balanceada",
-      photos: [], // Nota: Las fotos suelen persistirse como rutas o base64 en local
-      microchipId: json['microchipId'],
-      timestamp: json['timestamp'] != null ? DateTime.parse(json['timestamp']) : null,
+      id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
+      animalType: animalType,
+      healthStatus: healthStatus,
+      preventionTips: preventionTips,
+      isPregnant: isPregnant,
+      offspringCount: offspringCount,
+      gestationWeeks: gestationWeeks,
+      daysUntilDelivery: daysUntilDelivery,
+      deliveryForecast: deliveryForecast,
+      rescanInterval: rescanInterval,
+      medicationDays: medicationDays,
+      foodRecommendation: foodRecommendation,
+      suggestedFoodName: suggestedFoodName,
+      photos: photos,
+      microchipId: microchipId,
+      timestamp: timestamp,
+    );
+  }
+
+  // --- CONVERTIR A MAP PARA FIREBASE/LOCAL (Requerido por Controller) ---
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'ownerId': ownerId,
+      'animalType': animalType,
+      'healthStatus': healthStatus,
+      'preventionTips': preventionTips,
+      'isPregnant': isPregnant,
+      'offspringCount': offspringCount,
+      'gestationWeeks': gestationWeeks,
+      'daysUntilDelivery': daysUntilDelivery,
+      'deliveryForecast': deliveryForecast,
+      'rescanInterval': rescanInterval,
+      'medicationDays': medicationDays,
+      'foodRecommendation': foodRecommendation,
+      'suggestedFoodName': suggestedFoodName,
+      'photosBase64': photosBase64, // Guardamos como string en local
+      'microchipId': microchipId,
+      'createdAt': timestamp.toIso8601String(),
+    };
+  }
+
+  // --- CREAR DESDE MAP (Requerido por Controller) ---
+  factory ScanResult.fromMap(Map<String, dynamic> map) {
+    return ScanResult(
+      id: map['id'],
+      ownerId: map['ownerId'],
+      animalType: map['animalType'] ?? 'Desconocido',
+      healthStatus: map['healthStatus'] ?? 'No disponible',
+      preventionTips: List<String>.from(map['preventionTips'] ?? []),
+      isPregnant: map['isPregnant'] ?? false,
+      offspringCount: map['offspringCount'],
+      gestationWeeks: map['gestationWeeks'],
+      daysUntilDelivery: map['daysUntilDelivery'],
+      deliveryForecast: map['deliveryForecast'],
+      rescanInterval: map['rescanInterval'] ?? 7,
+      medicationDays: List<int>.from(map['medicationDays'] ?? []),
+      foodRecommendation: map['foodRecommendation'],
+      suggestedFoodName: map['suggestedFoodName'] ?? "Dieta Balanceada",
+      photos: (map['photosBase64'] as List<dynamic>?)
+              ?.map((e) => base64Decode(e as String))
+              .toList() ?? [],
+      microchipId: map['microchipId'],
+      timestamp: map['createdAt'] != null 
+          ? DateTime.parse(map['createdAt']) 
+          : (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 }
