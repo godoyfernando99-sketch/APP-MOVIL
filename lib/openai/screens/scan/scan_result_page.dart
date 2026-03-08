@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
+import 'package:scanneranimal/services/notification_service.dart'; // IMPORTANTE
 
 class ScanResultPage extends StatefulWidget {
   const ScanResultPage({super.key, this.payload});
@@ -11,48 +12,25 @@ class ScanResultPage extends StatefulWidget {
 }
 
 class _ScanResultPageState extends State<ScanResultPage> {
-
-  void _setAutomatedReminders(ScanResult result) {
-    // 1. Recordatorio de Medicamentos
-    for (int day in result.medicationDays) {
-      _scheduleNotification(
-        title: "💊 Aplicar Tratamiento",
-        body: "Dosis programada para ${result.animalType}. Revisa el plan de cuidados.",
-        daysFromNow: day,
-      );
-    }
-
-    // 2. Alerta de Parto Crítica
-    if (result.isPregnant == true && result.daysUntilDelivery != null) {
-      if (result.daysUntilDelivery! <= 7) {
-        _scheduleNotification(
-          title: "🚨 PARTO INMINENTE",
-          body: "Faltan aprox. ${result.daysUntilDelivery} días. Prepara el nido.",
-          daysFromNow: 1,
-        );
+  
+  @override
+  void initState() {
+    super.initState();
+    // Ejecutar alertas automáticas al cargar si es urgente
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final result = widget.payload as ScanResult;
+      if (result.isUrgent) {
+        NotificationService.programarAlertasSegunResultado(result);
       }
-    }
-
-    // 3. Seguimiento Estándar
-    _scheduleNotification(
-      title: "🔍 Seguimiento de Evolución",
-      body: "Es momento de realizar un nuevo escaneo para monitorear a tu ${result.animalType}.",
-      daysFromNow: result.rescanInterval,
-    );
-  }
-
-  void _scheduleNotification({required String title, required String body, required int daysFromNow}) {
-    // Simulación de log de notificación
-    debugPrint("🔔 Alerta Programada: $title | $body | T+$daysFromNow días");
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Cast del objeto ScanResult desde el payload
     final result = widget.payload as ScanResult;
 
     return FarmBackgroundScaffold(
-      title: 'INFORME DE SEGUIMIENTO',
+      title: 'INFORME VETERINARIO IA',
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -60,21 +38,27 @@ class _ScanResultPageState extends State<ScanResultPage> {
             _buildStatusHeader(result),
             const SizedBox(height: 15),
 
-            if (result.isPregnant == true) _buildPregnancyCard(result),
+            // Identificación NFC si existe
+            if (result.microchipId != null) _buildNfcCard(result.microchipId!),
 
             const SizedBox(height: 15),
 
-            _buildFollowUpCard(result),
+            if (result.isPregnant) _buildPregnancyCard(result),
+
+            const SizedBox(height: 15),
+
+            // Bloque de Medicación Detallada (Dosis, Vía, Lugar)
+            if (result.medicationRoute != null) _buildMedicationCard(result),
 
             const SizedBox(height: 15),
 
             if (result.preventionTips.isNotEmpty)
-              _buildInfoBox("🛡️ PROTOCOLO DE CUIDADOS", result.preventionTips, Colors.tealAccent),
+              _buildInfoBox("🛡️ PROTOCOLO Y PREVENCIÓN", result.preventionTips, Colors.tealAccent),
 
             const SizedBox(height: 15),
             
-            // Sección de alimentación (Usa el campo suggestedFoodName)
-            _buildInfoBox("🍎 ALIMENTACIÓN RECOMENDADA", [result.suggestedFoodName], Colors.orangeAccent),
+            _buildInfoBox("🍎 NUTRICIÓN: ${result.suggestedFoodName}", 
+              [result.foodRecommendation ?? "Dieta balanceada estándar"], Colors.orangeAccent),
 
             const SizedBox(height: 30),
 
@@ -90,97 +74,125 @@ class _ScanResultPageState extends State<ScanResultPage> {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
-          Text(r.animalType.toUpperCase(), 
+          Text("${r.animalType} | ${r.breed}".toUpperCase(), 
             style: const TextStyle(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 2)),
-          const SizedBox(height: 5),
-          // CORRECCIÓN: FontWeight.w900 en lugar de .black
+          const SizedBox(height: 8),
           Text(r.healthStatus.toUpperCase(), 
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: r.isUrgent ? Colors.redAccent : Colors.white, 
+              fontSize: 22, 
+              fontWeight: FontWeight.w900
+            )),
+          if (r.isUrgent)
+            const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: Text("⚠️ REQUIERE ATENCIÓN ESPECIAL", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNfcCard(String id) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.nfc, color: Colors.blueAccent, size: 20),
+          const SizedBox(width: 10),
+          Text("CHIP DETECTADO: $id", style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMedicationCard(ScanResult res) {
+    return _buildCustomCard(
+      title: "PLAN DE TRATAMIENTO",
+      icon: Icons.medical_services_outlined,
+      accentColor: Colors.greenAccent,
+      child: Column(
+        children: [
+          _dataRow("Dosis:", res.medicationDosage ?? "Consultar"),
+          _dataRow("Vía:", res.medicationRoute ?? "No especificada"),
+          _dataRow("Lugar:", res.applicationSite ?? "General"),
         ],
       ),
     );
   }
 
   Widget _buildPregnancyCard(ScanResult res) {
-    final bool isUrgent = (res.daysUntilDelivery ?? 100) <= 7;
+    return _buildCustomCard(
+      title: "DETALLES DE GESTACIÓN",
+      icon: Icons.auto_awesome,
+      accentColor: Colors.pinkAccent,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _dataCol("Crías", res.offspringCount ?? "---"),
+              _dataCol("Etapa", res.gestationWeeks ?? "---"),
+              _dataCol("Días rest.", "${res.daysUntilDelivery ?? '---'}"),
+            ],
+          ),
+          const Divider(color: Colors.white10, height: 20),
+          Text("Duración total: ${res.totalGestationDuration ?? 'No definida'}", 
+            style: const TextStyle(color: Colors.white70, fontSize: 11)),
+        ],
+      ),
+    );
+  }
 
+  // Widgets auxiliares de diseño
+  Widget _buildCustomCard({required String title, required IconData icon, required Color accentColor, required Widget child}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isUrgent 
-            ? [Colors.orange.withOpacity(0.2), Colors.red.withOpacity(0.1)]
-            : [Colors.blue.withOpacity(0.2), Colors.purple.withOpacity(0.1)],
-        ),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isUrgent ? Colors.orangeAccent : Colors.white24),
+        border: Border.all(color: Colors.white10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.auto_awesome, color: Colors.amberAccent, size: 20),
-              SizedBox(width: 8),
-              Text("DETALLES DE GESTACIÓN", 
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              Icon(icon, color: accentColor, size: 18),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 15),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _dataCol("Crías", res.offspringCount ?? "---", Icons.pets),
-              _dataCol("Semanas", res.gestationWeeks ?? "---", Icons.timer),
-              _dataCol("Días rest.", "${res.daysUntilDelivery ?? '---'}", Icons.event),
-            ],
-          ),
+          child,
         ],
       ),
     );
   }
 
-  Widget _dataCol(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.blueAccent, size: 18),
-        const SizedBox(height: 5),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
-      ],
-    );
-  }
-
-  Widget _buildFollowUpCard(ScanResult res) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white10)
-      ),
-      child: Column(
-        children: [
-          _followUpRow(Icons.calendar_today_rounded, "Próximo escaneo:", "En ${res.rescanInterval} días"),
-          _followUpRow(Icons.security_update_good_rounded, "Protocolo IA:", "Monitoreo activo"),
-        ],
-      ),
-    );
-  }
-
-  Widget _followUpRow(IconData icon, String label, String val) {
+  Widget _dataRow(String label, String val) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: Colors.blueAccent, size: 18),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-          const Spacer(),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
           Text(val, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
         ],
       ),
+    );
+  }
+
+  Widget _dataCol(String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+      ],
     );
   }
 
@@ -191,7 +203,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
       decoration: BoxDecoration(
         color: Colors.black26,
         borderRadius: BorderRadius.circular(20),
-        // CORRECCIÓN: BorderSide específico para el lateral
         border: Border(left: BorderSide(color: accentColor, width: 4)),
       ),
       child: Column(
@@ -201,13 +212,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
           const SizedBox(height: 12),
           ...items.map((item) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("• ", style: TextStyle(color: Colors.white70)),
-                Expanded(child: Text(item, style: const TextStyle(color: Colors.white70, fontSize: 13))),
-              ],
-            ),
+            child: Text("• $item", style: const TextStyle(color: Colors.white70, fontSize: 13)),
           )),
         ],
       ),
@@ -216,18 +221,25 @@ class _ScanResultPageState extends State<ScanResultPage> {
 
   Widget _buildActionButtons(ScanResult result) {
     return ElevatedButton(
-      onPressed: () {
-        _setAutomatedReminders(result);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("🚀 Inteligencia de seguimiento activada")),
-        );
+      onPressed: () async {
+        await NotificationService.programarAlertasSegunResultado(result);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.green,
+              content: Text("✅ Recordatorios de 3 días y dosis activados"),
+            ),
+          );
+        }
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blueAccent.shade700,
         minimumSize: const Size(double.infinity, 64),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
-      child: const Text("ACTIVAR SEGUIMIENTO IA", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      child: const Text("ACTIVAR SEGUIMIENTO IA Y VIBRACIÓN SOS", 
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
     );
   }
 }
