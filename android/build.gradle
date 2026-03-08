@@ -34,30 +34,26 @@ subprojects {
                 }
                 compileSdk = 34
                 buildToolsVersion = "34.0.0"
+
+                // Bajamos a 11 para que in_app_review y las demás no choquen
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_11
+                    targetCompatibility = JavaVersion.VERSION_11
+                }
             }
         }
 
-        // --- EL PARCHE DEFINITIVO PARA NFC_MANAGER ---
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
-                jvmTarget = "17"
-                // Esto le dice a Kotlin: "Ignora que el código sea viejo, compila igual"
-                allWarningsAsErrors = false 
+                // Sincronizado con Java 11
+                jvmTarget = "11"
+                allWarningsAsErrors = false
                 freeCompilerArgs += [
                     "-Xskip-prerelease-check",
                     "-Xsuppress-version-warnings",
-                    "-P", "plugin:org.jetbrains.kotlin.android:enabled=false" // Desactiva verificaciones estrictas
+                    "-nowarn"
                 ]
             }
-        }
-    }
-}
-
-// Bloque especial para forzar a nfc_manager a no fallar
-subprojects {
-    if (project.name == "nfc_manager") {
-        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            kotlinOptions.freeCompilerArgs += ["-nowarn"] 
         }
     }
 }
