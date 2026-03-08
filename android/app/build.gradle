@@ -6,12 +6,12 @@ plugins {
 }
 
 android {
-    namespace "com.scanneranimal.app"
-    compileSdk 34
+    namespace = "com.scanneranimal.app"
+    compileSdk = 34
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
@@ -19,14 +19,14 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.scanneranimal.app"
-        minSdk 24
-        targetSdk 34
-        versionCode flutter.versionCode
-        versionName flutter.versionName
+        applicationId = "com.scanneranimal.app"
+        minSdk = 24
+        targetSdk = 34 
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
         multiDexEnabled true
     }
-    // ... resto de tu configuración (signingConfigs, buildTypes)
+    // Asegúrate de tener tus signingConfigs aquí abajo si los usas
 }
 
 dependencies {
