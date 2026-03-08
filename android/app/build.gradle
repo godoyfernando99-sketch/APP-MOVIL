@@ -22,7 +22,6 @@ android {
 
     kotlinOptions {
         jvmTarget = "11"
-        freeCompilerArgs += ["-nowarn"]
     }
 
     defaultConfig {
