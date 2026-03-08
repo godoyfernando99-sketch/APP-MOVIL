@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.9.24'
+    ext.kotlin_version = '2.1.0'
     repositories {
         google()
         mavenCentral()
@@ -22,20 +22,19 @@ subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
-                // Parche para Namespace/Package (Firestore y Notifications)
+                // Corrige el error de Namespaces en Firestore y Notifications
                 if (namespace == null || namespace.isEmpty()) {
                     def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
                     if (manifestFile.exists()) {
                         def manifestXml = new XmlParser().parse(manifestFile)
                         def packageName = manifestXml.attribute('package')
-                        if (packageName != null) {
-                            namespace = packageName
-                        }
+                        if (packageName != null) { namespace = packageName }
                     }
                 }
                 compileSdk = 34
                 buildToolsVersion = "34.0.0"
 
+                // Unificamos a Java 11 para máxima compatibilidad
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_11
                     targetCompatibility = JavaVersion.VERSION_11
@@ -43,7 +42,7 @@ subprojects {
             }
         }
 
-        // Silenciador de errores para Kotlin (Crucial para NFC Manager)
+        // Parche para silenciar errores de librerías antiguas como nfc_manager
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "11"
@@ -51,7 +50,8 @@ subprojects {
                 freeCompilerArgs += [
                     "-Xskip-prerelease-check",
                     "-nowarn",
-                    "-Xsuppress-version-warnings"
+                    "-Xsuppress-version-warnings",
+                    "-Xallow-unstable-dependencies"
                 ]
             }
         }
