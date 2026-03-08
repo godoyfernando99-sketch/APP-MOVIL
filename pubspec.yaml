@@ -14,14 +14,14 @@ dependencies:
     sdk: flutter
 
   # --- AUTENTICACIÓN ---
-  # Actualizado a 6.3.2 para mejor compatibilidad con Java 17
-  google_sign_in: ^6.3.2
+  # Versión estable que no choca con tus otras dependencias de Firebase
+  google_sign_in: ^6.2.1
 
   # --- MULTIMEDIA Y VIDEO ---
   video_player: ^2.8.1
 
   # --- HARDWARE Y SENSORES ---
-  # Forzamos la 3.5.0 exacta sin el ^ para evitar que traiga parches incompatibles
+  # Forzamos 3.5.0 para saltar el error de Kotlin toLowerCase
   nfc_manager: 3.5.0
   vibration: ^1.9.0
 
@@ -61,6 +61,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
 
+# Resolvemos conflictos de versiones de paquetes internos
 dependency_overrides:
   intl: ^0.20.2
 
