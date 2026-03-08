@@ -22,48 +22,49 @@ class AiDiagnosisService {
         ),
       );
 
-      final imageParts = photos.map((bytes) => DataPart('image/jpeg', bytes)).toList();
+      // CAMBIO TÉCNICO: Se usa InlineDataPart para compatibilidad con el build
+      final imageParts = photos.map((bytes) => InlineDataPart('image/jpeg', bytes)).toList();
 
-      // --- PROMPT MAESTRO CON TODAS TUS INSTRUCCIONES ---
-      final prompt = [
-        Content.multi([
-          ...imageParts,
-          TextPart("""
-            Actúa como un experto veterinario. Analiza las imágenes de este $animalCategory.
-            ID Microchip NFC: ${microchipId ?? 'No detectado'}. Modo: $mode.
+      // --- PROMPT MAESTRO (SIN ALTERACIONES) ---
+      final promptParts = [
+        TextPart("""
+          Actúa como un experto veterinario. Analiza las imágenes de este $animalCategory.
+          ID Microchip NFC: ${microchipId ?? 'No detectado'}. Modo: $mode.
 
-            INSTRUCCIONES OBLIGATORIAS:
-            1. DETECCIÓN: Identifica especie y raza exacta.
-            2. GRAVEDAD: Si detectas enfermedades graves, tumores o necesidad de cirugía, inicia 'healthStatus' con la palabra "URGENTE: ATENCIÓN VETERINARIA ESPECIAL".
-            3. TRATAMIENTO: Si el usuario puede atenderlo, indica el nombre del MEDICAMENTO, la DOSIS exacta, la VÍA (oral, ocular, inyección o pomada) y el LUGAR de aplicación.
-            4. PREVENCIÓN: Explica qué evitar para que no repita la enfermedad.
-            5. GESTACIÓN: Si detectas embarazo, indica: número de crías, tiempo actual (días/semanas), DURACIÓN TOTAL del embarazo y días para el parto.
-            6. NUTRICIÓN: Recomienda el NOMBRE de un alimento comercial y frecuencia.
-            7. CONTROL: Setea 'rescanInterval' en 3 para seguimiento obligatorio cada 3 días.
+          INSTRUCCIONES OBLIGATORIAS:
+          1. DETECCIÓN: Identifica especie y raza exacta.
+          2. GRAVEDAD: Si detectas enfermedades graves, tumores o necesidad de cirugía, inicia 'healthStatus' con la palabra "URGENTE: ATENCIÓN VETERINARIA ESPECIAL".
+          3. TRATAMIENTO: Si el usuario puede atenderlo, indica el nombre del MEDICAMENTO, la DOSIS exacta, la VÍA (oral, ocular, inyección o pomada) y el LUGAR de aplicación.
+          4. PREVENCIÓN: Explica qué evitar para que no repita la enfermedad.
+          5. GESTACIÓN: Si detectas embarazo, indica: número de crías, tiempo actual (días/semanas), DURACIÓN TOTAL del embarazo y días para el parto.
+          6. NUTRICIÓN: Recomienda el NOMBRE de un alimento comercial y frecuencia.
+          7. CONTROL: Setea 'rescanInterval' en 3 para seguimiento obligatorio cada 3 días.
 
-            Responde ÚNICAMENTE en este formato JSON:
-            {
-              "animalType": "Especie",
-              "breed": "Raza detectada",
-              "healthStatus": "Diagnóstico detallado",
-              "preventionTips": ["tip 1", "tip 2", "prevención de recaída"],
-              "isPregnant": true/false,
-              "offspringCount": "número de crías",
-              "gestationWeeks": "tiempo actual",
-              "totalGestationDuration": "duración total del embarazo",
-              "daysUntilDelivery": 10,
-              "rescanInterval": 3,
-              "medicationDosage": "cantidad exacta",
-              "medicationRoute": "oral/ocular/inyección/pomada",
-              "applicationSite": "lugar del cuerpo",
-              "suggestedFoodName": "Nombre Alimento",
-              "foodRecommendation": "Guía nutricional"
-            }
-          """),
-        ])
+          Responde ÚNICAMENTE en este formato JSON:
+          {
+            "animalType": "Especie",
+            "breed": "Raza detectada",
+            "healthStatus": "Diagnóstico detallado",
+            "preventionTips": ["tip 1", "tip 2", "prevención de recaída"],
+            "isPregnant": true/false,
+            "offspringCount": "número de crías",
+            "gestationWeeks": "tiempo actual",
+            "totalGestationDuration": "duración total del embarazo",
+            "daysUntilDelivery": 10,
+            "rescanInterval": 3,
+            "medicationDosage": "cantidad exacta",
+            "medicationRoute": "oral/ocular/inyección/pomada",
+            "applicationSite": "lugar del cuerpo",
+            "suggestedFoodName": "Nombre Alimento",
+            "foodRecommendation": "Guía nutricional"
+          }
+        """),
+        ...imageParts,
       ];
 
-      final response = await model.generateContent(prompt);
+      // CAMBIO TÉCNICO: Se envuelve correctamente en la lista de Content
+      final response = await model.generateContent([Content.multi(promptParts)]);
+      
       final responseText = response.text;
       if (responseText == null) throw Exception("La IA no respondió.");
 
@@ -72,18 +73,17 @@ class AiDiagnosisService {
       return ScanResult(
         id: "scan_${DateTime.now().millisecondsSinceEpoch}",
         animalType: data['animalType'] ?? animalCategory,
-        // breed: data['breed'] (Si actualizaste el modelo, usa este campo)
         healthStatus: data['healthStatus'] ?? "Análisis completado",
         preventionTips: List<String>.from(data['preventionTips'] ?? []),
         isPregnant: data['isPregnant'] ?? (mode == 'gestation'),
         offspringCount: data['offspringCount'],
         gestationWeeks: data['gestationWeeks'],
-        totalGestationDuration: data['totalGestationDuration'], // REQUISITO CUMPLIDO
+        totalGestationDuration: data['totalGestationDuration'],
         daysUntilDelivery: data['daysUntilDelivery'],
-        rescanInterval: data['rescanInterval'] ?? 3, // REQUISITO: CADA 3 DÍAS
-        medicationDosage: data['medicationDosage'], // REQUISITO: DOSIS
-        medicationRoute: data['medicationRoute'],   // REQUISITO: VÍA
-        applicationSite: data['applicationSite'],   // REQUISITO: LUGAR
+        rescanInterval: data['rescanInterval'] ?? 3,
+        medicationDosage: data['medicationDosage'],
+        medicationRoute: data['medicationRoute'],
+        applicationSite: data['applicationSite'],
         suggestedFoodName: data['suggestedFoodName'] ?? "Dieta Balanceada",
         foodRecommendation: data['foodRecommendation'] ?? "Sin instrucciones específicas",
         photos: photos,
