@@ -15,68 +15,75 @@ class AiDiagnosisService {
     String? microchipId,
   }) async {
     try {
-      // 1. Inicializar el modelo (Gemini 1.5 Flash es ideal por su rapidez y costo)
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-1.5-flash',
         generationConfig: GenerationConfig(
-          responseMimeType: 'application/json', // Forzamos respuesta en JSON
+          responseMimeType: 'application/json',
         ),
       );
 
-      // 2. Preparar las imágenes para la IA
       final imageParts = photos.map((bytes) => DataPart('image/jpeg', bytes)).toList();
 
-      // 3. El Prompt (Instrucciones reales para la IA)
+      // --- PROMPT MAESTRO CON TODAS TUS INSTRUCCIONES ---
       final prompt = [
         Content.multi([
           ...imageParts,
           TextPart("""
-            Actúa como un experto veterinario especializado en $animalCategory.
-            Analiza las imágenes adjuntas. El animal tiene el ID de microchip: ${microchipId ?? 'No detectado'}.
-            El modo de análisis solicitado es: $mode (salud o gestación).
+            Actúa como un experto veterinario. Analiza las imágenes de este $animalCategory.
+            ID Microchip NFC: ${microchipId ?? 'No detectado'}. Modo: $mode.
 
-            Devuelve estrictamente un objeto JSON con esta estructura exacta:
+            INSTRUCCIONES OBLIGATORIAS:
+            1. DETECCIÓN: Identifica especie y raza exacta.
+            2. GRAVEDAD: Si detectas enfermedades graves, tumores o necesidad de cirugía, inicia 'healthStatus' con la palabra "URGENTE: ATENCIÓN VETERINARIA ESPECIAL".
+            3. TRATAMIENTO: Si el usuario puede atenderlo, indica el nombre del MEDICAMENTO, la DOSIS exacta, la VÍA (oral, ocular, inyección o pomada) y el LUGAR de aplicación.
+            4. PREVENCIÓN: Explica qué evitar para que no repita la enfermedad.
+            5. GESTACIÓN: Si detectas embarazo, indica: número de crías, tiempo actual (días/semanas), DURACIÓN TOTAL del embarazo y días para el parto.
+            6. NUTRICIÓN: Recomienda el NOMBRE de un alimento comercial y frecuencia.
+            7. CONTROL: Setea 'rescanInterval' en 3 para seguimiento obligatorio cada 3 días.
+
+            Responde ÚNICAMENTE en este formato JSON:
             {
-              "animalType": "Especie y raza detectada",
-              "healthStatus": "Diagnóstico corto de salud",
-              "preventionTips": ["tip 1", "tip 2", "tip 3"],
-              "isPregnant": ${mode == 'gestation'},
-              "offspringCount": "estimación de crías si aplica o N/A",
-              "gestationWeeks": "semanas estimadas si aplica o N/A",
-              "daysUntilDelivery": 0,
-              "rescanInterval": 7,
-              "medicationDays": [1, 5],
-              "suggestedFoodName": "Nombre de un alimento comercial o dieta específica",
-              "foodRecommendation": "Explicación detallada de por qué este alimento y cómo darlo"
+              "animalType": "Especie",
+              "breed": "Raza detectada",
+              "healthStatus": "Diagnóstico detallado",
+              "preventionTips": ["tip 1", "tip 2", "prevención de recaída"],
+              "isPregnant": true/false,
+              "offspringCount": "número de crías",
+              "gestationWeeks": "tiempo actual",
+              "totalGestationDuration": "duración total del embarazo",
+              "daysUntilDelivery": 10,
+              "rescanInterval": 3,
+              "medicationDosage": "cantidad exacta",
+              "medicationRoute": "oral/ocular/inyección/pomada",
+              "applicationSite": "lugar del cuerpo",
+              "suggestedFoodName": "Nombre Alimento",
+              "foodRecommendation": "Guía nutricional"
             }
-            No añadas texto fuera del JSON.
           """),
         ])
       ];
 
-      // 4. Llamada real a la IA
       final response = await model.generateContent(prompt);
       final responseText = response.text;
+      if (responseText == null) throw Exception("La IA no respondió.");
 
-      if (responseText == null) {
-        throw Exception("La IA no devolvió ninguna respuesta.");
-      }
-
-      // 5. Convertir la respuesta de la IA en nuestro modelo ScanResult
       final Map<String, dynamic> data = jsonDecode(responseText);
       
-      // Añadimos los datos que la IA no conoce (como las fotos originales)
       return ScanResult(
         id: "scan_${DateTime.now().millisecondsSinceEpoch}",
         animalType: data['animalType'] ?? animalCategory,
+        // breed: data['breed'] (Si actualizaste el modelo, usa este campo)
         healthStatus: data['healthStatus'] ?? "Análisis completado",
         preventionTips: List<String>.from(data['preventionTips'] ?? []),
         isPregnant: data['isPregnant'] ?? (mode == 'gestation'),
         offspringCount: data['offspringCount'],
         gestationWeeks: data['gestationWeeks'],
+        totalGestationDuration: data['totalGestationDuration'], // REQUISITO CUMPLIDO
         daysUntilDelivery: data['daysUntilDelivery'],
-        rescanInterval: data['rescanInterval'] ?? 7,
-        medicationDays: List<int>.from(data['medicationDays'] ?? []),
+        rescanInterval: data['rescanInterval'] ?? 3, // REQUISITO: CADA 3 DÍAS
+        medicationDosage: data['medicationDosage'], // REQUISITO: DOSIS
+        medicationRoute: data['medicationRoute'],   // REQUISITO: VÍA
+        applicationSite: data['applicationSite'],   // REQUISITO: LUGAR
         suggestedFoodName: data['suggestedFoodName'] ?? "Dieta Balanceada",
         foodRecommendation: data['foodRecommendation'] ?? "Sin instrucciones específicas",
         photos: photos,
@@ -85,7 +92,7 @@ class AiDiagnosisService {
       );
 
     } catch (e) {
-      debugPrint("🚨 Error Real en Vertex AI: $e");
+      debugPrint("🚨 Error en Vertex AI: $e");
       rethrow;
     }
   }
