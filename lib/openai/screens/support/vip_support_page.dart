@@ -4,7 +4,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_vertexai/firebase_vertexai.dart'; 
+// CAMBIO CRÍTICO: Nueva librería oficial
+import 'package:firebase_ai/firebase_ai.dart'; 
 
 class VipSupportPage extends StatefulWidget {
   const VipSupportPage({super.key});
@@ -19,6 +20,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
   final ImagePicker _picker = ImagePicker();
   bool _isTyping = false;
 
+  // Clase actualizada de la nueva SDK
   late final GenerativeModel _model;
 
   final List<Map<String, dynamic>> _messages = [
@@ -33,8 +35,8 @@ class _VipSupportPageState extends State<VipSupportPage> {
   @override
   void initState() {
     super.initState();
-    // Inicialización del modelo Gemini 1.5 Flash
-    _model = FirebaseVertexAI.instance.generativeModel(
+    // Inicialización usando la nueva instancia FirebaseAI
+    _model = FirebaseAI.instance.generativeModel(
       model: 'gemini-1.5-flash',
     );
   }
@@ -62,7 +64,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
       if (imageFile != null) {
         final Uint8List imageBytes = await imageFile.readAsBytes();
         
-        // Formato Multi-Part para Imagen + Texto (Vertex AI compatible)
+        // Formato Multi-Part actualizado para la nueva SDK
         final content = [
           Content.multi([
             TextPart("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText"),
@@ -71,7 +73,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
         ];
         response = await _model.generateContent(content);
       } else {
-        // Formato simple para Texto solo
+        // Formato simple para Texto
         response = await _model.generateContent([
           Content.text("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText")
         ]);
@@ -84,7 +86,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
       }
 
     } catch (e) {
-      debugPrint("Error en Chat VIP: $e");
+      debugPrint("🚨 Error en Chat VIP (Firebase AI): $e");
       _addMessage(false, "El servicio VIP está experimentando una alta demanda. Reintenta en un momento.", null);
     } finally {
       if (mounted) {
