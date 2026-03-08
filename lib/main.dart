@@ -15,7 +15,7 @@ import 'package:scanneranimal/firebase_options.dart';
 import 'package:scanneranimal/l10n/app_strings.dart';
 import 'package:scanneranimal/nav.dart';
 import 'package:scanneranimal/theme.dart';
-import 'package:scanneranimal/services/notification_service.dart';
+import 'package:scanneranimal/app_services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
