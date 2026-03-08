@@ -44,7 +44,6 @@ android {
 
     buildTypes {
         release {
-            // Si el archivo de firmas no existe, usa debug para que el build NO falle
             signingConfig (keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug)
             minifyEnabled true
             shrinkResources true
@@ -57,5 +56,4 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1'
-    implementation "androidx.core:core-ktx:1.13.1"
 }
