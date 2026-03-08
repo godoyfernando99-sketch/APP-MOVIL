@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:firebase_ai/firebase_ai.dart';
+import 'package:firebase_ai/firebase_ai.dart'; // Import correcto
 import 'package:flutter/material.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 
@@ -15,8 +15,8 @@ class AiDiagnosisService {
     String? microchipId,
   }) async {
     try {
-      // CORRECCIÓN: Se accede a FirebaseAI sin el .instance
-      final model = FirebaseAI.generativeModel(
+      // SINTAXIS FINAL: Usamos FirebaseVertexAI.instance con el import de firebase_ai
+      final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-1.5-flash',
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
