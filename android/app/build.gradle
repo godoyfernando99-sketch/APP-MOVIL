@@ -7,9 +7,8 @@ plugins {
 
 android {
     namespace = "com.scanneranimal.app"
-    compileSdk = 34 
-    ndkVersion = "27.0.12077973"
-
+    compileSdk = 34 // Mantenemos 34 para evitar conflictos de SDK 36
+    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -17,14 +16,12 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
-        // También aquí para seguridad
-        freeCompilerArgs += ["-nowarn", "-Xlint:none"]
     }
 
     defaultConfig {
         applicationId = "com.scanneranimal.app"
         minSdk = 24
-        targetSdk = 34 
+        targetSdk = 35 
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true
