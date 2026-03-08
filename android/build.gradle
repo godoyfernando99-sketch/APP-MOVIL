@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '2.1.0'
+    ext.kotlin_version = '1.9.24'
     repositories {
         google()
         mavenCentral()
@@ -22,6 +22,7 @@ subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
+                // Parche para Namespace/Package (Firestore y Notifications)
                 if (namespace == null || namespace.isEmpty()) {
                     def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
                     if (manifestFile.exists()) {
@@ -35,7 +36,6 @@ subprojects {
                 compileSdk = 34
                 buildToolsVersion = "34.0.0"
 
-                // Bajamos a 11 para que in_app_review y las demás no choquen
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_11
                     targetCompatibility = JavaVersion.VERSION_11
@@ -43,15 +43,15 @@ subprojects {
             }
         }
 
+        // Silenciador de errores para Kotlin (Crucial para NFC Manager)
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
-                // Sincronizado con Java 11
                 jvmTarget = "11"
                 allWarningsAsErrors = false
                 freeCompilerArgs += [
                     "-Xskip-prerelease-check",
-                    "-Xsuppress-version-warnings",
-                    "-nowarn"
+                    "-nowarn",
+                    "-Xsuppress-version-warnings"
                 ]
             }
         }
