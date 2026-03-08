@@ -34,7 +34,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
   void initState() {
     super.initState();
     _model = FirebaseVertexAI.instance.generativeModel(
-      model: 'gemini-1.5-flash', // Cambiado a 1.5-flash para mayor estabilidad en el Build actual
+      model: 'gemini-1.5-flash',
     );
   }
 
@@ -55,29 +55,40 @@ class _VipSupportPageState extends State<VipSupportPage> {
     _scrollToBottom();
 
     try {
-      final List<Part> parts = [
-        TextPart("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText")
-      ];
+      final List<DataPart> parts = []; // Usaremos DataPart genérico para la lista si es necesario, o directamente InlineDataPart
 
       if (imageFile != null) {
         final Uint8List imageBytes = await imageFile.readAsBytes();
-        // --- SOLUCIÓN AL ERROR DE COMPILACIÓN ---
-        parts.add(DataPart('image/jpeg', imageBytes)); 
-      }
-
-      final response = await _model.generateContent([Content.multi(parts)]);
-
-      if (response.text != null) {
-        _addMessage(false, response.text!.trim(), null);
+        // --- CAMBIO TÉCNICO PARA EL BUILD: InlineDataPart ---
+        final content = [
+          Content.multi([
+            TextPart("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText"),
+            InlineDataPart('image/jpeg', imageBytes),
+          ])
+        ];
+        final response = await _model.generateContent(content);
+        _processResponse(response);
       } else {
-        _addMessage(false, "No pude procesar la respuesta. Intenta de nuevo.", null);
+        final response = await _model.generateContent([
+          Content.text("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText")
+        ]);
+        _processResponse(response);
       }
+
     } catch (e) {
       debugPrint("Error en Chat VIP: $e");
       _addMessage(false, "El servicio VIP está experimentando una alta demanda. Reintenta en un momento.", null);
     } finally {
       if (mounted) setState(() => _isTyping = false);
       _scrollToBottom();
+    }
+  }
+
+  void _processResponse(GenerateContentResponse response) {
+    if (response.text != null) {
+      _addMessage(false, response.text!.trim(), null);
+    } else {
+      _addMessage(false, "No pude procesar la respuesta. Intenta de nuevo.", null);
     }
   }
 
@@ -157,6 +168,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
                   fillColor: Colors.white10,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
                 ),
+                onSubmitted: (_) => _isTyping ? null : _sendMessage(),
               ),
             ),
             IconButton(
@@ -183,17 +195,31 @@ class _ChatBubble extends StatelessWidget {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5),
+        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
         padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
           color: isMe ? Colors.green.shade900 : Colors.white12,
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(15),
+            topRight: const Radius.circular(15),
+            bottomLeft: Radius.circular(isMe ? 15 : 0),
+            bottomRight: Radius.circular(isMe ? 0 : 15),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (image != null) Image.file(image!, width: 200),
+            if (image != null) 
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.file(image!, width: 200),
+                ),
+              ),
             Text(text, style: const TextStyle(color: Colors.white)),
+            const SizedBox(height: 5),
             Text(time, style: const TextStyle(color: Colors.white38, fontSize: 10)),
           ],
         ),
