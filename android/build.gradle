@@ -20,21 +20,39 @@ allprojects {
 
 subprojects {
     afterEvaluate { project ->
+        // --- PARCHE ESPECÍFICO PARA NFC_MANAGER Y LIBRERÍAS ANTIGUAS ---
+        if (project.name.contains("nfc_manager") || project.name.contains("nfc")) {
+            tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                kotlinOptions {
+                    jvmTarget = "11"
+                    allWarningsAsErrors = false
+                    // Forzamos al compilador a ignorar el error de toLowerCase
+                    freeCompilerArgs += [
+                        "-nowarn",
+                        "-Xsuppress-version-warnings",
+                        "-Xskip-prerelease-check"
+                    ]
+                }
+            }
+        }
+
         if (project.hasProperty('android')) {
             project.android {
-                // Parche de Namespaces para Firebase y Notifications
+                // Parche automático de Namespaces para Firebase y Notifications
                 if (namespace == null || namespace.isEmpty()) {
                     def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
                     if (manifestFile.exists()) {
                         def manifestXml = new XmlParser().parse(manifestFile)
                         def packageName = manifestXml.attribute('package')
-                        if (packageName != null) { namespace = packageName }
+                        if (packageName != null) {
+                            namespace = packageName
+                        }
                     }
                 }
+
                 compileSdk = 34
                 buildToolsVersion = "34.0.0"
 
-                // Forzamos Java 11 para evitar conflictos con in_app_review
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_11
                     targetCompatibility = JavaVersion.VERSION_11
@@ -42,17 +60,12 @@ subprojects {
             }
         }
 
-        // Parche de silencio para Kotlin (Fundamental para nfc_manager)
+        // Configuración general de Kotlin para todos los demás subproyectos
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "11"
                 allWarningsAsErrors = false
-                freeCompilerArgs += [
-                    "-Xskip-prerelease-check",
-                    "-nowarn",
-                    "-Xsuppress-version-warnings",
-                    "-Xallow-unstable-dependencies"
-                ]
+                freeCompilerArgs += ["-Xallow-unstable-dependencies", "-nowarn"]
             }
         }
     }
