@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:typed_data';
-// CAMBIO CRÍTICO: Nueva librería oficial
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
@@ -16,18 +15,16 @@ class AiDiagnosisService {
     String? microchipId,
   }) async {
     try {
-      // Ajustado a la nueva clase FirebaseAI
-      final model = FirebaseAI.instance.generativeModel(
+      // CORRECCIÓN: Se accede a FirebaseAI sin el .instance
+      final model = FirebaseAI.generativeModel(
         model: 'gemini-1.5-flash',
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
       );
 
-      // Mantenemos InlineDataPart para enviar las fotos como bytes
       final imageParts = photos.map((bytes) => InlineDataPart('image/jpeg', bytes)).toList();
 
-      // --- PROMPT MAESTRO (SIN ALTERACIONES) ---
       final promptParts = [
         TextPart("""
           Actúa como un experto veterinario. Analiza las imágenes de este $animalCategory.
@@ -64,7 +61,6 @@ class AiDiagnosisService {
         ...imageParts,
       ];
 
-      // Envío de contenido al modelo Gemini
       final response = await model.generateContent([Content.multi(promptParts)]);
       
       final responseText = response.text;
