@@ -18,6 +18,7 @@ allprojects {
     }
 }
 
+// ESTO SILENCIA EL ERROR 'toLowerCase' DEFINITIVAMENTE
 subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
@@ -29,11 +30,13 @@ subprojects {
                 }
             }
         }
+        
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "17"
-                allWarningsAsErrors = false
-                freeCompilerArgs += ["-nowarn", "-Xlint:none"]
+                // VITAL: Evita que las advertencias de librerías viejas detengan el build
+                allWarningsAsErrors = false 
+                freeCompilerArgs += ["-nowarn", "-Xlint:none"] 
             }
         }
     }
