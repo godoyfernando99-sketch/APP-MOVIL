@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.scanneranimal.app"
-    compileSdk = 34 // Volvemos a 34 para estabilidad total
+    compileSdk = 34 
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -17,6 +17,8 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+        // También aquí para seguridad
+        freeCompilerArgs += ["-nowarn", "-Xlint:none"]
     }
 
     defaultConfig {
@@ -30,7 +32,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug // O tu release config si ya está lista
+            signingConfig signingConfigs.release 
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
