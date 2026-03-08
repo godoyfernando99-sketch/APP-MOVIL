@@ -18,7 +18,7 @@ allprojects {
     }
 }
 
-// ESTO SILENCIA EL ERROR 'toLowerCase' DEFINITIVAMENTE
+// ESTA ES LA CLAVE PARA MATAR EL ERROR DE NFC_MANAGER
 subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
@@ -30,13 +30,12 @@ subprojects {
                 }
             }
         }
-        
+        // Fuerza a Kotlin a ignorar errores de "deprecación"
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "17"
-                // VITAL: Evita que las advertencias de librerías viejas detengan el build
-                allWarningsAsErrors = false 
-                freeCompilerArgs += ["-nowarn", "-Xlint:none"] 
+                allWarningsAsErrors = false
+                freeCompilerArgs += ["-nowarn", "-Xlint:none"]
             }
         }
     }
