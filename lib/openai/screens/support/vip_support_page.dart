@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_ai/firebase_ai.dart'; 
+import 'package:firebase_ai/firebase_ai.dart'; // Import correcto
 
 class VipSupportPage extends StatefulWidget {
   const VipSupportPage({super.key});
@@ -33,15 +33,11 @@ class _VipSupportPageState extends State<VipSupportPage> {
   @override
   void initState() {
     super.initState();
-    // CORRECCIÓN: Se accede a FirebaseAI sin el .instance
-    _model = FirebaseAI.generativeModel(
+    // SINTAXIS FINAL: Usamos FirebaseVertexAI.instance
+    _model = FirebaseVertexAI.instance.generativeModel(
       model: 'gemini-1.5-flash',
     );
   }
-
-  // ... (El resto del código del chat se mantiene exactamente igual que el anterior)
-  // Asegúrate de copiar solo el bloque de initState si prefieres editarlo a mano, 
-  // o pega el archivo completo que tenías antes pero quitando el ".instance" en la línea 39.
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
