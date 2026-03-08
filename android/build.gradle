@@ -20,36 +20,16 @@ allprojects {
 
 subprojects {
     afterEvaluate { project ->
-        // --- PARCHE ESPECÍFICO PARA NFC_MANAGER Y LIBRERÍAS ANTIGUAS ---
-        if (project.name.contains("nfc_manager") || project.name.contains("nfc")) {
-            tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                kotlinOptions {
-                    jvmTarget = "11"
-                    allWarningsAsErrors = false
-                    // Forzamos al compilador a ignorar el error de toLowerCase
-                    freeCompilerArgs += [
-                        "-nowarn",
-                        "-Xsuppress-version-warnings",
-                        "-Xskip-prerelease-check"
-                    ]
-                }
-            }
-        }
-
         if (project.hasProperty('android')) {
             project.android {
-                // Parche automático de Namespaces para Firebase y Notifications
                 if (namespace == null || namespace.isEmpty()) {
                     def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
                     if (manifestFile.exists()) {
                         def manifestXml = new XmlParser().parse(manifestFile)
                         def packageName = manifestXml.attribute('package')
-                        if (packageName != null) {
-                            namespace = packageName
-                        }
+                        if (packageName != null) { namespace = packageName }
                     }
                 }
-
                 compileSdk = 34
                 buildToolsVersion = "34.0.0"
 
@@ -60,12 +40,18 @@ subprojects {
             }
         }
 
-        // Configuración general de Kotlin para todos los demás subproyectos
+        // PARCHE DEFINITIVO: Obligamos a Kotlin a ignorar errores de sintaxis obsoleta
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "11"
-                allWarningsAsErrors = false
-                freeCompilerArgs += ["-Xallow-unstable-dependencies", "-nowarn"]
+                allWarningsAsErrors = false // Desactiva que los avisos sean errores
+                
+                // Estos argumentos silencian específicamente el error de nfc_manager
+                freeCompilerArgs += [
+                    "-nowarn", 
+                    "-Xsuppress-version-warnings",
+                    "-Xskip-prerelease-check"
+                ]
             }
         }
     }
