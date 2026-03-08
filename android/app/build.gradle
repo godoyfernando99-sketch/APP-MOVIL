@@ -5,59 +5,31 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file('key.properties')
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-}
-
 android {
-    namespace = "com.scanneranimal.app"
-    compileSdk = 34
+    namespace "com.scanneranimal.app"
+    compileSdk 34
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
     kotlinOptions {
         jvmTarget = "11"
-        // Evita que warnings de librerías externas detengan el build
-        freeCompilerArgs += ["-nowarn"]
     }
 
     defaultConfig {
-        applicationId = "com.scanneranimal.app"
-        minSdk = 24
-        targetSdk = 34 
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        applicationId "com.scanneranimal.app"
+        minSdk 24
+        targetSdk 34
+        versionCode flutter.versionCode
+        versionName flutter.versionName
         multiDexEnabled true
     }
-
-    signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            storePassword keystoreProperties['storePassword']
-        }
-    }
-
-    buildTypes {
-        release {
-            // Usa la firma de release si existe el archivo, si no, usa debug para no fallar
-            signingConfig (keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug)
-            
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
+    // ... resto de tu configuración (signingConfigs, buildTypes)
 }
 
 dependencies {
-    // Firebase BOM para gestionar versiones automáticamente
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1'
