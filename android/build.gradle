@@ -1,11 +1,11 @@
 buildscript {
-    ext.kotlin_version = '2.1.0' 
+    ext.kotlin_version = '2.1.0'
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.1' 
+        classpath 'com.android.tools.build:gradle:8.2.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.google.gms:google-services:4.4.1'
     }
@@ -15,6 +15,26 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+}
+
+// ESTO ARREGLA EL ERROR DE JVM TARGET INCONSISTENTE
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                compileSdk = 34
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            }
+        }
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
     }
 }
 
@@ -28,15 +48,4 @@ subprojects {
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
-}
-
-// BLOQUE DE FUERZA BRUTA: Aplica a todas las librerías hijas
-subprojects {
-    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
-        kotlinOptions {
-            jvmTarget = "17"
-            // Obliga a nfc_manager a compilar aunque use código viejo
-            freeCompilerArgs += ["-Xlint:none", "-nowarn"]
-        }
-    }
 }
