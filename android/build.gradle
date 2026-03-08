@@ -18,21 +18,29 @@ allprojects {
     }
 }
 
-// ESTO ARREGLA EL ERROR DE JVM TARGET INCONSISTENTE
+// PARCHE DEFINITIVO DE COMPATIBILIDAD
 subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
                 compileSdk = 34
+                // Esto fuerza a las librerías a usar Java 17 sí o sí
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_17
                     targetCompatibility = JavaVersion.VERSION_17
                 }
             }
         }
-        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+        // Esto silencia a nfc_manager y su error de 'toLowerCase'
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
                 jvmTarget = "17"
+                // Desactivamos el modo estricto para que ignore advertencias
+                allWarningsAsErrors = false
+                freeCompilerArgs += [
+                    "-Xlint:none",
+                    "-nowarn"
+                ]
             }
         }
     }
