@@ -1,7 +1,8 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 class ScanResult {
-  final String? id; // Identificador único para el historial
+  final String? id;
   final String animalType;
   final String healthStatus;
   final List<String> preventionTips;
@@ -19,10 +20,19 @@ class ScanResult {
   final String? foodRecommendation; 
   final String suggestedFoodName; 
 
-  // Metadatos
+  // Metadatos y Compatibilidad con HistoryPage
   final List<Uint8List> photos;
   final String? microchipId;
   final DateTime timestamp;
+
+  // --- GETTERS DE COMPATIBILIDAD PARA HISTORY PAGE ---
+  DateTime get createdAt => timestamp;
+  String get breed => animalType; // Mapeo simple para evitar error de 'breed'
+  String? get diseaseName => healthStatus.contains('SANO') ? null : healthStatus;
+  String? get microchipNumber => microchipId;
+  
+  // Convierte las fotos de bytes a Base64 para el historial si es necesario
+  List<String> get photosBase64 => photos.map((p) => base64Encode(p)).toList();
 
   ScanResult({
     this.id,
@@ -58,8 +68,9 @@ class ScanResult {
       medicationDays: List<int>.from(json['medicationDays'] ?? []),
       foodRecommendation: json['foodRecommendation'],
       suggestedFoodName: json['suggestedFoodName'] ?? "Dieta Balanceada",
-      photos: [], 
+      photos: [], // Nota: Las fotos suelen persistirse como rutas o base64 en local
       microchipId: json['microchipId'],
+      timestamp: json['timestamp'] != null ? DateTime.parse(json['timestamp']) : null,
     );
   }
 }
