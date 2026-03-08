@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 class ScanResult {
   final String id;
+  final String? ownerId; // Necesario para Firebase
   final String animalType;
   final String? breed;
   final String healthStatus;
@@ -23,6 +25,7 @@ class ScanResult {
 
   ScanResult({
     required this.id,
+    this.ownerId,
     required this.animalType,
     this.breed,
     required this.healthStatus,
@@ -43,9 +46,90 @@ class ScanResult {
     required this.timestamp,
   });
 
-  // Helper para saber si es urgente y activar vibración/alertas
-  bool get isUrgent => healthStatus.toUpperCase().contains('URGENTE');
+  // Getter para compatibilidad con tu controlador antiguo
+  DateTime get createdAt => timestamp;
 
-  // Helper para los días de medicación (usado en NotificationService)
-  List<int> get medicationDays => [1, 3, 5, 7]; // Por defecto o personalizable
+  bool get isUrgent => healthStatus.toUpperCase().contains('URGENTE');
+  List<int> get medicationDays => [1, 3, 5, 7];
+
+  // --- CONVERSIÓN A MAPA (Para guardar en Local y Firebase) ---
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'ownerId': ownerId,
+      'animalType': animalType,
+      'breed': breed,
+      'healthStatus': healthStatus,
+      'preventionTips': preventionTips,
+      'isPregnant': isPregnant,
+      'offspringCount': offspringCount,
+      'gestationWeeks': gestationWeeks,
+      'totalGestationDuration': totalGestationDuration,
+      'daysUntilDelivery': daysUntilDelivery,
+      'rescanInterval': rescanInterval,
+      'medicationDosage': medicationDosage,
+      'medicationRoute': medicationRoute,
+      'applicationSite': applicationSite,
+      'suggestedFoodName': suggestedFoodName,
+      'foodRecommendation': foodRecommendation,
+      'microchipId': microchipId,
+      'timestamp': timestamp.toIso8601String(),
+      // Guardamos fotos como Base64 en local
+      'photosBase64': photos.map((e) => base64Encode(e)).toList(),
+    };
+  }
+
+  // --- CREAR DESDE MAPA (Para cargar de Local y Firebase) ---
+  factory ScanResult.fromMap(Map<String, dynamic> map) {
+    return ScanResult(
+      id: map['id'] ?? '',
+      ownerId: map['ownerId'],
+      animalType: map['animalType'] ?? '',
+      breed: map['breed'] ?? map['detectedBreed'], // Soporta ambos nombres
+      healthStatus: map['healthStatus'] ?? '',
+      preventionTips: List<String>.from(map['preventionTips'] ?? []),
+      isPregnant: map['isPregnant'] ?? false,
+      offspringCount: map['offspringCount'],
+      gestationWeeks: map['gestationWeeks'],
+      totalGestationDuration: map['totalGestationDuration'],
+      daysUntilDelivery: map['daysUntilDelivery'],
+      rescanInterval: map['rescanInterval'] ?? 3,
+      medicationDosage: map['medicationDosage'],
+      medicationRoute: map['medicationRoute'],
+      applicationSite: map['applicationSite'],
+      suggestedFoodName: map['suggestedFoodName'] ?? '',
+      foodRecommendation: map['foodRecommendation'],
+      microchipId: map['microchipId'] ?? map['microchipNumber'],
+      timestamp: map['timestamp'] != null 
+          ? DateTime.parse(map['timestamp']) 
+          : (map['createdAt'] != null ? (map['createdAt'] as dynamic).toDate() : DateTime.now()),
+      photos: (map['photosBase64'] as List?)?.map((e) => base64Decode(e)).toList() ?? [],
+    );
+  }
+
+  // --- MÉTODO COPYWITH (Para el HistoryController) ---
+  ScanResult copyWith({String? ownerId}) {
+    return ScanResult(
+      id: id,
+      ownerId: ownerId ?? this.ownerId,
+      animalType: animalType,
+      breed: breed,
+      healthStatus: healthStatus,
+      preventionTips: preventionTips,
+      isPregnant: isPregnant,
+      offspringCount: offspringCount,
+      gestationWeeks: gestationWeeks,
+      totalGestationDuration: totalGestationDuration,
+      daysUntilDelivery: daysUntilDelivery,
+      rescanInterval: rescanInterval,
+      medicationDosage: medicationDosage,
+      medicationRoute: medicationRoute,
+      applicationSite: applicationSite,
+      suggestedFoodName: suggestedFoodName,
+      foodRecommendation: foodRecommendation,
+      photos: photos,
+      microchipId: microchipId,
+      timestamp: timestamp,
+    );
+  }
 }
