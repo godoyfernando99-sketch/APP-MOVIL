@@ -61,7 +61,6 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // CORRECCIÓN: Usamos timestamp en lugar de createdAt
     final dateLabel = DateFormat('dd MMM, yyyy • HH:mm').format(item.timestamp);
     
     return Container(
@@ -118,7 +117,6 @@ class _HistoryCard extends StatelessWidget {
   }
 
   Widget _buildStatusBadge() {
-    // CORRECCIÓN: Usamos healthStatus y evitamos diseaseName que no existe
     final bool isUrgent = item.isUrgent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -155,7 +153,6 @@ class HistoryDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // CORRECCIÓN: Usamos timestamp
     final dateLabel = DateFormat('dd MMMM, yyyy - HH:mm').format(item.timestamp);
 
     return DraggableScrollableSheet(
@@ -180,7 +177,6 @@ class HistoryDetailSheet extends StatelessWidget {
               children: [
                 _DetailRow(label: 'Tipo de Animal', value: item.animalType.toUpperCase()),
                 _DetailRow(label: 'Raza / Especie', value: item.breed ?? 'No detectado', isBold: true),
-                // CORRECCIÓN: microchipId en lugar de microchipNumber
                 if (item.microchipId != null)
                   _DetailRow(label: 'Microchip ID', value: item.microchipId!),
               ]
@@ -191,7 +187,6 @@ class HistoryDetailSheet extends StatelessWidget {
               icon: Icons.monitor_heart_rounded, 
               color: Colors.greenAccent, 
               children: [
-                // CORRECCIÓN: healthStatus en lugar de diseaseName
                 _DetailRow(label: 'Informe IA', value: item.healthStatus, isBold: item.isUrgent),
               ]
             ),
@@ -269,5 +264,81 @@ class HistoryDetailSheet extends StatelessWidget {
   }
 }
 
-// Widgets de soporte _DetailSection, _DetailRow y _EmptyHistory se mantienen igual...
-// (Omitidos por brevedad, pero asegúrate de no borrarlos de tu archivo original)
+// --- WIDGETS DE SOPORTE (OBLIGATORIOS PARA EVITAR ERRORES DE BUILD) ---
+
+class _DetailSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final List<Widget> children;
+  const _DetailSection({required this.title, required this.icon, required this.color, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.1)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(title, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+        ]),
+        const Divider(color: Colors.white10, height: 24),
+        ...children,
+      ]),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value, this.isBold = false});
+  final String label;
+  final String value;
+  final bool isBold;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 13)),
+        Flexible(
+          child: Text(
+            value, 
+            textAlign: TextAlign.right, 
+            style: TextStyle(
+              color: isBold ? Colors.greenAccent : Colors.white, 
+              fontSize: 13, 
+              fontWeight: isBold ? FontWeight.w900 : FontWeight.bold
+            )
+          )
+        ),
+      ]),
+    );
+  }
+}
+
+class _EmptyHistory extends StatelessWidget {
+  const _EmptyHistory();
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history_rounded, size: 50, color: Colors.white.withOpacity(0.1)),
+          const SizedBox(height: 16),
+          const Text('NO HAY REGISTROS GUARDADOS', 
+            style: TextStyle(color: Colors.white24, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 12)
+          ),
+        ],
+      )
+    );
+  }
+}
