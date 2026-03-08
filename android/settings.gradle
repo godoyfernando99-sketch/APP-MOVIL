@@ -17,7 +17,7 @@ plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
     id "com.android.application" version "8.2.1" apply false
     id "com.google.gms.google-services" version "4.4.1" apply false
-    // SUBIMOS A 2.1.0 para que in_app_update y las nuevas librerías funcionen
+    // Versión moderna de Kotlin para que Firebase no de error
     id "org.jetbrains.kotlin.android" version "2.1.0" apply false
 }
 
