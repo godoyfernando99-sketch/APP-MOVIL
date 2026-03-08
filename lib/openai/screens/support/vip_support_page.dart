@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:intl/intl.dart';
-// CAMBIO CRÍTICO: Nueva librería oficial
 import 'package:firebase_ai/firebase_ai.dart'; 
 
 class VipSupportPage extends StatefulWidget {
@@ -20,7 +19,6 @@ class _VipSupportPageState extends State<VipSupportPage> {
   final ImagePicker _picker = ImagePicker();
   bool _isTyping = false;
 
-  // Clase actualizada de la nueva SDK
   late final GenerativeModel _model;
 
   final List<Map<String, dynamic>> _messages = [
@@ -35,11 +33,15 @@ class _VipSupportPageState extends State<VipSupportPage> {
   @override
   void initState() {
     super.initState();
-    // Inicialización usando la nueva instancia FirebaseAI
-    _model = FirebaseAI.instance.generativeModel(
+    // CORRECCIÓN: Se accede a FirebaseAI sin el .instance
+    _model = FirebaseAI.generativeModel(
       model: 'gemini-1.5-flash',
     );
   }
+
+  // ... (El resto del código del chat se mantiene exactamente igual que el anterior)
+  // Asegúrate de copiar solo el bloque de initState si prefieres editarlo a mano, 
+  // o pega el archivo completo que tenías antes pero quitando el ".instance" en la línea 39.
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -64,7 +66,6 @@ class _VipSupportPageState extends State<VipSupportPage> {
       if (imageFile != null) {
         final Uint8List imageBytes = await imageFile.readAsBytes();
         
-        // Formato Multi-Part actualizado para la nueva SDK
         final content = [
           Content.multi([
             TextPart("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText"),
@@ -73,7 +74,6 @@ class _VipSupportPageState extends State<VipSupportPage> {
         ];
         response = await _model.generateContent(content);
       } else {
-        // Formato simple para Texto
         response = await _model.generateContent([
           Content.text("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText")
         ]);
@@ -86,7 +86,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
       }
 
     } catch (e) {
-      debugPrint("🚨 Error en Chat VIP (Firebase AI): $e");
+      debugPrint("🚨 Error en Chat VIP: $e");
       _addMessage(false, "El servicio VIP está experimentando una alta demanda. Reintenta en un momento.", null);
     } finally {
       if (mounted) {
