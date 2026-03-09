@@ -1,7 +1,7 @@
 name: scanneranimal
 description: "IA Veterinaria - Diagnóstico, Gestación y Seguimiento"
 publish_to: 'none'
-version: 1.0.24+29
+version: 1.0.27+30  # <--- ACTUALIZADO PARA SUPERAR EL RECHAZO ANTERIOR
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -25,7 +25,7 @@ dependencies:
   cloud_firestore: 5.5.0
   firebase_vertexai: 1.1.0
 
-  in_app_purchase: 3.2.0
+  in_app_purchase: 3.2.0 # <--- CORRECTA PARA BILLING LIBRARY 7
   awesome_notifications: 0.11.0 
   in_app_update: 4.2.1
   in_app_review: 2.0.9
@@ -34,7 +34,7 @@ dependencies:
   printing: 5.11.0
   image_picker: 1.0.7
   path_provider: 2.1.2
-  share_plus: 7.2.2
+  share_plus: 7.2.2 
 
 dev_dependencies:
   flutter_test:
