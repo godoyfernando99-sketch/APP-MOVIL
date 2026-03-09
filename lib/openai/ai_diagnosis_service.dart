@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
-// CAMBIO CLAVE: Usamos el import directo del motor Vertex
+// IMPORT UNIFICADO QUE CORRIGE EL ERROR DEL BUILD
 import 'package:firebase_vertexai/firebase_vertexai.dart'; 
 import 'package:flutter/material.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
@@ -16,7 +16,6 @@ class AiDiagnosisService {
     String? microchipId,
   }) async {
     try {
-      // SINTAXIS PARA LA VERSIÓN ACTUAL
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-1.5-flash',
         generationConfig: GenerationConfig(
@@ -26,6 +25,7 @@ class AiDiagnosisService {
 
       final imageParts = photos.map((bytes) => InlineDataPart('image/jpeg', bytes)).toList();
 
+      // --- PROMPT MAESTRO (RESTAURADO AL 100%) ---
       final promptParts = [
         TextPart("""
           Actúa como un experto veterinario. Analiza las imágenes de este $animalCategory.
@@ -91,7 +91,7 @@ class AiDiagnosisService {
       );
 
     } catch (e) {
-      debugPrint("🚨 Error en Firebase AI: $e");
+      debugPrint("🚨 Error en Vertex AI: $e");
       rethrow;
     }
   }
