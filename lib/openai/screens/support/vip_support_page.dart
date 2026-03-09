@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:intl/intl.dart';
-// CAMBIO CLAVE: Importamos el motor Vertex directamente
+// IMPORT CORRECTO PARA EL BUILD
 import 'package:firebase_vertexai/firebase_vertexai.dart'; 
 
 class VipSupportPage extends StatefulWidget {
@@ -22,6 +22,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
 
   late final GenerativeModel _model;
 
+  // --- MENSAJE INICIAL DEL DR. JULIÁN ---
   final List<Map<String, dynamic>> _messages = [
     {
       'isMe': false,
@@ -34,13 +35,12 @@ class _VipSupportPageState extends State<VipSupportPage> {
   @override
   void initState() {
     super.initState();
-    // SINTAXIS CORRECTA PARA EL MODELO
+    // INICIALIZACIÓN TÉCNICA CORREGIDA
     _model = FirebaseVertexAI.instance.generativeModel(
       model: 'gemini-1.5-flash',
     );
   }
 
-  // ... (El resto del código del chat sigue igual)
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -53,6 +53,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
     });
   }
 
+  // --- LÓGICA DE RESPUESTA DEL DR. JULIÁN ---
   Future<void> _getAiResponse(String userText, File? imageFile) async {
     if (!mounted) return;
     setState(() => _isTyping = true);
@@ -66,7 +67,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
         
         final content = [
           Content.multi([
-            TextPart("Eres el Dr. Julián, un veterinario experto. Responde de forma profesional y amable: $userText"),
+            TextPart("Eres el Dr. Julián, un veterinario experto de campo. Responde de forma profesional, directa y amable a esta consulta: $userText"),
             InlineDataPart('image/jpeg', imageBytes),
           ])
         ];
@@ -80,12 +81,12 @@ class _VipSupportPageState extends State<VipSupportPage> {
       if (response.text != null) {
         _addMessage(false, response.text!.trim(), null);
       } else {
-        _addMessage(false, "No pude procesar la respuesta. Intenta de nuevo.", null);
+        _addMessage(false, "Lo siento, no pude procesar la respuesta. ¿Podrías repetirme la consulta?", null);
       }
 
     } catch (e) {
       debugPrint("🚨 Error en Chat VIP: $e");
-      _addMessage(false, "El servicio VIP está experimentando una alta demanda. Reintenta en un momento.", null);
+      _addMessage(false, "El servicio VIP está experimentando mucha demanda. Reintenta en un momento, por favor.", null);
     } finally {
       if (mounted) {
         setState(() => _isTyping = false);
@@ -107,7 +108,7 @@ class _VipSupportPageState extends State<VipSupportPage> {
     if (image != null) {
       File imageFile = File(image.path);
       _addMessage(true, "Consulta sobre esta imagen.", imageFile);
-      _getAiResponse("Analiza esta imagen veterinaria y dime qué observas.", imageFile);
+      _getAiResponse("Analiza esta imagen veterinaria y dime qué observas como experto.", imageFile);
     }
   }
 
