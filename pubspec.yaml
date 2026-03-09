@@ -1,7 +1,7 @@
 name: scanneranimal
 description: "IA Veterinaria - Diagnóstico, Gestación y Seguimiento"
 publish_to: 'none'
-version: 1.0.30+30  # <--- ACTUALIZADO PARA SUPERAR EL RECHAZO ANTERIOR
+version: 1.0.31+31  # <--- ACTUALIZADO PARA SUPERAR EL RECHAZO ANTERIOR
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
