@@ -4,7 +4,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_ai/firebase_ai.dart'; // Import correcto
+// CAMBIO CLAVE: Importamos el motor Vertex directamente
+import 'package:firebase_vertexai/firebase_vertexai.dart'; 
 
 class VipSupportPage extends StatefulWidget {
   const VipSupportPage({super.key});
@@ -33,12 +34,13 @@ class _VipSupportPageState extends State<VipSupportPage> {
   @override
   void initState() {
     super.initState();
-    // SINTAXIS FINAL: Usamos FirebaseVertexAI.instance
+    // SINTAXIS CORRECTA PARA EL MODELO
     _model = FirebaseVertexAI.instance.generativeModel(
       model: 'gemini-1.5-flash',
     );
   }
 
+  // ... (El resto del código del chat sigue igual)
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
