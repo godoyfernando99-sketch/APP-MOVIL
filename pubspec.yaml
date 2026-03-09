@@ -1,7 +1,6 @@
 name: scanneranimal
 description: "IA Veterinaria - Diagnóstico, Gestación y Seguimiento"
 publish_to: 'none'
-
 version: 1.0.24+27 
 
 environment:
@@ -32,7 +31,7 @@ dependencies:
   firebase_auth: 4.17.8
   cloud_firestore: 4.15.8
 
-  # --- INTELIGENCIA ARTIFICIAL (ESTABLE Y COMPATIBLE) ---
+  # --- INTELIGENCIA ARTIFICIAL (ESTABLE) ---
   firebase_vertexai: 1.0.0
 
   # --- SISTEMA DE PAGOS ---
