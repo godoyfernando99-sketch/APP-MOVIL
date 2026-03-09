@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "71382402825-sha256-fix-scanner-animal.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.scanneranimal.app",
+            "certificate_hash": "3d5398c50d75e63713eb2001d49f2e1c49f2e1cf"
+          }
+        },
+        {
           "client_id": "71382402825-pvrujm54nr5rsdm2drd3n83e1rt4j63u.apps.googleusercontent.com",
           "client_type": 3
         }
