@@ -7,7 +7,6 @@ plugins {
 
 android {
     namespace = "com.scanneranimal.app"
-    // ACTUALIZADO A 35: Para cumplir con la última exigencia de Google Play
     compileSdk = 35
 
     compileOptions {
@@ -23,13 +22,15 @@ android {
         applicationId = "com.scanneranimal.app"
         minSdk = 24
         targetSdk = 35 
-        // El versionCode se toma de pubspec.yaml (asegúrate que sea +29)
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        
+        // IMPORTANTE: Si en tu pubspec.yaml no has subido la versión, 
+        // puedes forzarla aquí temporalmente para que Google la acepte:
+        versionCode 27 
+        versionName "1.0.27"
+        
         multiDexEnabled true
     }
 
-    // 🔥 CORRECCIÓN PARA EL ERROR DE 16 KB (Alineación de memoria)
     packagingOptions {
         jniLibs {
             useLegacyPackaging = true
@@ -41,11 +42,13 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1'
+    
+    // 🔥 PASO 2: LIBRERÍA DE FACTURACIÓN OBLIGATORIA PARA GOOGLE PLAY 2026
+    implementation "com.android.billingclient:billing:7.0.0"
 }
 
 configurations.all {
     resolutionStrategy {
-        // Estabilización para SDK 35 y evitar errores de compilación en Codemagic
         force 'androidx.core:core:1.15.0'
         force 'androidx.core:core-ktx:1.15.0'
         force 'androidx.activity:activity:1.9.3'
@@ -53,8 +56,6 @@ configurations.all {
         force 'androidx.lifecycle:lifecycle-common:2.8.7'
         force 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
         force 'androidx.browser:browser:1.8.0'
-        
-        // Versiones de Media3 compatibles con el nuevo entorno
         force 'androidx.media3:media3-exoplayer:1.4.1'
         force 'androidx.media3:media3-common:1.4.1'
     }
