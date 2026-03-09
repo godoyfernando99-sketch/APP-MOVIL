@@ -5,9 +5,10 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.1'
+        // Subimos a 8.5.1 para mejor soporte de SDK 34 y compatibilidad de 16KB
+        classpath 'com.android.tools.build:gradle:8.5.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.google.gms:google-services:4.4.1'
+        classpath 'com.google.gms:google-services:4.4.2'
     }
 }
 
@@ -31,17 +32,22 @@ subprojects {
                         if (packageName != null) { namespace = packageName }
                     }
                 }
+                
+                // Alineado con el paso 1
                 compileSdk = 34
                 buildToolsVersion = "34.0.0"
+
                 compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_11
-                    targetCompatibility = JavaVersion.VERSION_11
+                    // Cambiado a 17 para que coincida con el app/build.gradle
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
                 }
             }
         }
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
-                jvmTarget = "11"
+                // Cambiado a 17 para evitar conflictos de versiones en Codemagic
+                jvmTarget = "17"
                 allWarningsAsErrors = false
                 freeCompilerArgs += ["-nowarn", "-Xsuppress-version-warnings"]
             }
