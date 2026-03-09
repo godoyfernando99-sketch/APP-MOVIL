@@ -26,7 +26,7 @@ android {
         // IMPORTANTE: Si en tu pubspec.yaml no has subido la versión, 
         // puedes forzarla aquí temporalmente para que Google la acepte:
         versionCode 31
-        versionName "1.0.30"
+        versionName "1.0.31"
         
         multiDexEnabled true
     }
