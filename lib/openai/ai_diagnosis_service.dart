@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
-// IMPORT UNIFICADO QUE CORRIGE EL ERROR DEL BUILD
+// IMPORT CRÍTICO: Debe coincidir con el nombre en el pubspec
 import 'package:firebase_vertexai/firebase_vertexai.dart'; 
 import 'package:flutter/material.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
@@ -25,7 +25,6 @@ class AiDiagnosisService {
 
       final imageParts = photos.map((bytes) => InlineDataPart('image/jpeg', bytes)).toList();
 
-      // --- PROMPT MAESTRO (RESTAURADO AL 100%) ---
       final promptParts = [
         TextPart("""
           Actúa como un experto veterinario. Analiza las imágenes de este $animalCategory.
@@ -66,7 +65,6 @@ class AiDiagnosisService {
       
       final responseText = response.text;
       if (responseText == null) throw Exception("La IA no respondió.");
-
       final Map<String, dynamic> data = jsonDecode(responseText);
       
       return ScanResult(
@@ -89,7 +87,6 @@ class AiDiagnosisService {
         microchipId: microchipId,
         timestamp: DateTime.now(),
       );
-
     } catch (e) {
       debugPrint("🚨 Error en Vertex AI: $e");
       rethrow;
