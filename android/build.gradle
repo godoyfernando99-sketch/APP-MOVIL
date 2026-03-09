@@ -5,7 +5,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // Subimos a 8.5.1 para mejor soporte de SDK 34 y compatibilidad de 16KB
+        // Mantenemos 8.5.1 que es perfecto para el parche de 16KB
         classpath 'com.android.tools.build:gradle:8.5.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.google.gms:google-services:4.4.2'
@@ -32,13 +32,12 @@ subprojects {
                         if (packageName != null) { namespace = packageName }
                     }
                 }
-                
-                // Alineado con el paso 1
-                compileSdk = 34
-                buildToolsVersion = "34.0.0"
+
+                // ACTUALIZADO A 35: Debe ser igual al del app/build.gradle
+                compileSdk = 35
+                buildToolsVersion = "35.0.0"
 
                 compileOptions {
-                    // Cambiado a 17 para que coincida con el app/build.gradle
                     sourceCompatibility = JavaVersion.VERSION_17
                     targetCompatibility = JavaVersion.VERSION_17
                 }
@@ -46,7 +45,6 @@ subprojects {
         }
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
-                // Cambiado a 17 para evitar conflictos de versiones en Codemagic
                 jvmTarget = "17"
                 allWarningsAsErrors = false
                 freeCompilerArgs += ["-nowarn", "-Xsuppress-version-warnings"]
