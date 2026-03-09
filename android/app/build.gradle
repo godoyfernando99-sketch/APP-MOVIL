@@ -26,7 +26,6 @@ android {
         versionName = flutter.versionName
         multiDexEnabled true
     }
-    // Asegúrate de tener tus signingConfigs aquí abajo si los usas
 }
 
 dependencies {
@@ -37,7 +36,7 @@ dependencies {
 
 configurations.all {
     resolutionStrategy {
-        // Forzamos versiones compatibles con Android 34 / SDK 34
+        // Forzamos versiones que NO piden SDK 35 o 36
         force 'androidx.browser:browser:1.8.0'
         force 'androidx.core:core:1.13.1'
         force 'androidx.core:core-ktx:1.13.1'
@@ -45,5 +44,6 @@ configurations.all {
         force 'androidx.activity:activity-ktx:1.9.0'
         force 'androidx.media3:media3-common:1.3.1'
         force 'androidx.media3:media3-exoplayer:1.3.1'
+        force 'androidx.lifecycle:lifecycle-common:2.8.0'
     }
 }
