@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.scanneranimal.app"
     // Mantener en 34 para evitar los errores de "Sugerencia API 35"
-    compileSdk = 34
+    compileSdk = 35
 
     compileOptions {
         // Actualizado a 17 para compatibilidad total con Gradle 8+ y Codemagic
@@ -23,7 +23,7 @@ android {
     defaultConfig {
         applicationId = "com.scanneranimal.app"
         minSdk = 24
-        targetSdk = 34 
+        targetSdk = 35
         // Asegúrate de que en el pubspec.yaml el build-number sea 28 o superior
         versionCode = flutter.versionCode
         versionName = flutter.versionName
