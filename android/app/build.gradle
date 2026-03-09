@@ -7,21 +7,24 @@ plugins {
 
 android {
     namespace = "com.scanneranimal.app"
+    // Mantener en 34 para evitar los errores de "Sugerencia API 35"
     compileSdk = 34
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // Actualizado a 17 para compatibilidad total con Gradle 8+ y Codemagic
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
 
     defaultConfig {
         applicationId = "com.scanneranimal.app"
         minSdk = 24
         targetSdk = 34 
+        // Asegúrate de que en el pubspec.yaml el build-number sea 28 o superior
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true
@@ -29,6 +32,7 @@ android {
 }
 
 dependencies {
+    // Actualizado el BOM de Firebase a una versión estable para SDK 34
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1'
@@ -36,15 +40,16 @@ dependencies {
 
 configurations.all {
     resolutionStrategy {
-        // Bloqueo total de versiones que piden SDK 35 o 36
+        // Bloqueo de versiones que requieren SDK 35+
         force 'androidx.browser:browser:1.8.0'
         force 'androidx.core:core:1.13.1'
         force 'androidx.core:core-ktx:1.13.1'
         force 'androidx.activity:activity:1.9.0'
         force 'androidx.activity:activity-ktx:1.9.0'
         force 'androidx.lifecycle:lifecycle-common:2.8.0'
+        force 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.0'
         
-        // ESTO ES LO QUE ESTÁ FALLANDO AHORA: Forzamos media3 a una versión compatible con SDK 34
+        // Media3 compatible con SDK 34 para evitar errores de compilación
         force 'androidx.media3:media3-exoplayer:1.3.1'
         force 'androidx.media3:media3-common:1.3.1'
         force 'androidx.media3:media3-extractor:1.3.1'
@@ -57,4 +62,4 @@ configurations.all {
         force 'androidx.media3:media3-exoplayer-rtsp:1.3.1'
         force 'androidx.media3:media3-exoplayer-smoothstreaming:1.3.1'
     }
-} 
+}
