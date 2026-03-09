@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:typed_data';
-// IMPORT CRÍTICO: Debe coincidir con el nombre en el pubspec
 import 'package:firebase_vertexai/firebase_vertexai.dart'; 
 import 'package:flutter/material.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
@@ -33,46 +32,43 @@ class AiDiagnosisService {
           INSTRUCCIONES OBLIGATORIAS:
           1. DETECCIÓN: Identifica especie y raza exacta.
           2. GRAVEDAD: Si detectas enfermedades graves, tumores o necesidad de cirugía, inicia 'healthStatus' con la palabra "URGENTE: ATENCIÓN VETERINARIA ESPECIAL".
-          3. TRATAMIENTO: Si el usuario puede atenderlo, indica el nombre del MEDICAMENTO, la DOSIS exacta, la VÍA (oral, ocular, inyección o pomada) y el LUGAR de aplicación.
+          3. TRATAMIENTO: Si el usuario puede atenderlo, indica el nombre del MEDICAMENTO, la DOSIS exacta, la VÍA y el LUGAR de aplicación.
           4. PREVENCIÓN: Explica qué evitar para que no repita la enfermedad.
-          5. GESTACIÓN: Si detectas embarazo, indica: número de crías, tiempo actual (días/semanas), DURACIÓN TOTAL del embarazo y días para el parto.
-          6. NUTRICIÓN: Recomienda el NOMBRE de un alimento comercial y frecuencia.
-          7. CONTROL: Setea 'rescanInterval' en 3 para seguimiento obligatorio cada 3 días.
+          5. GESTACIÓN: Si detectas embarazo, indica: número de crías, tiempo actual, DURACIÓN TOTAL y días para el parto.
+          6. NUTRICIÓN: Recomienda alimento comercial y frecuencia.
+          7. CONTROL: Setea 'rescanInterval' en 3.
 
           Responde ÚNICAMENTE en este formato JSON:
           {
             "animalType": "Especie",
             "breed": "Raza detectada",
-            "healthStatus": "Diagnóstico detallado",
-            "preventionTips": ["tip 1", "tip 2", "prevención de recaída"],
+            "healthStatus": "Diagnóstico",
+            "preventionTips": ["tip 1"],
             "isPregnant": true/false,
-            "offspringCount": "número de crías",
-            "gestationWeeks": "tiempo actual",
-            "totalGestationDuration": "duración total del embarazo",
+            "offspringCount": "número",
+            "gestationWeeks": "semanas",
+            "totalGestationDuration": "duración",
             "daysUntilDelivery": 10,
             "rescanInterval": 3,
-            "medicationDosage": "cantidad exacta",
-            "medicationRoute": "oral/ocular/inyección/pomada",
-            "applicationSite": "lugar del cuerpo",
+            "medicationDosage": "dosis",
+            "medicationRoute": "vía",
+            "applicationSite": "lugar",
             "suggestedFoodName": "Nombre Alimento",
-            "foodRecommendation": "Guía nutricional"
+            "foodRecommendation": "Guía"
           }
         """),
         ...imageParts,
       ];
 
       final response = await model.generateContent([Content.multi(promptParts)]);
-      
-      final responseText = response.text;
-      if (responseText == null) throw Exception("La IA no respondió.");
-      final Map<String, dynamic> data = jsonDecode(responseText);
+      final data = jsonDecode(response.text!);
       
       return ScanResult(
         id: "scan_${DateTime.now().millisecondsSinceEpoch}",
         animalType: data['animalType'] ?? animalCategory,
         healthStatus: data['healthStatus'] ?? "Análisis completado",
         preventionTips: List<String>.from(data['preventionTips'] ?? []),
-        isPregnant: data['isPregnant'] ?? (mode == 'gestation'),
+        isPregnant: data['isPregnant'] ?? false,
         offspringCount: data['offspringCount'],
         gestationWeeks: data['gestationWeeks'],
         totalGestationDuration: data['totalGestationDuration'],
@@ -81,14 +77,14 @@ class AiDiagnosisService {
         medicationDosage: data['medicationDosage'],
         medicationRoute: data['medicationRoute'],
         applicationSite: data['applicationSite'],
-        suggestedFoodName: data['suggestedFoodName'] ?? "Dieta Balanceada",
-        foodRecommendation: data['foodRecommendation'] ?? "Sin instrucciones específicas",
+        suggestedFoodName: data['suggestedFoodName'],
+        foodRecommendation: data['foodRecommendation'],
         photos: photos,
         microchipId: microchipId,
         timestamp: DateTime.now(),
       );
     } catch (e) {
-      debugPrint("🚨 Error en Vertex AI: $e");
+      debugPrint("🚨 Error: $e");
       rethrow;
     }
   }
