@@ -1,47 +1,33 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
-import 'package:scanneranimal/app/history/scan_models.dart';
-import '../storage/local_db.dart'; 
+import 'package:flutter/material.dart';
+import 'scan_models.dart';
+import '../storage/local_db.dart';
 
 class HistoryController extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final LocalDb _localDb = LocalDb();
+  List<ScanResult> _history = [];
 
-  List<ScanResult> _items = [];
-  List<ScanResult> get items => _items;
-  bool _isLoading = false;
-  String? _currentUserId;
+  List<ScanResult> get history => _history;
 
-  // ALIAS PARA COMPATIBILIDAD CON LA UI
-  Future<void> saveScan(ScanResult item) async {
-    await add(item);
+  // Corregido: Agregado el método init()
+  Future<void> init() async {
+    await loadHistory();
   }
 
-  Future<void> add(ScanResult item) async {
-    try {
-      final user = _auth.currentUser;
-      final itemWithData = item.copyWith(ownerId: user?.uid ?? 'local');
-
-      // 1. Actualizar memoria
-      _items = [itemWithData, ..._items];
-      notifyListeners();
-
-      // 2. Guardar Local (con fotos y notas)
-      await _localDb.setHistory(_items.map((e) => e.toMap()).toList());
-
-      // 3. Sincronizar Firebase (sin fotos por peso, pero con notas)
-      if (user != null) {
-        final mapData = itemWithData.toMap();
-        mapData.remove('photosBase64'); 
-        await _firestore.collection('scanResults').doc(itemWithData.id).set(mapData, SetOptions(merge: true));
-      }
-    } catch (e) {
-      debugPrint('[HistoryController] Error al guardar: $e');
-      rethrow;
-    }
+  // Corregido: Agregado el método refresh()
+  Future<void> refresh() async {
+    await loadHistory();
   }
-  
-  // ... (puedes mantener el resto de tus funciones init, refresh, etc. igual)
+
+  Future<void> loadHistory() async {
+    final data = await _localDb.getHistory();
+    _history = data.map((e) => ScanResult.fromMap(e)).toList();
+    _history.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    notifyListeners();
+  }
+
+  Future<void> addScan(ScanResult result) async {
+    _history.insert(0, result);
+    await _localDb.setHistory(_history.map((e) => e.toMap()).toList());
+    notifyListeners();
+  }
 }
