@@ -9,7 +9,7 @@ class ScanResult {
   final String healthStatus;
   final List<String> preventionTips;
   final bool isPregnant;
-  final bool isHighRisk; // AGREGADO: Vital para alertas de tumores/cáncer
+  final bool isHighRisk; // Para tumores/cáncer
   final String? offspringCount;
   final String? gestationWeeks;
   final String? totalGestationDuration;
@@ -33,7 +33,7 @@ class ScanResult {
     required this.healthStatus,
     required this.preventionTips,
     required this.isPregnant,
-    this.isHighRisk = false, // AGREGADO
+    this.isHighRisk = false,
     this.offspringCount,
     this.gestationWeeks,
     this.totalGestationDuration,
@@ -42,7 +42,7 @@ class ScanResult {
     this.medicationDosage,
     this.medicationRoute,
     this.applicationSite,
-    required this.suggestedFoodName,
+    this.suggestedFoodName = '', 
     this.foodRecommendation,
     required this.photos,
     this.microchipId,
@@ -50,9 +50,10 @@ class ScanResult {
     this.notes,
   });
 
-  DateTime get createdAt => timestamp;
+  // CORREGIDO: Getter necesario para NotificationService
+  List<int> get medicationDays => [1, 3, 5, 7];
 
-  // Lógica mejorada: es urgente si es HighRisk o si el texto lo dice
+  DateTime get createdAt => timestamp;
   bool get isUrgent => isHighRisk || healthStatus.toUpperCase().contains('URGENTE');
 
   Map<String, dynamic> toMap() {
@@ -64,7 +65,7 @@ class ScanResult {
       'healthStatus': healthStatus,
       'preventionTips': preventionTips,
       'isPregnant': isPregnant,
-      'isHighRisk': isHighRisk, // AGREGADO
+      'isHighRisk': isHighRisk,
       'offspringCount': offspringCount,
       'gestationWeeks': gestationWeeks,
       'totalGestationDuration': totalGestationDuration,
@@ -87,11 +88,11 @@ class ScanResult {
       id: map['id'] ?? '',
       ownerId: map['ownerId'],
       animalType: map['animalType'] ?? '',
-      breed: map['breed'] ?? map['detectedBreed'], 
+      breed: map['breed'],
       healthStatus: map['healthStatus'] ?? '',
       preventionTips: List<String>.from(map['preventionTips'] ?? []),
       isPregnant: map['isPregnant'] ?? false,
-      isHighRisk: map['isHighRisk'] ?? false, // AGREGADO
+      isHighRisk: map['isHighRisk'] ?? false,
       offspringCount: map['offspringCount'],
       gestationWeeks: map['gestationWeeks'],
       totalGestationDuration: map['totalGestationDuration'],
@@ -102,16 +103,17 @@ class ScanResult {
       applicationSite: map['applicationSite'],
       suggestedFoodName: map['suggestedFoodName'] ?? '',
       foodRecommendation: map['foodRecommendation'],
-      microchipId: map['microchipId'] ?? map['microchipNumber'],
+      microchipId: map['microchipId'],
       notes: map['notes'],
       timestamp: map['timestamp'] != null 
           ? DateTime.parse(map['timestamp']) 
           : DateTime.now(),
-      photos: (map['photosBase64'] as List?)?.map((e) => base64Decode(e)).toList() ?? [],
+      photos: (map['photosBase64'] as List?)
+          ?.map((e) => base64Decode(e.toString()))
+          .toList() ?? [],
     );
   }
 
-  // Agregamos isHighRisk al copyWith para que el controlador no lo pierda
   ScanResult copyWith({String? ownerId, String? notes, bool? isHighRisk}) {
     return ScanResult(
       id: id,
@@ -121,7 +123,7 @@ class ScanResult {
       healthStatus: healthStatus,
       preventionTips: preventionTips,
       isPregnant: isPregnant,
-      isHighRisk: isHighRisk ?? this.isHighRisk, // AGREGADO
+      isHighRisk: isHighRisk ?? this.isHighRisk,
       offspringCount: offspringCount,
       gestationWeeks: gestationWeeks,
       totalGestationDuration: totalGestationDuration,
