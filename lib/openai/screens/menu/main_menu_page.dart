@@ -55,7 +55,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
         backgroundColor: const Color(0xFF1A1A1A),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.greenAccent.withOpacity(0.3)),
+          // CORREGIDO: Se cambió 'border: Border.all' por 'side: BorderSide'
+          side: BorderSide(color: Colors.greenAccent.withOpacity(0.3)),
         ),
         title: const Column(
           children: [
@@ -174,7 +175,7 @@ class MainMenuContent extends StatelessWidget {
 
     final bool isPro = user?.isPro ?? false; 
     final int scansAvailable = user?.scansRemaining ?? 0;
-    final int maxScans = user?.maxScansByPlan ?? 3;
+    final int maxScans = user?.maxScansByPlan ?? 10; // Actualizado a 10 según UserProfile
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
