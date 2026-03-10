@@ -1,164 +1,4 @@
-import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart'; // Asegúrate de que esta línea esté presente
-import 'user_profile.dart'; 
-
-class AuthController extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late final GoogleSignIn _googleSignIn;
-
-  StreamSubscription<DocumentSnapshot>? _userSubscription;
-  UserProfile? _currentUser;
-  bool _isLoading = false;
-
-  UserProfile? get currentUser => _currentUser;
-  bool get isLoading => _isLoading;
-
-  bool get isLoggedIn {
-    final user = _auth.currentUser;
-    if (user == null) return false;
-    return user.emailVerified || user.providerData.any((p) => p.providerId == 'google.com');
-  }
-
-  bool get isPro => _currentUser?.isPro ?? false;
-
-  AuthController() {
-    _initGoogleSignIn();
-    _auth.authStateChanges().listen((user) {
-      if (user == null) {
-        _userSubscription?.cancel();
-        _currentUser = null;
-        notifyListeners();
-      } else {
-        _listenToUserProfile(user.uid);
-      }
-    });
-  }
-
-  Future<void> init() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-      final user = _auth.currentUser;
-      if (user != null) {
-        _listenToUserProfile(user.uid);
-      }
-    } catch (e) {
-      debugPrint('AuthController.init failed: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  void _initGoogleSignIn() {
-    _googleSignIn = GoogleSignIn(
-      clientId: kIsWeb ? '71382402825-95402b132c675faf79f5d8.apps.googleusercontent.com' : null,
-      scopes: ['email'],
-    );
-  }
-
-  Future<String?> sendPasswordReset(String email) async {
-    if (email.isEmpty) return "Por favor, ingresa tu correo.";
-    try {
-      _isLoading = true;
-      notifyListeners();
-      await _auth.sendPasswordResetEmail(email: email.trim());
-      return null;
-    } on FirebaseAuthException catch (e) {
-      switch (e.code) {
-        case 'user-not-found': return "No existe un usuario con este correo.";
-        default: return e.message;
-      }
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  void _listenToUserProfile(String uid) {
-    _userSubscription?.cancel();
-    _userSubscription = _firestore
-        .collection('users')
-        .doc(uid)
-        .snapshots()
-        .listen((doc) async {
-      if (doc.exists && doc.data() != null) {
-        _currentUser = UserProfile.fromJson(doc.data()!);
-        if (!isPro) {
-          await checkAndResetMonthlyScans();
-        }
-        notifyListeners();
-      }
-    }, onError: (e) => debugPrint('Error en el Stream de usuario: $e'));
-  }
-
-  Future<void> updateSubscription(String plan) async {
-    if (_currentUser == null) return;
-    try {
-      _isLoading = true;
-      notifyListeners();
-      
-      final now = DateTime.now();
-      final planId = plan.toLowerCase();
-
-      int scans;
-      switch (planId) {
-        case 'pro': scans = 9999; break;
-        case 'intermediate':
-        case 'premium': scans = 30; break;
-        case 'basic': scans = 15; break;
-        default: scans = 3;
-      }
-
-      await _firestore.collection('users').doc(_currentUser!.uid).update({
-        'subscriptionPlan': planId,
-        'monthlyScans': scans,
-        'lastReset': Timestamp.fromDate(now),
-        'updatedAt': Timestamp.fromDate(now),
-      });
-    } catch (e) {
-      debugPrint('Error al actualizar suscripción: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> useFreeScan() async {
-    final user = _currentUser;
-    if (user == null || isPro) return;
-
-    if (user.scansRemaining > 0) {
-      try {
-        await _firestore.collection('users').doc(user.uid).update({
-          'monthlyScans': user.scansRemaining - 1,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      } catch (e) {
-        debugPrint('Error al descontar escaneo: $e');
-      }
-    }
-  }
-
-  Future<void> checkAndResetMonthlyScans() async {
-    final user = _currentUser;
-    if (user == null || isPro) return;
-    
-    final now = DateTime.now();
-    final lastReset = user.lastReset ?? user.createdAt;
-    
-    if (now.difference(lastReset).inDays >= 30) {
-      await _firestore.collection('users').doc(user.uid).update({
-        'monthlyScans': user.maxScansByPlan,
-        'lastReset': Timestamp.fromDate(now),
-      });
-    }
-  }
-
+  // --- MÉTODO REGISTRO ACTUALIZADO ---
   Future<String?> register({
     required String username,
     required String firstName,
@@ -171,6 +11,19 @@ class AuthController extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
       
+      String cleanUsername = username.trim().toLowerCase();
+
+      // VALIDACIÓN: Verificamos si el usuario ya existe antes de crear la cuenta
+      final docUsername = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: cleanUsername)
+          .limit(1)
+          .get();
+
+      if (docUsername.docs.isNotEmpty) {
+        return "Este nombre de usuario ya está en uso.";
+      }
+      
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(), 
         password: password
@@ -181,7 +34,7 @@ class AuthController extends ChangeNotifier {
       final now = DateTime.now();
       final profile = UserProfile(
         uid: credential.user!.uid,
-        username: username.toLowerCase().trim(),
+        username: cleanUsername,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
@@ -204,25 +57,31 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  // --- MÉTODO LOGIN ACTUALIZADO (SOLO USUARIO) ---
   Future<String?> login({required String username, required String password}) async {
     try {
       _isLoading = true;
       notifyListeners();
       
-      String email = username.trim();
+      String input = username.trim().toLowerCase();
+      String emailToUse;
       
-      if (!email.contains('@')) {
-        final query = await _firestore
-            .collection('users')
-            .where('username', isEqualTo: email.toLowerCase())
-            .limit(1)
-            .get();
-        if (query.docs.isEmpty) return 'Usuario no encontrado.';
-        email = query.docs.first.data()['email'] as String;
+      // Buscamos el email asociado a ese nombre de usuario en Firestore
+      final query = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: input)
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) {
+        return 'El nombre de usuario no existe.';
       }
       
+      // Extraemos el email real para dárselo a Firebase Auth
+      emailToUse = query.docs.first.data()['email'] as String;
+      
       final credential = await _auth.signInWithEmailAndPassword(
-        email: email, 
+        email: emailToUse, 
         password: password
       );
       
@@ -231,81 +90,13 @@ class AuthController extends ChangeNotifier {
         return 'Por favor, verifica tu correo electrónico antes de ingresar.';
       }
       return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') return 'Contraseña incorrecta.';
+      return 'Error de acceso.';
     } catch (e) {
-      return 'Credenciales incorrectas.';
+      return 'Error en el servidor.';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
-
-  // --- MÉTODO CORREGIDO PARA EL BUILD ---
-  Future<String?> signInWithGoogle() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-      
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return 'Cancelado por el usuario.';
-      
-      // AJUSTE: Accedemos directamente a authentication sin tipar la variable local 
-      // para evitar conflictos de visibilidad en el build release de GitHub.
-      final authDetails = await googleUser.authentication;
-      
-      final credential = GoogleAuthProvider.credential(
-        accessToken: authDetails.accessToken,
-        idToken: authDetails.idToken,
-      );
-      
-      final userCredential = await _auth.signInWithCredential(credential);
-      final user = userCredential.user!;
-      
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      
-      if (!userDoc.exists) {
-        final now = DateTime.now();
-        final profile = UserProfile(
-          uid: user.uid,
-          username: user.email?.split('@').first ?? 'user_${user.uid.substring(0,5)}',
-          firstName: user.displayName?.split(' ').first ?? '',
-          lastName: user.displayName?.split(' ').skip(1).join(' ') ?? '',
-          email: user.email ?? '',
-          birthDateIso: '',
-          createdAt: now,
-          updatedAt: now,
-          lastReset: now,
-          subscriptionPlan: 'free',
-          scansRemaining: 3,
-        );
-        await _firestore.collection('users').doc(user.uid).set(profile.toJson());
-      }
-      return null;
-    } catch (e) {
-      return 'Error con Google: $e';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> signOut() async {
-    try {
-      _userSubscription?.cancel();
-      if (await _googleSignIn.isSignedIn()) {
-        await _googleSignIn.signOut();
-      }
-      await _auth.signOut();
-    } catch (e) {
-      debugPrint('Error durante el cierre de sesión: $e');
-    } finally {
-      _currentUser = null;
-      notifyListeners();
-    }
-  }
-
-  @override
-  void dispose() {
-    _userSubscription?.cancel();
-    super.dispose();
-  }
-}
