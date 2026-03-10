@@ -203,7 +203,7 @@ class AuthController extends ChangeNotifier {
         updatedAt: now,
         lastReset: now,
         subscriptionPlan: 'free',
-        scansRemaining: 3, 
+        scansRemaining: 10, // MODIFICADO: Ahora otorga 10 escaneos iniciales
       );
       
       await _firestore.collection('users').doc(profile.uid).set(profile.toJson());
@@ -292,7 +292,7 @@ class AuthController extends ChangeNotifier {
           updatedAt: now,
           lastReset: now,
           subscriptionPlan: 'free',
-          scansRemaining: 3,
+          scansRemaining: 10, // MODIFICADO: Ahora otorga 10 escaneos iniciales
         );
         await _firestore.collection('users').doc(user.uid).set(profile.toJson());
       }
