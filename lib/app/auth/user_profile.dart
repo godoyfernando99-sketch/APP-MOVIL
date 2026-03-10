@@ -11,7 +11,7 @@ class UserProfile {
     required this.createdAt,
     required this.updatedAt,
     this.subscriptionPlan = 'free',
-    this.monthlyScans = 3, // Cambiado a 3 para coincidir con el inicio gratuito
+    this.monthlyScans = 10, // MODIFICADO: Ahora el estándar inicial es 10
     this.lastReset,
     int? scansRemaining, 
   }) : _scansRemainingParam = scansRemaining;
@@ -32,7 +32,6 @@ class UserProfile {
   // --- GETTERS DE COMPATIBILIDAD ---
   int get scansRemaining => _scansRemainingParam ?? monthlyScans;
 
-  // Ajustado para reconocer 'intermediate' (el nombre técnico usado en el servicio)
   bool get isPro => 
     subscriptionPlan.toLowerCase() == 'pro' || 
     subscriptionPlan.toLowerCase() == 'premium' ||
@@ -42,7 +41,7 @@ class UserProfile {
   String get fullName => '$firstName $lastName'.trim();
   String get displayName => username.isNotEmpty ? username : firstName;
 
-  bool get hasVipSupport => isPro; // Simplificado: Si paga, tiene soporte VIP
+  bool get hasVipSupport => isPro; 
 
   bool get hasScansAvailable => isPro || scansRemaining > 0;
 
@@ -53,7 +52,7 @@ class UserProfile {
       case 'intermediate': 
       case 'premium': return 30; 
       case 'pro': return 999999;
-      default: return 3; 
+      default: return 10; // MODIFICADO: El plan gratuito ahora es de 10
     }
   }
 
@@ -77,7 +76,8 @@ class UserProfile {
     final updatedAtRaw = json['updatedAt'];
     final lastResetRaw = json['lastReset'];
 
-    int scans = 3;
+    // Lógica mejorada para detectar los 10 escaneos desde el JSON
+    int scans = 10; 
     if (json['monthlyScans'] != null) {
       scans = (json['monthlyScans'] as num).toInt();
     } else if (json['scansRemaining'] != null) {
