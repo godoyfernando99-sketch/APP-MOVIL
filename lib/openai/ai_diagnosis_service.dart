@@ -13,9 +13,9 @@ class AiDiagnosisService {
     required String mode,
     required List<Uint8List> photos,
     String? microchipId,
+    bool isFollowUp = false,
   }) async {
     try {
-      // CAMBIO CLAVE: Actualización al modelo 2.5 Flash Lite para 2026
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-2.5-flash-lite', 
         generationConfig: GenerationConfig(
@@ -25,26 +25,38 @@ class AiDiagnosisService {
 
       final imageParts = photos.map((bytes) => InlineDataPart('image/jpeg', bytes)).toList();
 
-      // PROMPT: Se mantiene intacto según tus instrucciones
       final promptParts = [
         TextPart("""
-          Actúa como un experto veterinario. Analiza las imágenes de este $animalCategory.
-          ID Microchip NFC: ${microchipId ?? 'No detectado'}. Modo: $mode.
+          Actúa como un experto veterinario de élite. Analiza las imágenes de este $animalCategory.
+          ID Microchip NFC: ${microchipId ?? 'No detectado'}. 
+          Modo: $mode. 
+          Seguimiento Evolutivo activo: ${isFollowUp ? 'SÍ' : 'NO'}.
 
-          INSTRUCCIONES OBLIGATORIAS:
-          1. DETECCIÓN: Identifica especie y raza exacta.
-          2. GRAVEDAD: Si detectas enfermedades graves, tumores o necesidad de cirugía, inicia 'healthStatus' con la palabra "URGENTE: ATENCIÓN VETERINARIA ESPECIAL".
-          3. TRATAMIENTO: Si el usuario puede atenderlo, indica el nombre del MEDICAMENTO, la DOSIS exacta, la VÍA y el LUGAR de aplicación.
-          4. PREVENCIÓN: Explica qué evitar para que no repita la enfermedad.
-          5. GESTACIÓN: Si detectas embarazo, indica: número de crías, tiempo actual, DURACIÓN TOTAL y días para el parto.
-          6. NUTRICIÓN: Recomienda alimento comercial y frecuencia.
-          7. CONTROL: Setea 'rescanInterval' en 3.
+          INSTRUCCIONES CRÍTICAS DE ALTA PRIORIDAD:
+          1. DETECCIÓN DE RIESGO: Si detectas TUMORES, CÁNCER, o ENFERMEDADES DE ALTO RIESGO que requieran cirugía o atención inmediata, DEBES activar el campo "isHighRisk": true.
+          2. ALERTA EMERGENTE: Si "isHighRisk" es true, el campo "healthStatus" DEBE comenzar con: "🚨 ALERTA DE ALTO RIESGO: SE REQUIERE ATENCIÓN VETERINARIA INMEDIATA 🚨".
+          3. DETALLE DE ENFERMEDAD: Identifica el nombre de la enfermedad y su CAUSA exacta.
+          
+          TRATAMIENTO Y MEDICACIÓN (Campo 'treatmentPlan'):
+          - MEDICINA: Nombre (pomada, inyección, gotas, pastilla).
+          - DOSIS: ml exactos, número de pastillas, o número de gotas.
+          - FRECUENCIA: Cada cuántas horas (Hrs).
+          - DURACIÓN: Días totales de tratamiento.
+          - APLICACIÓN: Lugar del cuerpo y método (inyectar, untar, oral).
+          
+          SI EL ANIMAL ESTÁ SANO:
+          - En 'treatmentPlan', detalla el CALENDARIO DE VACUNACIÓN completo y preventivo según especie/raza.
+
+          4. GESTACIÓN: Detalla crías, tiempo actual, duración total y días para el parto si aplica.
+          5. CONTROL: Setea 'rescanInterval' en 3.
 
           Responde ÚNICAMENTE en este formato JSON:
           {
+            "isHighRisk": true/false,
             "animalType": "Especie",
             "breed": "Raza detectada",
-            "healthStatus": "Diagnóstico",
+            "healthStatus": "Nombre Enfermedad + Causa + Diagnóstico",
+            "treatmentPlan": "Detalle completo de Medicina, Dosis (ml/pastillas/gotas), Frecuencia, Duración y Lugar",
             "preventionTips": ["tip 1"],
             "isPregnant": true/false,
             "offspringCount": "número",
@@ -52,11 +64,8 @@ class AiDiagnosisService {
             "totalGestationDuration": "duración",
             "daysUntilDelivery": 10,
             "rescanInterval": 3,
-            "medicationDosage": "dosis",
-            "medicationRoute": "vía",
-            "applicationSite": "lugar",
-            "suggestedFoodName": "Nombre Alimento",
-            "foodRecommendation": "Guía"
+            "suggestedFoodName": "Alimento",
+            "foodRecommendation": "Guía nutricional"
           }
         """),
         ...imageParts,
@@ -64,28 +73,24 @@ class AiDiagnosisService {
 
       final response = await model.generateContent([Content.multi(promptParts)]);
       
-      if (response.text == null) {
-        throw Exception("La IA no devolvió una respuesta válida.");
-      }
+      if (response.text == null) throw Exception("La IA no devolvió respuesta.");
 
       final data = jsonDecode(response.text!);
       
+      // Creamos el resultado incluyendo la bandera de alto riesgo
       return ScanResult(
         id: "scan_${DateTime.now().millisecondsSinceEpoch}",
         animalType: data['animalType'] ?? animalCategory,
-        healthStatus: data['healthStatus'] ?? "Análisis completado",
+        // Almacenamos el estado de salud completo
+        healthStatus: "${data['healthStatus']}\n\n📋 PLAN MÉDICO / VACUNAS:\n${data['treatmentPlan']}",
         preventionTips: List<String>.from(data['preventionTips'] ?? []),
+        isHighRisk: data['isHighRisk'] ?? false, // Campo clave para la ventana emergente
         isPregnant: data['isPregnant'] ?? false,
         offspringCount: data['offspringCount'],
         gestationWeeks: data['gestationWeeks'],
         totalGestationDuration: data['totalGestationDuration'],
         daysUntilDelivery: data['daysUntilDelivery'],
         rescanInterval: data['rescanInterval'] ?? 3,
-        medicationDosage: data['medicationDosage'],
-        medicationRoute: data['medicationRoute'],
-        applicationSite: data['applicationSite'],
-        suggestedFoodName: data['suggestedFoodName'],
-        foodRecommendation: data['foodRecommendation'],
         photos: photos,
         microchipId: microchipId,
         timestamp: DateTime.now(),
