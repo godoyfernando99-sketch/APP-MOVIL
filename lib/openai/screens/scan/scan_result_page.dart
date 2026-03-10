@@ -12,15 +12,17 @@ class ScanResultPage extends StatefulWidget {
 }
 
 class _ScanResultPageState extends State<ScanResultPage> {
-  
+  final TextEditingController _notesController = TextEditingController();
+  bool _showUrgentAlert = false; // Control para la ventana emergente
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Usamos el cast seguro para evitar errores de dynamic
       if (widget.payload is ScanResult) {
         final result = widget.payload as ScanResult;
         if (result.isUrgent) {
+          setState(() => _showUrgentAlert = true); // Mostrar alerta al iniciar
           NotificationService.programarAlertasSegunResultado(result);
         }
       }
@@ -28,59 +30,192 @@ class _ScanResultPageState extends State<ScanResultPage> {
   }
 
   @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Verificación de seguridad del objeto recibido
     if (widget.payload is! ScanResult) {
       return const Scaffold(body: Center(child: Text("Error: Datos no encontrados")));
     }
-    
+
     final result = widget.payload as ScanResult;
 
     return FarmBackgroundScaffold(
-      title: 'INFORME VETERINARIO IA',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      title: 'INFORME VETERINARIO',
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                _buildStatusHeader(result),
+                const SizedBox(height: 15),
+                if (result.microchipId != null) _buildNfcCard(result.microchipId!),
+                const SizedBox(height: 15),
+                if (result.isPregnant) _buildPregnancyCard(result),
+                const SizedBox(height: 15),
+                if (result.medicationRoute != null) _buildMedicationCard(result),
+                const SizedBox(height: 15),
+                if (result.preventionTips.isNotEmpty)
+                  _buildInfoBox("🛡️ PROTOCOLO Y PREVENCIÓN", result.preventionTips, Colors.tealAccent),
+                const SizedBox(height: 15),
+                _buildInfoBox("🍎 NUTRICIÓN RECOMENDADA", 
+                  [result.suggestedFoodName, result.foodRecommendation ?? "Dieta balanceada estándar"], 
+                  Colors.orangeAccent),
+                
+                const SizedBox(height: 20),
+                
+                // NUEVO: Cuadro de Notas de Campo
+                _buildNotesField(),
+                
+                const SizedBox(height: 30),
+                _buildActionButtons(result),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+          
+          // NUEVA: Ventana Emergente Profesional (Popup)
+          if (_showUrgentAlert && result.isUrgent) _buildProfessionalPopup(result.healthStatus),
+        ],
+      ),
+    );
+  }
+
+  // --- VENTANA EMERGENTE PROFESIONAL ---
+  Widget _buildProfessionalPopup(String statusText) {
+    return Container(
+      color: Colors.black54, // Fondo oscurecido
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(20),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A), // Fondo oscuro sólido
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.redAccent.withOpacity(0.5), width: 2),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20)],
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildStatusHeader(result),
+            Align(
+              alignment: Alignment.topRight,
+              child: GestureDetector(
+                onTap: () => setState(() => _showUrgentAlert = false),
+                child: const Icon(Icons.close, color: Colors.white54),
+              ),
+            ),
+            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 50),
             const SizedBox(height: 15),
-
-            if (result.microchipId != null) _buildNfcCard(result.microchipId!),
-
+            const Text("ALERTA MÉDICA URGENTE", 
+              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w900, fontSize: 18)),
             const SizedBox(height: 15),
-
-            if (result.isPregnant) _buildPregnancyCard(result),
-
-            const SizedBox(height: 15),
-
-            if (result.medicationRoute != null) _buildMedicationCard(result),
-
-            const SizedBox(height: 15),
-
-            if (result.preventionTips.isNotEmpty)
-              _buildInfoBox("🛡️ PROTOCOLO Y PREVENCIÓN", result.preventionTips, Colors.tealAccent),
-
-            const SizedBox(height: 15),
-            
-            _buildInfoBox("🍎 NUTRICIÓN RECOMENDADA", 
-              [result.suggestedFoodName, result.foodRecommendation ?? "Dieta balanceada estándar"], 
-              Colors.orangeAccent),
-
-            const SizedBox(height: 30),
-
-            _buildActionButtons(result),
+            Text(
+              "ATENCIÓN VETERINARIA ESPECIAL REQUERIDA. EL PACIENTE PRESENTA: ${statusText.toUpperCase()}.\nSE REQUIERE DIAGNÓSTICO Y TRATAMIENTO INMEDIATO.",
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
+            ),
           ],
         ),
       ),
     );
   }
 
+  // --- CUADRO DE NOTAS ---
+  Widget _buildNotesField() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: TextField(
+        controller: _notesController,
+        maxLines: 3,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: const InputDecoration(
+          hintText: "Ej: Se observó mejoría tras la dosis...",
+          hintStyle: TextStyle(color: Colors.white30),
+          border: InputBorder.none,
+          labelText: "NOTAS DE CAMPO",
+          labelStyle: TextStyle(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  // --- BOTONES DE ACCIÓN RESTAURADOS ---
+  Widget _buildActionButtons(ScanResult result) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            // Botón Compartir
+            Expanded(
+              child: TextButton.icon(
+                onPressed: () { /* Lógica compartir PDF */ },
+                icon: const Icon(Icons.share_outlined, color: Colors.white70),
+                label: const Text("COMPARTIR", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Botón Guardar (Blanco como en la Imagen 1)
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  // Aquí capturas _notesController.text al guardar
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("✅ Informe guardado en el historial")),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                ),
+                child: const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+        // Botón Activar Seguimiento IA (Azul)
+        ElevatedButton(
+          onPressed: () async {
+            await NotificationService.programarAlertasSegunResultado(result);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  backgroundColor: Colors.blueAccent,
+                  content: Text("🚀 Seguimiento IA activado"),
+                ),
+              );
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1A3B8A), // Azul oscuro profesional
+            minimumSize: const Size(double.infinity, 60),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
+          child: const Text("ACTIVAR SEGUIMIENTO IA", 
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        ),
+      ],
+    );
+  }
+
+  // Métodos de apoyo existentes (Headers, Cards, etc.) se mantienen igual para no alterar tus datos
   Widget _buildStatusHeader(ScanResult r) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
-          // AJUSTE: Usamos animalType ya que breed podría no estar en el modelo
           Text(r.animalType.toUpperCase(), 
             style: const TextStyle(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 2)),
           const SizedBox(height: 8),
@@ -91,27 +226,11 @@ class _ScanResultPageState extends State<ScanResultPage> {
               fontSize: 22, 
               fontWeight: FontWeight.w900
             )),
-          if (r.isUrgent)
-            const Padding(
-              padding: EdgeInsets.only(top: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
-                  SizedBox(width: 8),
-                  Text("ATENCIÓN MÉDICA INMEDIATA", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12)),
-                ],
-              ),
-            ),
         ],
       ),
     );
   }
 
-  // ... (El resto de métodos _buildNfcCard, _buildMedicationCard, etc. se mantienen igual)
-  // Asegúrate de que los campos coincidan con ScanResult:
-  // medicationDosage, medicationRoute, applicationSite, offspringCount, gestationWeeks, daysUntilDelivery
-  
   Widget _buildMedicationCard(ScanResult res) {
     return _buildCustomCard(
       title: "PLAN DE TRATAMIENTO",
@@ -236,29 +355,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
           Text("CHIP NFC: $id", style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
         ],
       ),
-    );
-  }
-
-  Widget _buildActionButtons(ScanResult result) {
-    return ElevatedButton(
-      onPressed: () async {
-        await NotificationService.programarAlertasSegunResultado(result);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: Colors.green,
-              content: Text("🚀 Seguimiento IA activado: Recordatorios cada 3 días configurados"),
-            ),
-          );
-        }
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blueAccent.shade700,
-        minimumSize: const Size(double.infinity, 64),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
-      child: const Text("ACTIVAR SEGUIMIENTO IA", 
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
     );
   }
 }
