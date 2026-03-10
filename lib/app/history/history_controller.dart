@@ -47,4 +47,4 @@ class HistoryController extends ChangeNotifier {
     await _localDb.setHistory(_history.map((e) => e.toMap()).toList());
     notifyListeners();
   }
-}
+} 
