@@ -29,13 +29,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
   @override
   void initState() {
     super.initState();
-    // Verificación de calificación al iniciar el menú
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkReviewStatus();
     });
   }
 
-  // Lógica para pedir calificación
   Future<void> _checkReviewStatus() async {
     final prefs = await SharedPreferences.getInstance();
     bool alreadyRated = prefs.getBool('already_rated') ?? false;
@@ -55,7 +53,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
         backgroundColor: const Color(0xFF1A1A1A),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(25),
-          // CORREGIDO: Se cambió 'border: Border.all' por 'side: BorderSide'
           side: BorderSide(color: Colors.greenAccent.withOpacity(0.3)),
         ),
         title: const Column(
@@ -68,11 +65,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ],
         ),
         content: const Text(
-          "Tu calificación nos ayuda a mejorar nuestra IA y seguir salvando ejemplares. ¡Solo te tomará un segundo!",
+          "Tu calificación nos ayuda a mejorar nuestra IA y seguir salvando ejemplares.",
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white70),
         ),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -89,7 +85,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
               if (await _inAppReview.isAvailable()) {
                 await _inAppReview.requestReview();
               } else {
-                // Link directo a la Play Store si el diálogo nativo no abre
                 final url = Uri.parse("https://play.google.com/store/apps/details?id=com.scanneranimal.app");
                 if (await canLaunchUrl(url)) {
                   await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -97,21 +92,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
               }
               if (mounted) Navigator.pop(context);
             },
-            child: const Text("CALIFICAR", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text("CALIFICAR"),
           ),
         ],
       ),
     );
   }
-
-  // Lista de páginas para el IndexedStack
-  List<Widget> get _pages => [
-    const MainMenuContent(),
-    const HistoryPage(),       
-    const MedicationsPage(),   
-    const DiseasesPage(),      
-    const SubscriptionsPage(), 
-  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -130,7 +116,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
         IconButton(
           icon: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent),
           onPressed: () => authController.signOut(), 
-          tooltip: 'Cerrar Sesión',
         ),
       ],
       bottomNavigationBar: Container(
@@ -144,10 +129,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
           backgroundColor: Colors.black.withOpacity(0.95),
           selectedItemColor: Colors.greenAccent,
           unselectedItemColor: Colors.white54,
-          selectedFontSize: 12,
-          unselectedFontSize: 10,
-          showUnselectedLabels: true,
-          elevation: 0,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Inicio'),
             BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Historial'),
@@ -159,14 +140,21 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
       child: IndexedStack(
         index: _selectedIndex,
-        children: _pages,
+        children: [
+          MainMenuContent(onTabRequested: _onItemTapped), // Pasamos la función de cambio de pestaña
+          const HistoryPage(),       
+          const MedicationsPage(),   
+          const DiseasesPage(),      
+          const SubscriptionsPage(), 
+        ],
       ),
     );
   }
 }
 
 class MainMenuContent extends StatelessWidget {
-  const MainMenuContent({super.key});
+  final Function(int) onTabRequested;
+  const MainMenuContent({super.key, required this.onTabRequested});
 
   @override
   Widget build(BuildContext context) {
@@ -175,10 +163,9 @@ class MainMenuContent extends StatelessWidget {
 
     final bool isPro = user?.isPro ?? false; 
     final int scansAvailable = user?.scansRemaining ?? 0;
-    final int maxScans = user?.maxScansByPlan ?? 10; // Actualizado a 10 según UserProfile
+    final int maxScans = user?.maxScansByPlan ?? 10;
 
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
@@ -187,45 +174,50 @@ class MainMenuContent extends StatelessWidget {
           const SizedBox(height: 30),
           _buildEnhancedCounter(isPro, scansAvailable, maxScans),
           const SizedBox(height: 40),
-          const Text(
-            "MODO DE ESCANEO",
-            style: TextStyle(
-              color: Colors.white, 
-              fontWeight: FontWeight.w900, 
-              letterSpacing: 2,
-              fontSize: 14,
-            ),
-          ),
+          const Text("MODO DE ESCANEO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 2)),
           const SizedBox(height: 25),
+          
           _ScanButton(
             title: "Escaneo por Microchip",
-            subtitle: "Detectar ID mediante fotos y proximidad",
+            subtitle: "Detectar ID y proximidad",
             icon: Icons.nfc_rounded,
             color: Colors.blueAccent,
-            onTap: () => context.push(
-              AppRoutes.scanNfc, 
-              extra: {'animalId': 'generic', 'mode': 'nochip'}
-            ), 
+            onTap: () => _handleScanAccess(context, isPro, scansAvailable),
           ),
+          
           const SizedBox(height: 16),
+          
           _ScanButton(
             title: "Escaneo Visual",
             subtitle: "Análisis completo por fotografía",
             icon: Icons.auto_awesome_rounded,
             color: Colors.greenAccent,
-            onTap: () => context.push(
-              AppRoutes.scanVisual, 
-              extra: {'animalId': 'generic', 'mode': 'visual'}
-            ),
+            onTap: () => _handleScanAccess(context, isPro, scansAvailable),
           ),
+          
           const SizedBox(height: 40),
-          if (isPro) ...[
-            _SupportButton(onTap: () => context.push(AppRoutes.support)),
-            const SizedBox(height: 20),
-          ],
+          if (isPro) _SupportButton(onTap: () => context.push(AppRoutes.support)),
         ],
       ),
     );
+  }
+
+  void _handleScanAccess(BuildContext context, bool isPro, int available) {
+    if (!isPro && available <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("⚠️ Has agotado tus escaneos gratuitos."),
+          backgroundColor: Colors.redAccent,
+          action: SnackBarAction(
+            label: "VER PLANES",
+            textColor: Colors.white,
+            onPressed: () => onTabRequested(4), // Redirige a la pestaña PRO
+          ),
+        ),
+      );
+    } else {
+      context.push(AppRoutes.scanVisual, extra: {'animalId': 'generic', 'mode': 'visual'});
+    }
   }
 
   Widget _buildHeader(String name, bool isPro) {
@@ -234,25 +226,11 @@ class MainMenuContent extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Flexible(
-              child: Text(
-                '¡Hola, $name!',
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (isPro) const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Icon(Icons.stars_rounded, color: Colors.amber, size: 28),
-            ),
+            Text('¡Hola, $name!', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+            if (isPro) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.stars_rounded, color: Colors.amber, size: 28)),
           ],
         ),
-        const SizedBox(height: 8),
-        const Text(
-          '¿Cómo identificaremos al animal hoy?',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white70, fontSize: 15),
-        ),
+        const Text('¿Cómo identificaremos al animal hoy?', style: TextStyle(color: Colors.white70, fontSize: 15)),
       ],
     );
   }
@@ -260,46 +238,23 @@ class MainMenuContent extends StatelessWidget {
   Widget _buildEnhancedCounter(bool isPro, int available, int max) {
     double progress = isPro ? 1.0 : (available / max).clamp(0.0, 1.0);
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.5),
         borderRadius: BorderRadius.circular(25),
-        border: Border.all(
-          color: isPro ? Colors.amber.withOpacity(0.5) : Colors.white10,
-          width: 2
-        ),
+        border: Border.all(color: isPro ? Colors.amber.withOpacity(0.5) : Colors.white10, width: 2),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                isPro ? "PLAN PREMIUM" : "PLAN BÁSICO",
-                style: TextStyle(
-                  color: isPro ? Colors.amber : Colors.greenAccent,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-              Text(
-                isPro ? "ILIMITADO" : "$available / $max",
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+              Text(isPro ? "PLAN PREMIUM" : "PLAN BÁSICO", style: TextStyle(color: isPro ? Colors.amber : Colors.greenAccent, fontWeight: FontWeight.bold)),
+              Text(isPro ? "ILIMITADO" : "$available / $max", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: Colors.white10,
-              color: isPro ? Colors.amber : Colors.greenAccent,
-            ),
-          ),
+          LinearProgressIndicator(value: progress, minHeight: 8, backgroundColor: Colors.white10, color: isPro ? Colors.amber : Colors.greenAccent),
         ],
       ),
     );
@@ -324,10 +279,9 @@ class _ScanButton extends StatelessWidget {
         border: Border.all(color: color.withOpacity(0.4), width: 1.5),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         onTap: onTap,
         leading: Icon(icon, color: color, size: 35),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
         trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 16),
       ),
@@ -343,29 +297,13 @@ class _SupportButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(colors: [Colors.blueAccent, Colors.blue.shade900]),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.headset_mic_rounded, color: Colors.white),
-                SizedBox(width: 12),
-                Text(
-                  "SOPORTE VIP 24/7",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), gradient: LinearGradient(colors: [Colors.blueAccent, Colors.blue.shade900])),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
+        onPressed: onTap,
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [Icon(Icons.headset_mic_rounded, color: Colors.white), SizedBox(width: 12), Text("SOPORTE VIP 24/7", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))],
         ),
       ),
     );
