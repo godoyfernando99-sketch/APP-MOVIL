@@ -3,12 +3,13 @@ import 'dart:convert';
 
 class ScanResult {
   final String id;
-  final String? ownerId; // Necesario para Firebase
+  final String? ownerId;
   final String animalType;
   final String? breed;
   final String healthStatus;
   final List<String> preventionTips;
   final bool isPregnant;
+  final bool isHighRisk; // AGREGADO: Vital para alertas de tumores/cáncer
   final String? offspringCount;
   final String? gestationWeeks;
   final String? totalGestationDuration;
@@ -22,7 +23,7 @@ class ScanResult {
   final List<Uint8List> photos;
   final String? microchipId;
   final DateTime timestamp;
-  final String? notes; // AGREGADO: Para las Notas de Campo
+  final String? notes;
 
   ScanResult({
     required this.id,
@@ -32,6 +33,7 @@ class ScanResult {
     required this.healthStatus,
     required this.preventionTips,
     required this.isPregnant,
+    this.isHighRisk = false, // AGREGADO
     this.offspringCount,
     this.gestationWeeks,
     this.totalGestationDuration,
@@ -45,16 +47,14 @@ class ScanResult {
     required this.photos,
     this.microchipId,
     required this.timestamp,
-    this.notes, // AGREGADO
+    this.notes,
   });
 
-  // Getter para compatibilidad con tu controlador antiguo
   DateTime get createdAt => timestamp;
 
-  bool get isUrgent => healthStatus.toUpperCase().contains('URGENTE');
-  List<int> get medicationDays => [1, 3, 5, 7];
+  // Lógica mejorada: es urgente si es HighRisk o si el texto lo dice
+  bool get isUrgent => isHighRisk || healthStatus.toUpperCase().contains('URGENTE');
 
-  // --- CONVERSIÓN A MAPA (Para guardar en Local y Firebase) ---
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -64,6 +64,7 @@ class ScanResult {
       'healthStatus': healthStatus,
       'preventionTips': preventionTips,
       'isPregnant': isPregnant,
+      'isHighRisk': isHighRisk, // AGREGADO
       'offspringCount': offspringCount,
       'gestationWeeks': gestationWeeks,
       'totalGestationDuration': totalGestationDuration,
@@ -76,13 +77,11 @@ class ScanResult {
       'foodRecommendation': foodRecommendation,
       'microchipId': microchipId,
       'timestamp': timestamp.toIso8601String(),
-      'notes': notes, // AGREGADO
-      // Guardamos fotos como Base64 en local
+      'notes': notes,
       'photosBase64': photos.map((e) => base64Encode(e)).toList(),
     };
   }
 
-  // --- CREAR DESDE MAPA (Para cargar de Local y Firebase) ---
   factory ScanResult.fromMap(Map<String, dynamic> map) {
     return ScanResult(
       id: map['id'] ?? '',
@@ -92,6 +91,7 @@ class ScanResult {
       healthStatus: map['healthStatus'] ?? '',
       preventionTips: List<String>.from(map['preventionTips'] ?? []),
       isPregnant: map['isPregnant'] ?? false,
+      isHighRisk: map['isHighRisk'] ?? false, // AGREGADO
       offspringCount: map['offspringCount'],
       gestationWeeks: map['gestationWeeks'],
       totalGestationDuration: map['totalGestationDuration'],
@@ -103,16 +103,16 @@ class ScanResult {
       suggestedFoodName: map['suggestedFoodName'] ?? '',
       foodRecommendation: map['foodRecommendation'],
       microchipId: map['microchipId'] ?? map['microchipNumber'],
-      notes: map['notes'], // AGREGADO
+      notes: map['notes'],
       timestamp: map['timestamp'] != null 
           ? DateTime.parse(map['timestamp']) 
-          : (map['createdAt'] != null ? (map['createdAt'] as dynamic).toDate() : DateTime.now()),
+          : DateTime.now(),
       photos: (map['photosBase64'] as List?)?.map((e) => base64Decode(e)).toList() ?? [],
     );
   }
 
-  // --- MÉTODO COPYWITH (Para el HistoryController) ---
-  ScanResult copyWith({String? ownerId, String? notes}) {
+  // Agregamos isHighRisk al copyWith para que el controlador no lo pierda
+  ScanResult copyWith({String? ownerId, String? notes, bool? isHighRisk}) {
     return ScanResult(
       id: id,
       ownerId: ownerId ?? this.ownerId,
@@ -121,6 +121,7 @@ class ScanResult {
       healthStatus: healthStatus,
       preventionTips: preventionTips,
       isPregnant: isPregnant,
+      isHighRisk: isHighRisk ?? this.isHighRisk, // AGREGADO
       offspringCount: offspringCount,
       gestationWeeks: gestationWeeks,
       totalGestationDuration: totalGestationDuration,
@@ -134,7 +135,7 @@ class ScanResult {
       photos: photos,
       microchipId: microchipId,
       timestamp: timestamp,
-      notes: notes ?? this.notes, // AGREGADO
+      notes: notes ?? this.notes,
     );
   }
 }
