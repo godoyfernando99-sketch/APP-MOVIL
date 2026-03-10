@@ -16,17 +16,16 @@ class AiDiagnosisService {
     bool isFollowUp = false,
   }) async {
     try {
-      final model = FirebaseVertexAi.instance.generativeModel(
+      // CORRECCIÓN: Nombre de la instancia corregido a FirebaseVertexAI
+      final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-2.5-flash-lite', 
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
       );
 
-      // CORRECCIÓN: Se usa DataPart en lugar de InlineDataPart para compatibilidad
-      final imageParts = photos.map((bytes) => DataPart('image/jpeg', bytes)).toList();
-
-      final promptParts = [
+      // CORRECCIÓN: Declaramos la lista como List<Part> para evitar el error de List<dynamic>
+      final List<Part> promptParts = [
         TextPart("""
           Actúa como un experto veterinario de élite. Analiza las imágenes de este $animalCategory.
           ID Microchip NFC: ${microchipId ?? 'No detectado'}. 
@@ -69,7 +68,8 @@ class AiDiagnosisService {
             "foodRecommendation": "Guía nutricional"
           }
         """),
-        ...imageParts,
+        // CORRECCIÓN: Integramos los DataPart directamente en la lista tipada
+        ...photos.map((bytes) => DataPart('image/jpeg', bytes)),
       ];
 
       final response = await model.generateContent([Content.multi(promptParts)]);
@@ -78,7 +78,6 @@ class AiDiagnosisService {
 
       final data = jsonDecode(response.text!);
 
-      // Creamos el resultado incluyendo la bandera de alto riesgo y campos faltantes
       return ScanResult(
         id: "scan_${DateTime.now().millisecondsSinceEpoch}",
         animalType: data['animalType'] ?? animalCategory,
@@ -92,7 +91,6 @@ class AiDiagnosisService {
         totalGestationDuration: data['totalGestationDuration'],
         daysUntilDelivery: data['daysUntilDelivery'],
         rescanInterval: data['rescanInterval'] ?? 3,
-        // CORRECCIÓN: Se agregan los campos requeridos por el nuevo modelo
         suggestedFoodName: data['suggestedFoodName'] ?? '',
         foodRecommendation: data['foodRecommendation'],
         photos: photos,
