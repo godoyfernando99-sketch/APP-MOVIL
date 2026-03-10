@@ -17,13 +17,14 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameCtrl = TextEditingController();
+  // Cambiamos el nombre a _userInputCtrl para que sea genérico (Usuario o Email)
+  final _userInputCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _usernameCtrl.dispose();
+    _userInputCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
@@ -31,8 +32,13 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthController>();
+    
+    // Ahora enviamos el contenido de _userInputCtrl al método login corregido
     final err = await auth.login(
-        username: _usernameCtrl.text.trim(), password: _passwordCtrl.text);
+        username: _userInputCtrl.text.trim(), 
+        password: _passwordCtrl.text
+    );
+    
     if (!mounted) return;
     if (err != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -44,7 +50,6 @@ class _LoginPageState extends State<LoginPage> {
     context.go(AppRoutes.welcome);
   }
 
-  /// CORRECCIÓN: Ahora el diálogo ejecuta la petición de Firebase
   Future<void> _forgotPassword() async {
     final emailCtrl = TextEditingController();
     final auth = context.read<AuthController>();
@@ -159,16 +164,17 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'assets/icons/logos_app.png', // Corregido el nombre según tu pubspec anterior
+                      'assets/icons/logos_app.png',
                       height: 120,
                       width: 120,
                     ),
                     const SizedBox(height: 32),
                     TextFormField(
-                      controller: _usernameCtrl,
+                      controller: _userInputCtrl, // Usamos el nuevo controlador
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        labelText: strings('username'),
+                        // Mantenemos strings('username') pero el controlador aceptará ambos
+                        labelText: strings('username'), 
                         labelStyle: const TextStyle(color: Colors.white54),
                         prefixIcon: const Icon(Icons.person_outline_rounded,
                             color: Colors.white70),
@@ -186,7 +192,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Completa el usuario'
+                          ? 'Ingresa tu usuario o correo'
                           : null,
                       textInputAction: TextInputAction.next,
                     ),
