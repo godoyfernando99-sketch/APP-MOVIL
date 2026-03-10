@@ -36,6 +36,13 @@ class HistoryController extends ChangeNotifier {
     }
   }
 
+  // SOLUCIÓN AL ERROR: Se añade saveScan para que scan_result_page.dart pueda compilar
+  Future<void> saveScan(ScanResult result) async {
+    _history.insert(0, result);
+    await _localDb.setHistory(_history.map((e) => e.toMap()).toList());
+    notifyListeners();
+  }
+
   Future<void> addScan(ScanResult result) async {
     _history.insert(0, result);
     await _localDb.setHistory(_history.map((e) => e.toMap()).toList());
@@ -47,4 +54,4 @@ class HistoryController extends ChangeNotifier {
     await _localDb.setHistory(_history.map((e) => e.toMap()).toList());
     notifyListeners();
   }
-} 
+}
