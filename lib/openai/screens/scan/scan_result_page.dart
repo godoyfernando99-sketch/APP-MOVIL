@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 import 'package:scanneranimal/app/history/history_controller.dart';
+// IMPORTADO: Necesario para descontar los escaneos gratis
+import 'package:scanneranimal/app/auth/auth_controller.dart'; 
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:scanneranimal/app_services/notification_service.dart';
 import 'package:scanneranimal/openai/services/pdf_service.dart';
@@ -24,7 +26,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.payload is ScanResult) {
         final result = widget.payload as ScanResult;
-        // DETECCIÓN DE ALTO RIESGO O URGENCIA
         if (result.isHighRisk == true || result.isUrgent == true) {
           setState(() => _showUrgentAlert = true); 
           NotificationService.programarAlertasSegunResultado(result);
@@ -64,6 +65,42 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
+  Widget _buildActionButtons(ScanResult result) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () async {
+                  final finalResult = result.copyWith(notes: _notesController.text);
+                  
+                  // 1. Guardar en el historial local
+                  await context.read<HistoryController>().saveScan(finalResult);
+                  
+                  // 2. CORREGIDO: Descontar crédito de los 10 gratuitos en Firebase
+                  await context.read<AuthController>().useFreeScan();
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("✅ Guardado exitosamente"))
+                    );
+                    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white, 
+                  foregroundColor: Colors.black
+                ),
+                child: const Text("GUARDAR"),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildProfessionalPopup(String statusText) {
     return Container(
       color: Colors.black87,
@@ -81,54 +118,39 @@ class _ScanResultPageState extends State<ScanResultPage> {
           children: [
             const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 50),
             const SizedBox(height: 15),
-            const Text("🚨 ALTO RIESGO DETECTADO", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text("🚨 ALTO RIESGO DETECTADO", 
+              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 18)),
             const SizedBox(height: 10),
-            Text(statusText.split('\n').first, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white)),
+            Text(statusText.split('\n').first, 
+              textAlign: TextAlign.center, style: const TextStyle(color: Colors.white)),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: () => setState(() => _showUrgentAlert = false), child: const Text("ENTENDIDO")),
+            ElevatedButton(
+              onPressed: () => setState(() => _showUrgentAlert = false), 
+              child: const Text("ENTENDIDO")
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButtons(ScanResult result) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () async {
-                  // GUARDADO Y REDIRECCIÓN
-                  final finalResult = result.copyWith(notes: _notesController.text);
-                  await context.read<HistoryController>().saveScan(finalResult);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Guardado exitosamente")));
-                    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                  }
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-                child: const Text("GUARDAR"),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ... (Los demás widgets decorativos como _buildStatusHeader o _buildMedicationCard se mantienen)
   Widget _buildNotesField() {
     return TextField(
       controller: _notesController,
       maxLines: 3,
-      decoration: const InputDecoration(labelText: "NOTAS DE CAMPO", hintText: "Escribe observaciones..."),
+      style: const TextStyle(color: Colors.white),
+      decoration: const InputDecoration(
+        labelText: "NOTAS DE CAMPO", 
+        labelStyle: TextStyle(color: Colors.white70),
+        hintText: "Escribe observaciones...",
+        hintStyle: TextStyle(color: Colors.white30),
+      ),
     );
   }
 
   Widget _buildMedicationCard(ScanResult res) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(15)),
       child: Text(res.healthStatus, style: const TextStyle(color: Colors.white, fontSize: 13)),
@@ -138,10 +160,26 @@ class _ScanResultPageState extends State<ScanResultPage> {
   Widget _buildStatusHeader(ScanResult r) {
     return Text(r.healthStatus.split('\n').first.toUpperCase(), 
       textAlign: TextAlign.center, 
-      style: TextStyle(color: (r.isHighRisk) ? Colors.redAccent : Colors.white, fontSize: 20, fontWeight: FontWeight.bold));
+      style: TextStyle(
+        color: (r.isHighRisk) ? Colors.redAccent : Colors.white, 
+        fontSize: 20, 
+        fontWeight: FontWeight.bold
+      ));
   }
 
   Widget _buildPregnancyCard(ScanResult res) {
-    return Container(child: Text("Gestación: ${res.offspringCount} crías", style: TextStyle(color: Colors.pinkAccent)));
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: Colors.pinkAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.pets, color: Colors.pinkAccent, size: 18),
+          const SizedBox(width: 8),
+          Text("Gestación: ${res.offspringCount ?? '0'} crías", 
+            style: const TextStyle(color: Colors.pinkAccent, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
   }
 }
