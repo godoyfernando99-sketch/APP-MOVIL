@@ -3,12 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:in_app_review/in_app_review.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/auth/auth_controller.dart';
 import '../../../../nav.dart'; 
 import '../../../../widgets/farm_background_scaffold.dart';
 
-// Importaciones de las páginas reales
+// Páginas de las pestañas
 import '../history/history_page.dart';
 import '../info/medications_page.dart';
 import '../info/diseases_page.dart';
@@ -34,16 +35,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
     });
   }
 
-  // Lógica para pedir calificación solo si no se ha hecho antes
+  // Lógica para pedir calificación
   Future<void> _checkReviewStatus() async {
     final prefs = await SharedPreferences.getInstance();
     bool alreadyRated = prefs.getBool('already_rated') ?? false;
 
     if (!alreadyRated) {
-      // Espera de cortesía para no interrumpir el flujo inicial
-      await Future.delayed(const Duration(seconds: 5));
+      await Future.delayed(const Duration(seconds: 8));
       if (!mounted) return;
-
       _showRateDialog(prefs);
     }
   }
@@ -53,19 +52,26 @@ class _MainMenuPageState extends State<MainMenuPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-        title: const Row(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(color: Colors.greenAccent.withOpacity(0.3)),
+        ),
+        title: const Column(
           children: [
-            Icon(Icons.star_rounded, color: Colors.amber, size: 30),
-            SizedBox(width: 10),
-            Text("¿Te gusta la App?", style: TextStyle(color: Colors.white, fontSize: 18)),
+            Icon(Icons.stars_rounded, color: Colors.amber, size: 50),
+            SizedBox(height: 10),
+            Text("¿Te gusta ScannerAnimal?", 
+              textAlign: TextAlign.center, 
+              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
           ],
         ),
         content: const Text(
-          "Tu calificación en la Play Store nos ayuda a seguir mejorando ScannerAnimal y salvar más ejemplares.",
+          "Tu calificación nos ayuda a mejorar nuestra IA y seguir salvando ejemplares. ¡Solo te tomará un segundo!",
+          textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white70),
         ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -73,25 +79,31 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.greenAccent.shade700,
+              backgroundColor: Colors.greenAccent,
+              foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () async {
-              // Marcamos como calificado para que no aparezca más
               await prefs.setBool('already_rated', true);
-              
               if (await _inAppReview.isAvailable()) {
-                _inAppReview.requestReview();
+                await _inAppReview.requestReview();
+              } else {
+                // Link directo a la Play Store si el diálogo nativo no abre
+                final url = Uri.parse("https://play.google.com/store/apps/details?id=com.scanneranimal.app");
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
               }
               if (mounted) Navigator.pop(context);
             },
-            child: const Text("CALIFICAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            child: const Text("CALIFICAR", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
+  // Lista de páginas para el IndexedStack
   List<Widget> get _pages => [
     const MainMenuContent(),
     const HistoryPage(),       
@@ -131,6 +143,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
           backgroundColor: Colors.black.withOpacity(0.95),
           selectedItemColor: Colors.greenAccent,
           unselectedItemColor: Colors.white54,
+          selectedFontSize: 12,
+          unselectedFontSize: 10,
           showUnselectedLabels: true,
           elevation: 0,
           items: const [
@@ -179,9 +193,6 @@ class MainMenuContent extends StatelessWidget {
               fontWeight: FontWeight.w900, 
               letterSpacing: 2,
               fontSize: 14,
-              shadows: [
-                Shadow(offset: Offset(1.5, 1.5), blurRadius: 1, color: Colors.black),
-              ],
             ),
           ),
           const SizedBox(height: 25),
@@ -208,9 +219,7 @@ class MainMenuContent extends StatelessWidget {
           ),
           const SizedBox(height: 40),
           if (isPro) ...[
-            _SupportButton(onTap: () {
-              context.push(AppRoutes.support); 
-            }),
+            _SupportButton(onTap: () => context.push(AppRoutes.support)),
             const SizedBox(height: 20),
           ],
         ],
@@ -239,9 +248,9 @@ class MainMenuContent extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          '¿Cómo identificaremos a la mascota hoy?',
+          '¿Cómo identificaremos al animal hoy?',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white, fontSize: 15),
+          style: TextStyle(color: Colors.white70, fontSize: 15),
         ),
       ],
     );
@@ -275,7 +284,7 @@ class MainMenuContent extends StatelessWidget {
                 ),
               ),
               Text(
-                isPro ? "Ilimitado" : "$available / $max disponibles",
+                isPro ? "ILIMITADO" : "$available / $max",
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ],
@@ -291,6 +300,35 @@ class MainMenuContent extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ScanButton extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ScanButton({required this.title, required this.subtitle, required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withOpacity(0.4), width: 1.5),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        onTap: onTap,
+        leading: Icon(icon, color: color, size: 35),
+        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+        subtitle: Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 16),
       ),
     );
   }
@@ -321,42 +359,13 @@ class _SupportButton extends StatelessWidget {
                 Icon(Icons.headset_mic_rounded, color: Colors.white),
                 SizedBox(width: 12),
                 Text(
-                  "ACCEDER A SOPORTE VIP",
+                  "SOPORTE VIP 24/7",
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ScanButton extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ScanButton({required this.title, required this.subtitle, required this.icon, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: color.withOpacity(0.4), width: 1.5),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        onTap: onTap,
-        leading: Icon(icon, color: color, size: 35),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
-        subtitle: Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 16),
       ),
     );
   }
