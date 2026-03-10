@@ -9,11 +9,18 @@ import 'package:scanneranimal/app/history/scan_models.dart';
 class PdfService {
   const PdfService();
 
+  // Método estático para que funcione la llamada directa desde ResultPage
+  static Future<void> generateAndSharePdf(ScanResult result) async {
+    const service = PdfService();
+    final bytes = await service.generateScanReport(result);
+    await Printing.sharePdf(
+      bytes: bytes, 
+      filename: 'Reporte_${result.animalType}_${result.id.substring(0, 5)}.pdf'
+    );
+  }
+
   Future<Uint8List> generateScanReport(ScanResult result) async {
     final pdf = pw.Document();
-
-    // Imagen de cabecera (Opcional: Si tienes un logo en assets)
-    // final netImage = await spacing.networkImage('assets/icons/logo_app.png');
 
     pdf.addPage(
       pw.MultiPage(
@@ -40,7 +47,7 @@ class PdfService {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text("Fecha: ${result.createdAt.day}/${result.createdAt.month}/${result.createdAt.year}"),
+                    pw.Text("Fecha: ${result.timestamp.day}/${result.timestamp.month}/${result.timestamp.year}"),
                     pw.Text("ID Escaneo: ${result.id.substring(0, 8)}"),
                   ],
                 ),
@@ -56,21 +63,22 @@ class PdfService {
             pw.SizedBox(height: 10),
             pw.TableHelper.fromTextArray(
               border: pw.TableBorder.all(color: PdfColors.grey300),
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+              cellStyle: const pw.TextStyle(fontSize: 10),
               data: <List<String>>[
-                ['Categoría', 'Raza Detectada', 'Chip / ID'],
+                ['Especie', 'Raza Detectada', 'Chip / ID'],
                 [
-                  result.animalCategory.toUpperCase(),
-                  result.detectedBreed,
-                  result.microchipNumber ?? 'No provisto'
+                  result.animalType.toUpperCase(),
+                  result.breed ?? 'No detectada',
+                  result.microchipId ?? 'No provisto'
                 ],
               ],
             ),
             pw.SizedBox(height: 25),
 
-            // --- RESULTADOS MÉDICOS (LA PARTE CLAVE) ---
+            // --- RESULTADOS MÉDICOS ---
             pw.Container(
-              padding: const pw.EdgeInsets.all(10),
+              padding: const pw.EdgeInsets.all(12),
               decoration: const pw.BoxDecoration(
                 color: PdfColors.blue50,
                 borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
@@ -84,25 +92,40 @@ class PdfService {
                           fontSize: 14,
                           color: PdfColors.blue900)),
                   pw.SizedBox(height: 10),
-                  _buildResultRow("Estado de Salud:", result.healthStatus.toUpperCase()),
-                  _buildResultRow("Enfermedad:", result.diseaseName),
+                  _buildResultRow("Estado de Salud:", result.healthStatus.toUpperCase(), isBold: result.isUrgent),
                   if (result.isPregnant)
-                    _buildResultRow("Gestación:", "SÍ (${result.gestationWeeks})"),
-                  pw.Divider(color: PdfColors.blue200),
-                  _buildResultRow("Medicamento Sugerido:", result.medicationName),
-                  _buildResultRow("Dosis Referencial:", result.medicationDose, isBold: true),
-                  _buildResultRow("Dieta Recomendada:", result.foodRecommendation),
+                    _buildResultRow("Gestación:", "CONFIRMADA (${result.gestationWeeks})"),
+                  pw.Divider(color: PdfColors.blue200, thickness: 0.5),
+                  _buildResultRow("Dosis Sugerida:", result.medicationDosage ?? "N/A"),
+                  _buildResultRow("Vía de Admin.:", result.medicationRoute ?? "N/A"),
+                  _buildResultRow("Nutrición:", result.suggestedFoodName, isBold: true),
                 ],
               ),
             ),
 
             pw.SizedBox(height: 20),
-            pw.Text("OBSERVACIONES:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-            pw.Text(result.observations, textAlign: pw.TextAlign.justify),
+
+            // --- NUEVO: NOTAS DE CAMPO ---
+            pw.Text("NOTAS DE CAMPO Y OBSERVACIONES:", 
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+            pw.SizedBox(height: 5),
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.all(10),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey200),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+              ),
+              child: pw.Text(
+                result.notes ?? "Sin observaciones adicionales registradas.", 
+                textAlign: pw.TextAlign.justify,
+                style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey900)
+              ),
+            ),
 
             pw.Spacer(),
 
-            // --- DISCLAIMER LEGAL (PROTECCIÓN) ---
+            // --- DISCLAIMER LEGAL ---
             pw.Container(
               padding: const pw.EdgeInsets.all(10),
               decoration: pw.BoxDecoration(
@@ -121,7 +144,7 @@ class PdfService {
                   ),
                   pw.SizedBox(height: 5),
                   pw.Text(
-                    "La información generada por Scanner Animal proviene de un análisis de Inteligencia Artificial y tiene fines exclusivamente informativos. Las dosis de medicamentos (ml, cc, mg) son sugerencias referenciales basadas en promedios literarios. Es OBLIGATORIO que un médico veterinario verifique el peso exacto del animal y valide la prescripción antes de administrar cualquier tratamiento. El desarrollador no se hace responsable por el uso inadecuado de esta información.",
+                    "La información generada por Scanner Animal proviene de un análisis de Inteligencia Artificial y tiene fines exclusivamente informativos. Las dosis de medicamentos son sugerencias referenciales. Es OBLIGATORIO que un médico veterinario valide la prescripción antes de administrar cualquier tratamiento.",
                     textAlign: pw.TextAlign.justify,
                     style: const pw.TextStyle(fontSize: 7, color: PdfColors.black),
                   ),
@@ -136,7 +159,6 @@ class PdfService {
     return pdf.save();
   }
 
-  // Widget auxiliar para las filas de resultados
   pw.Widget _buildResultRow(String label, String value, {bool isBold = false}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 2),
@@ -149,17 +171,12 @@ class PdfService {
               style: pw.TextStyle(
                 fontSize: 10, 
                 fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
-                color: isBold ? PdfColors.green900 : PdfColors.black
+                color: isBold && label.contains("Salud") ? PdfColors.red900 : PdfColors.black
               )
             )
           ),
         ],
       ),
     );
-  }
-
-  // Función para guardar y compartir el PDF
-  Future<void> saveAndSharePdf(Uint8List pdfBytes, String fileName) async {
-    await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
   }
 }
