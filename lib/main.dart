@@ -120,4 +120,4 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
       ),
     );
   }
-}
+} 
