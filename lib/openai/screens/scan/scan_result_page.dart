@@ -3,7 +3,7 @@ import 'package:scanneranimal/app/history/scan_models.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:scanneranimal/app_services/notification_service.dart';
 // AGREGADO: Importación del servicio de PDF
-import 'package:scanneranimal/openai/services/pdf_services.dart';
+import 'package:scanneranimal/openai/services/pdf_service.dart';
 
 class ScanResultPage extends StatefulWidget {
   const ScanResultPage({super.key, this.payload});
