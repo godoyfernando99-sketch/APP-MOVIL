@@ -16,7 +16,6 @@ class AiDiagnosisService {
     bool isFollowUp = false,
   }) async {
     try {
-      // CORRECCIÓN: FirebaseVertexAI (I mayúscula)
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-1.5-flash', 
         generationConfig: GenerationConfig(
@@ -24,7 +23,8 @@ class AiDiagnosisService {
         ),
       );
 
-      // CORRECCIÓN: Tipado explícito <Part> para evitar el error de List<dynamic>
+      // SOLUCIÓN DEFINITIVA: Se usa InlineDataPart (nombre oficial en la SDK)
+      // y se asegura el tipado List<Part> para evitar errores de casting.
       final List<Part> promptParts = [
         TextPart("""
           Actúa como un experto veterinario de élite. Analiza las imágenes de este $animalCategory.
@@ -68,7 +68,8 @@ class AiDiagnosisService {
             "foodRecommendation": "Guía nutricional"
           }
         """),
-        ...photos.map((bytes) => DataPart('image/jpeg', bytes)),
+        // CORRECCIÓN: InlineDataPart es el nombre correcto para pasar bytes en esta librería
+        ...photos.map((bytes) => InlineDataPart('image/jpeg', bytes)),
       ];
 
       final response = await model.generateContent([Content.multi(promptParts)]);
@@ -85,10 +86,10 @@ class AiDiagnosisService {
         preventionTips: List<String>.from(data['preventionTips'] ?? []),
         isHighRisk: data['isHighRisk'] ?? false, 
         isPregnant: data['isPregnant'] ?? false,
-        offspringCount: data['offspringCount'],
-        gestationWeeks: data['gestationWeeks'],
-        totalGestationDuration: data['totalGestationDuration'],
-        daysUntilDelivery: data['daysUntilDelivery'],
+        offspringCount: data['offspringCount']?.toString(),
+        gestationWeeks: data['gestationWeeks']?.toString(),
+        totalGestationDuration: data['totalGestationDuration']?.toString(),
+        daysUntilDelivery: data['daysUntilDelivery'] is int ? data['daysUntilDelivery'] : 0,
         rescanInterval: data['rescanInterval'] ?? 3,
         suggestedFoodName: data['suggestedFoodName'] ?? '',
         foodRecommendation: data['foodRecommendation'],
