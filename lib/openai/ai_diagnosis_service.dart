@@ -15,8 +15,9 @@ class AiDiagnosisService {
     String? microchipId,
   }) async {
     try {
+      // CAMBIO CLAVE: Actualización al modelo 2.5 Flash Lite para 2026
       final model = FirebaseVertexAI.instance.generativeModel(
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash-lite', 
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
@@ -24,6 +25,7 @@ class AiDiagnosisService {
 
       final imageParts = photos.map((bytes) => InlineDataPart('image/jpeg', bytes)).toList();
 
+      // PROMPT: Se mantiene intacto según tus instrucciones
       final promptParts = [
         TextPart("""
           Actúa como un experto veterinario. Analiza las imágenes de este $animalCategory.
@@ -61,6 +63,11 @@ class AiDiagnosisService {
       ];
 
       final response = await model.generateContent([Content.multi(promptParts)]);
+      
+      if (response.text == null) {
+        throw Exception("La IA no devolvió una respuesta válida.");
+      }
+
       final data = jsonDecode(response.text!);
       
       return ScanResult(
@@ -84,7 +91,7 @@ class AiDiagnosisService {
         timestamp: DateTime.now(),
       );
     } catch (e) {
-      debugPrint("🚨 Error: $e");
+      debugPrint("🚨 Error en el servicio de IA: $e");
       rethrow;
     }
   }
