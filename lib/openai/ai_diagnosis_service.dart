@@ -16,14 +16,15 @@ class AiDiagnosisService {
     bool isFollowUp = false,
   }) async {
     try {
-      final model = FirebaseVertexAI.instance.generativeModel(
+      final model = FirebaseVertexAi.instance.generativeModel(
         model: 'gemini-2.5-flash-lite', 
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
       );
 
-      final imageParts = photos.map((bytes) => InlineDataPart('image/jpeg', bytes)).toList();
+      // CORRECCIÓN: Se usa DataPart en lugar de InlineDataPart para compatibilidad
+      final imageParts = photos.map((bytes) => DataPart('image/jpeg', bytes)).toList();
 
       final promptParts = [
         TextPart("""
@@ -72,25 +73,28 @@ class AiDiagnosisService {
       ];
 
       final response = await model.generateContent([Content.multi(promptParts)]);
-      
+
       if (response.text == null) throw Exception("La IA no devolvió respuesta.");
 
       final data = jsonDecode(response.text!);
-      
-      // Creamos el resultado incluyendo la bandera de alto riesgo
+
+      // Creamos el resultado incluyendo la bandera de alto riesgo y campos faltantes
       return ScanResult(
         id: "scan_${DateTime.now().millisecondsSinceEpoch}",
         animalType: data['animalType'] ?? animalCategory,
-        // Almacenamos el estado de salud completo
+        breed: data['breed'],
         healthStatus: "${data['healthStatus']}\n\n📋 PLAN MÉDICO / VACUNAS:\n${data['treatmentPlan']}",
         preventionTips: List<String>.from(data['preventionTips'] ?? []),
-        isHighRisk: data['isHighRisk'] ?? false, // Campo clave para la ventana emergente
+        isHighRisk: data['isHighRisk'] ?? false, 
         isPregnant: data['isPregnant'] ?? false,
         offspringCount: data['offspringCount'],
         gestationWeeks: data['gestationWeeks'],
         totalGestationDuration: data['totalGestationDuration'],
         daysUntilDelivery: data['daysUntilDelivery'],
         rescanInterval: data['rescanInterval'] ?? 3,
+        // CORRECCIÓN: Se agregan los campos requeridos por el nuevo modelo
+        suggestedFoodName: data['suggestedFoodName'] ?? '',
+        foodRecommendation: data['foodRecommendation'],
         photos: photos,
         microchipId: microchipId,
         timestamp: DateTime.now(),
