@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:in_app_update/in_app_update.dart';
-import 'package:in_app_review/in_app_review.dart'; 
-import 'package:shared_preferences/shared_preferences.dart'; 
 import 'package:awesome_notifications/awesome_notifications.dart'; 
 
 import 'package:scanneranimal/app/app_settings.dart';
@@ -20,11 +18,11 @@ import 'package:scanneranimal/app_services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Inicializar Notificaciones antes que cualquier otra cosa
+  // 1. Inicializar Notificaciones (Crítico para el seguimiento de 3 días)
   await NotificationService.initialize();
 
   try {
-    // Inicialización de Firebase con las opciones generadas
+    // 2. Inicialización de Firebase
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (e) {
     debugPrint('🚨 Firebase initialization failed: $e');
@@ -41,28 +39,41 @@ class ScannerAnimalApp extends StatefulWidget {
 }
 
 class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
-  final InAppReview _inAppReview = InAppReview.instance;
 
   @override
   void initState() {
     super.initState();
 
-    // Ejecutar lógica de post-frame para evitar errores de montado de widgets
+    // Ejecutar lógica de sistema tras el primer frame
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _checkForUpdate();           
+      await _forceUpdateIfAvailable(); // Forzar actualización v1.0.34
       _requestNotificationPermissions(); 
-      await _checkReviewStatus();        
     });
   }
 
-  // --- SOLICITUD DE PERMISOS DE NOTIFICACIÓN ---
+  // --- ACTUALIZACIÓN FORZADA (IN APP UPDATE) ---
+  Future<void> _forceUpdateIfAvailable() async {
+    try {
+      // Verifica si hay una actualización pendiente en la Play Store
+      final info = await InAppUpdate.checkForUpdate();
+      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+        // performImmediateUpdate bloquea la app con una pantalla de Google Play
+        // hasta que el usuario descargue la nueva versión.
+        await InAppUpdate.performImmediateUpdate();
+      }
+    } catch (e) {
+      debugPrint('⚠️ InAppUpdate Info: No hay actualización obligatoria o error: $e');
+    }
+  }
+
+  // --- PERMISOS DE NOTIFICACIONES (Android 13+ y Emergencias) ---
   void _requestNotificationPermissions() {
     AwesomeNotifications().isNotificationAllowed().then((isAllowed) async {
       if (!isAllowed) {
         await AwesomeNotifications().requestPermissionToSendNotifications();
       }
       
-      // Permisos para canales específicos (Crítico para Android 13+)
+      // Permisos para canales de riesgo/emergencia (Crítico para tu nueva IA)
       await AwesomeNotifications().checkPermissionList(
         channelKey: 'emergency_channel', 
         permissions: [
@@ -75,81 +86,6 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
     });
   }
 
-  // --- LÓGICA DE CALIFICACIÓN (STORE REVIEW) ---
-  Future<void> _checkReviewStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    bool alreadyRated = prefs.getBool('already_rated') ?? false;
-
-    if (!alreadyRated) {
-      // Delay de cortesía
-      await Future.delayed(const Duration(seconds: 15));
-      if (!mounted) return;
-
-      // Obtener el contexto de navegación de forma segura desde tu AppRouter
-      final navigatorContext = AppRouter.router.routerDelegate.navigatorKey.currentContext;
-      if (navigatorContext == null) return;
-
-      if (!mounted) return;
-      
-      showDialog(
-        context: navigatorContext,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: Colors.grey.shade900,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-          title: const Row(
-            children: [
-              Icon(Icons.star_rounded, color: Colors.amber, size: 30),
-              SizedBox(width: 10),
-              Text("¿Te ayuda la App?", style: TextStyle(color: Colors.white, fontSize: 18)),
-            ],
-          ),
-          content: const Text(
-            "Tu calificación nos ayuda a seguir salvando animales. ¡Danos 5 estrellas en la Play Store!",
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("LUEGO", style: TextStyle(color: Colors.white38)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.greenAccent.shade700,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () async {
-                await prefs.setBool('already_rated', true);
-                if (mounted) Navigator.pop(context); 
-                
-                if (await _inAppReview.isAvailable()) {
-                  _inAppReview.requestReview();
-                } else {
-                  _inAppReview.openStoreListing();
-                }
-              },
-              child: const Text("CALIFICAR", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  // --- ACTUALIZACIÓN DE LA APP (IN APP UPDATE) ---
-  Future<void> _checkForUpdate() async {
-    try {
-      // InAppUpdate requiere Java 11 (ya configurado en tu build.gradle)
-      final info = await InAppUpdate.checkForUpdate();
-      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
-        // Realiza actualización inmediata si hay una disponible
-        await InAppUpdate.performImmediateUpdate();
-      }
-    } catch (e) {
-      debugPrint('⚠️ InAppUpdate: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -159,6 +95,7 @@ class _ScannerAnimalAppState extends State<ScannerAnimalApp> {
           create: (_) => AppSettings(LocalDb()),
           update: (_, localDb, previous) => previous ?? AppSettings(localDb)..init(),
         ),
+        // Aquí es donde se manejan los 10 escaneos gratuitos iniciales
         ChangeNotifierProvider(create: (_) => AuthController()..init()),
         ChangeNotifierProvider(create: (_) => HistoryController()..init()),
       ],
