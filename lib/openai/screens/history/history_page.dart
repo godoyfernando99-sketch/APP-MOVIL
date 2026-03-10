@@ -13,23 +13,25 @@ class HistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = (String key) => AppStrings.of(context, key);
-    final history = context.watch<HistoryController>();
+    // Usamos context.watch para reaccionar a cambios en el historial
+    final historyController = context.watch<HistoryController>();
+    final items = historyController.history; // CORREGIDO: Usamos .history en lugar de .items
 
     return FarmBackgroundScaffold(
       title: 'HISTORIAL DE REPORTES',
       backgroundColor: Colors.transparent,
       child: RefreshIndicator(
         onRefresh: () => context.read<HistoryController>().refresh(),
-        child: history.items.isEmpty 
+        child: items.isEmpty 
           ? const _EmptyHistory()
           : ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              itemCount: history.items.length + 1,
+              // +1 para el header
+              itemCount: items.length + 1,
               separatorBuilder: (_, __) => const SizedBox(height: 14),
               itemBuilder: (context, i) {
                 if (i == 0) return _buildHeader();
-                final item = history.items[i - 1];
+                final item = items[i - 1];
                 return _HistoryCard(item: item);
               },
             ),
@@ -66,6 +68,7 @@ class _HistoryCard extends StatelessWidget {
         color: Colors.black.withOpacity(0.6),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
+          // CORREGIDO: isUrgent ahora detecta HighRisk automáticamente por el modelo
           color: item.isUrgent ? Colors.redAccent.withOpacity(0.3) : Colors.white.withOpacity(0.1),
           width: 1.5
         ),
@@ -73,7 +76,7 @@ class _HistoryCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _showDetailPopup(context), // Abre la ventana emergente
+          onTap: () => _showDetailPopup(context),
           borderRadius: BorderRadius.circular(22),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -86,15 +89,17 @@ class _HistoryCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.isUrgent ? "URGENTE: ${item.animalType.toUpperCase()}" : item.animalType.toUpperCase(),
+                        item.isUrgent ? "🚨 URGENTE: ${item.animalType.toUpperCase()}" : item.animalType.toUpperCase(),
                         style: TextStyle(
                           color: item.isUrgent ? Colors.redAccent : Colors.white, 
                           fontWeight: FontWeight.w900, 
                           fontSize: 14
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text(item.breed ?? 'Raza no detectada', 
+                      Text(item.breed ?? 'Especie detectada', 
                         style: const TextStyle(color: Colors.white70, fontSize: 12)),
                       const SizedBox(height: 4),
                       Text(dateLabel, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11)),
@@ -166,12 +171,12 @@ class HistoryDetailPopup extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
+                  const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("FICHA TÉCNICA IA", 
-                        style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 1.5)),
-                      Text(dateLabel, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                      Text("INFORME MÉDICO IA", 
+                        style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 1.5)),
+                      Text("DETALLE DE DIAGNÓSTICO", style: TextStyle(color: Colors.white38, fontSize: 12)),
                     ],
                   ),
                   IconButton(
@@ -196,36 +201,55 @@ class HistoryDetailPopup extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     _buildSectionTitle("DATOS DEL PACIENTE"),
+                    _DetailRow(label: 'Fecha:', value: dateLabel),
                     _DetailRow(label: 'Animal:', value: item.animalType),
-                    _DetailRow(label: 'Raza / Especie:', value: item.breed ?? 'Atigrado Europeo', isAccent: true),
-                    _DetailRow(label: 'Hallazgo:', value: 'Sano'),
-                    _DetailRow(label: 'Prescripción:', value: 'N/A'),
+                    _DetailRow(label: 'Raza:', value: item.breed ?? 'Detectada por IA', isAccent: true),
+                    
+                    const SizedBox(height: 20),
+                    
+                    _buildSectionTitle("HALLAZGOS Y DIAGNÓSTICO"),
+                    Text(item.healthStatus, 
+                      style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4)),
 
                     const SizedBox(height: 20),
 
-                    _buildSectionTitle("NOTAS DE CAMPO"),
+                    _buildSectionTitle("NOTAS DE CAMPO (PERSONAL)"),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.white10),
                       ),
                       child: Text(
-                        (item as dynamic).notes ?? "Sin notas adicionales.",
-                        style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
+                        // CORREGIDO: Ya no es dynamic, usamos el campo del modelo
+                        (item.notes == null || item.notes!.isEmpty) 
+                            ? "Sin notas adicionales guardadas." 
+                            : item.notes!,
+                        style: const TextStyle(color: Colors.greenAccent, fontSize: 13, height: 1.5, fontStyle: FontStyle.italic),
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
-                    _buildSectionTitle("RECOMENDACIÓN NUTRICIONAL"),
-                    Text(item.suggestedFoodName.toUpperCase(), 
+                    _buildSectionTitle("ALIMENTACIÓN SUGERIDA"),
+                    Text(item.suggestedFoodName.isEmpty ? "DIETA GENERAL" : item.suggestedFoodName.toUpperCase(), 
                       style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 14)),
                     const SizedBox(height: 5),
-                    Text(item.foodRecommendation ?? "Dieta balanceada sugerida.", 
+                    Text(item.foodRecommendation ?? "Siga las instrucciones del profesional.", 
                       style: const TextStyle(color: Colors.white54, fontSize: 12)),
+
+                    const SizedBox(height: 30),
                     
-                    const SizedBox(height: 20),
+                    // Botón para cerrar
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white10,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      ),
+                      child: const Text("CERRAR INFORME", style: TextStyle(color: Colors.white)),
+                    ),
                   ],
                 ),
               ),
@@ -238,8 +262,8 @@ class HistoryDetailPopup extends StatelessWidget {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(title, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(title, style: const TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
     );
   }
 
@@ -251,23 +275,30 @@ class HistoryDetailPopup extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
       ),
-      child: Text("🚨 ${item.healthStatus.toUpperCase()}", 
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
+          SizedBox(width: 10),
+          Text("ALTO RIESGO DETECTADO", 
+            style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+        ],
+      ),
     );
   }
 
   Widget _buildPhotoGallery(List<Uint8List> photos) {
     return SizedBox(
-      height: 100,
+      height: 120,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: photos.length,
         itemBuilder: (ctx, i) => Container(
-          width: 100,
-          margin: const EdgeInsets.only(right: 10),
+          width: 120,
+          margin: const EdgeInsets.only(right: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: Colors.white10),
             image: DecorationImage(image: MemoryImage(photos[i]), fit: BoxFit.cover),
           ),
         ),
@@ -285,12 +316,20 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
-          Text(value, style: TextStyle(color: isAccent ? Colors.tealAccent : Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Text(value, 
+              textAlign: TextAlign.right,
+              style: TextStyle(color: isAccent ? Colors.tealAccent : Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -305,10 +344,14 @@ class _EmptyHistory extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history_rounded, size: 50, color: Colors.white.withOpacity(0.1)),
+          Icon(Icons.history_rounded, size: 60, color: Colors.white.withOpacity(0.05)),
           const SizedBox(height: 16),
-          const Text('NO HAY REGISTROS GUARDADOS', 
-            style: TextStyle(color: Colors.white24, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 12)
+          const Text('HISTORIAL VACÍO', 
+            style: TextStyle(color: Colors.white24, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 14)
+          ),
+          const SizedBox(height: 8),
+          const Text('Los informes que guardes aparecerán aquí.', 
+            style: TextStyle(color: Colors.white10, fontSize: 12)
           ),
         ],
       )
