@@ -1,8 +1,9 @@
 name: scanneranimal
 description: "IA Veterinaria - Diagnóstico, Gestación y Seguimiento"
 publish_to: 'none'
-# PASO CLAVE: Subimos a la versión 32 para que Google Play detecte el cambio
-version: 1.0.33+33
+
+# ACTUALIZADO: Subimos a la 34 para coincidir con nuestras mejoras
+version: 1.0.34+34
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -20,18 +21,22 @@ dependencies:
   go_router: ^13.1.0
   provider: ^6.1.1
 
-  # ACTUALIZACIÓN DE FIREBASE PARA SOPORTAR GEMINI 2.5 Y LOGIN POR USERNAME:
+  # CORE FIREBASE
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.1
   cloud_firestore: ^5.5.0
-  # Esta es la versión mínima necesaria para el modelo 2.5 Flash Lite:
+  # Vertex AI para el modelo 2.5 Flash Lite
   firebase_vertexai: ^1.4.0 
 
+  # UTILIDADES Y TIENDA
   in_app_purchase: ^3.2.0
   awesome_notifications: ^0.11.0 
   in_app_update: ^4.2.1
   in_app_review: ^2.0.9
   shared_preferences: ^2.2.2
+  url_launcher: ^6.2.5  # AGREGADO: Necesario para calificar en Play Store
+  
+  # DOCUMENTOS Y ARCHIVOS
   pdf: ^3.10.8
   printing: ^5.11.0
   image_picker: ^1.0.7
