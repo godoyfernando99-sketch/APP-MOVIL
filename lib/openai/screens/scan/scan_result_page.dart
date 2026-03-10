@@ -203,7 +203,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
             minimumSize: const Size(double.infinity, 60),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           ),
-          child: const Text("ACTIVAR SEGUIMIENTO IA", 
+          child: const Text("ACTIVAR SEGUIMIENTO", 
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
         ),
       ],
