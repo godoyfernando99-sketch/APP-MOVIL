@@ -18,7 +18,7 @@ class AiDiagnosisService {
     try {
       // CORRECCIÓN TÉCNICA: Nombre oficial de la clase
       final model = FirebaseVertexAI.instance.generativeModel(
-        model: 'gemini-1.5-flash', 
+        model: 'gemini-2.5-flash-lite', 
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
