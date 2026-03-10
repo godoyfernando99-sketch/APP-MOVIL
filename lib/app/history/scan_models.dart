@@ -22,6 +22,7 @@ class ScanResult {
   final List<Uint8List> photos;
   final String? microchipId;
   final DateTime timestamp;
+  final String? notes; // AGREGADO: Para las Notas de Campo
 
   ScanResult({
     required this.id,
@@ -44,6 +45,7 @@ class ScanResult {
     required this.photos,
     this.microchipId,
     required this.timestamp,
+    this.notes, // AGREGADO
   });
 
   // Getter para compatibilidad con tu controlador antiguo
@@ -74,6 +76,7 @@ class ScanResult {
       'foodRecommendation': foodRecommendation,
       'microchipId': microchipId,
       'timestamp': timestamp.toIso8601String(),
+      'notes': notes, // AGREGADO
       // Guardamos fotos como Base64 en local
       'photosBase64': photos.map((e) => base64Encode(e)).toList(),
     };
@@ -85,7 +88,7 @@ class ScanResult {
       id: map['id'] ?? '',
       ownerId: map['ownerId'],
       animalType: map['animalType'] ?? '',
-      breed: map['breed'] ?? map['detectedBreed'], // Soporta ambos nombres
+      breed: map['breed'] ?? map['detectedBreed'], 
       healthStatus: map['healthStatus'] ?? '',
       preventionTips: List<String>.from(map['preventionTips'] ?? []),
       isPregnant: map['isPregnant'] ?? false,
@@ -100,6 +103,7 @@ class ScanResult {
       suggestedFoodName: map['suggestedFoodName'] ?? '',
       foodRecommendation: map['foodRecommendation'],
       microchipId: map['microchipId'] ?? map['microchipNumber'],
+      notes: map['notes'], // AGREGADO
       timestamp: map['timestamp'] != null 
           ? DateTime.parse(map['timestamp']) 
           : (map['createdAt'] != null ? (map['createdAt'] as dynamic).toDate() : DateTime.now()),
@@ -108,7 +112,7 @@ class ScanResult {
   }
 
   // --- MÉTODO COPYWITH (Para el HistoryController) ---
-  ScanResult copyWith({String? ownerId}) {
+  ScanResult copyWith({String? ownerId, String? notes}) {
     return ScanResult(
       id: id,
       ownerId: ownerId ?? this.ownerId,
@@ -130,6 +134,7 @@ class ScanResult {
       photos: photos,
       microchipId: microchipId,
       timestamp: timestamp,
+      notes: notes ?? this.notes, // AGREGADO
     );
   }
 }
