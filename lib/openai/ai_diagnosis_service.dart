@@ -16,7 +16,7 @@ class AiDiagnosisService {
     bool isFollowUp = false,
   }) async {
     try {
-      // CORRECCIÓN TÉCNICA: Nombre oficial de la clase
+      // ACTUALIZADO: Modelo Gemini 2.5 Flash Lite para evitar el cierre de junio de 2026
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-2.5-flash-lite', 
         generationConfig: GenerationConfig(
@@ -24,7 +24,6 @@ class AiDiagnosisService {
         ),
       );
 
-      // CORRECCIÓN TÉCNICA: Tipado List<Part> y uso de InlineDataPart para el build
       final List<Part> promptParts = [
         TextPart("""
           Actúa como un experto veterinario de élite. Analiza las imágenes de este $animalCategory.
