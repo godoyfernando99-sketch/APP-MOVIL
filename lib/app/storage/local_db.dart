@@ -1,11 +1,7 @@
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Simple local key/value storage.
-///
-/// This is a placeholder until you connect Firebase/Supabase in Dreamflow.
 class LocalDb {
   static const String _usersKey = 'users_v1';
   static const String _currentUserKey = 'current_user_v1';
@@ -14,6 +10,7 @@ class LocalDb {
 
   Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
+  // --- LOCALE ---
   Future<String?> getLocaleCode() async {
     try {
       return (await _prefs()).getString(_localeKey);
@@ -31,6 +28,7 @@ class LocalDb {
     }
   }
 
+  // --- USUARIOS ---
   Future<List<Map<String, dynamic>>> getUsers() async {
     try {
       final raw = (await _prefs()).getString(_usersKey);
@@ -78,37 +76,28 @@ class LocalDb {
     }
   }
 
+  // --- HISTORIAL (CON PROTECCIÓN DE MEMORIA PARA FOTOS) ---
   Future<List<Map<String, dynamic>>> getHistory() async {
     try {
       final prefs = await _prefs();
       final raw = prefs.getString(_historyKey);
       if (raw == null || raw.isEmpty) return [];
-      
-      // Validar que el JSON no esté corrupto antes de decodificar
-      if (raw.length > 10000000) {
-        debugPrint('History data too large (${raw.length} chars), clearing...');
-        await prefs.remove(_historyKey);
-        return [];
+
+      // Límite de seguridad: 15MB (SharedPreferences suele aguantar hasta 20-30MB en Android moderno)
+      if (raw.length > 15000000) { 
+        debugPrint('⚠️ Historial muy pesado (${raw.length} caracteres), reduciendo...');
+        // No borramos todo, solo avisamos para que el setHistory limpie en la siguiente vuelta
       }
-      
+
       final decoded = jsonDecode(raw);
       if (decoded is! List) {
-        debugPrint('History data is not a list, clearing...');
         await prefs.remove(_historyKey);
         return [];
       }
-      
+
       return decoded.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
     } catch (e) {
       debugPrint('LocalDb.getHistory failed: $e');
-      // Si hay error al decodificar, limpiar el historial corrupto
-      try {
-        final prefs = await _prefs();
-        await prefs.remove(_historyKey);
-        debugPrint('Corrupted history cleared');
-      } catch (e2) {
-        debugPrint('Failed to clear corrupted history: $e2');
-      }
       return [];
     }
   }
@@ -116,28 +105,34 @@ class LocalDb {
   Future<void> setHistory(List<Map<String, dynamic>> history) async {
     try {
       final prefs = await _prefs();
-      await prefs.setString(_historyKey, jsonEncode(history));
+      
+      // OPTIMIZACIÓN: Si el historial tiene más de 20 elementos, mantenemos solo los 20 más recientes
+      // Esto evita que las fotos acumuladas rompan la app.
+      List<Map<String, dynamic>> optimizedHistory = history;
+      if (history.length > 20) {
+        optimizedHistory = history.sublist(0, 20);
+      }
+
+      final String encoded = jsonEncode(optimizedHistory);
+      
+      // Verificación de tamaño antes de intentar guardar
+      if (encoded.length > 18000000) { // ~18MB
+        debugPrint('⚠️ Alerta de espacio: El historial es demasiado grande. Guardando solo los últimos 10.');
+        final reduced = optimizedHistory.take(10).toList();
+        await prefs.setString(_historyKey, jsonEncode(reduced));
+      } else {
+        await prefs.setString(_historyKey, encoded);
+      }
+      
     } catch (e) {
       debugPrint('LocalDb.setHistory failed: $e');
-      // Si falla por cuota excedida, intentar limpiar historial antiguo
-      if (e.toString().contains('QuotaExceededError')) {
-        debugPrint('Storage quota exceeded. Clearing old history...');
-        try {
-          final prefs = await _prefs();
-          // Mantener solo los últimos 5 registros
-          final reducedHistory = history.length > 5 ? history.sublist(history.length - 5) : history;
-          await prefs.setString(_historyKey, jsonEncode(reducedHistory));
-          debugPrint('History reduced to ${reducedHistory.length} items');
-        } catch (e2) {
-          debugPrint('Failed to reduce history: $e2');
-          // Si aún falla, limpiar todo el historial
-          try {
-            final prefs = await _prefs();
-            await prefs.remove(_historyKey);
-          } catch (e3) {
-            debugPrint('Failed to clear history: $e3');
-          }
-        }
+      // Manejo de emergencia para QuotaExceededError
+      if (e.toString().contains('QuotaExceeded') || e.toString().contains('limit')) {
+        final prefs = await _prefs();
+        // Plan de rescate: Guardar solo los últimos 3 escaneos (lo más importante)
+        final emergencyHistory = history.take(3).toList();
+        await prefs.setString(_historyKey, jsonEncode(emergencyHistory));
+        debugPrint('🚨 Cuota excedida. Se guardaron solo los 3 registros más recientes.');
       }
     }
   }
