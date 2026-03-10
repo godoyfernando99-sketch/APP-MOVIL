@@ -16,15 +16,15 @@ class AiDiagnosisService {
     bool isFollowUp = false,
   }) async {
     try {
-      // CORRECCIÓN: Nombre de la instancia corregido a FirebaseVertexAI
+      // CORRECCIÓN: FirebaseVertexAI (I mayúscula)
       final model = FirebaseVertexAI.instance.generativeModel(
-        model: 'gemini-2.5-flash-lite', 
+        model: 'gemini-1.5-flash', 
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
       );
 
-      // CORRECCIÓN: Declaramos la lista como List<Part> para evitar el error de List<dynamic>
+      // CORRECCIÓN: Tipado explícito <Part> para evitar el error de List<dynamic>
       final List<Part> promptParts = [
         TextPart("""
           Actúa como un experto veterinario de élite. Analiza las imágenes de este $animalCategory.
@@ -68,7 +68,6 @@ class AiDiagnosisService {
             "foodRecommendation": "Guía nutricional"
           }
         """),
-        // CORRECCIÓN: Integramos los DataPart directamente en la lista tipada
         ...photos.map((bytes) => DataPart('image/jpeg', bytes)),
       ];
 
@@ -102,4 +101,4 @@ class AiDiagnosisService {
       rethrow;
     }
   }
-} 
+}
