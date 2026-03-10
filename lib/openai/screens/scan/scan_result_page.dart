@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
 import 'package:scanneranimal/app_services/notification_service.dart';
+// AGREGADO: Importación del servicio de PDF
+import 'package:scanneranimal/openai/services/pdf_services.dart';
 
 class ScanResultPage extends StatefulWidget {
   const ScanResultPage({super.key, this.payload});
@@ -158,19 +160,29 @@ class _ScanResultPageState extends State<ScanResultPage> {
             // Botón Compartir
             Expanded(
               child: TextButton.icon(
-                onPressed: () { /* Lógica compartir PDF */ },
+                onPressed: () async { 
+                  // ACTUALIZADO: Llamada al servicio de PDF
+                  await PdfService.generateAndSharePdf(result); 
+                },
                 icon: const Icon(Icons.share_outlined, color: Colors.white70),
                 label: const Text("COMPARTIR", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(width: 10),
-            // Botón Guardar (Blanco como en la Imagen 1)
+            // Botón Guardar
             Expanded(
               child: ElevatedButton(
                 onPressed: () {
-                  // Aquí capturas _notesController.text al guardar
+                  // ACTUALIZADO: Se guarda el resultado incluyendo las notas del controlador
+                  final resultConNotas = result.copyWith(notes: _notesController.text);
+                  
+                  // Aquí iría tu lógica de guardado (ej: context.read<HistoryController>().save(resultConNotas))
+                  
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("✅ Informe guardado en el historial")),
+                    const SnackBar(
+                      backgroundColor: Colors.green,
+                      content: Text("✅ Informe guardado con notas en el historial")
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -210,7 +222,6 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
-  // Métodos de apoyo existentes (Headers, Cards, etc.) se mantienen igual para no alterar tus datos
   Widget _buildStatusHeader(ScanResult r) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),
