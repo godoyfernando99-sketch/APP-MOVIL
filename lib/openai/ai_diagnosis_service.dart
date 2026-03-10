@@ -16,6 +16,7 @@ class AiDiagnosisService {
     bool isFollowUp = false,
   }) async {
     try {
+      // CORRECCIÓN TÉCNICA: Nombre oficial de la clase
       final model = FirebaseVertexAI.instance.generativeModel(
         model: 'gemini-1.5-flash', 
         generationConfig: GenerationConfig(
@@ -23,8 +24,7 @@ class AiDiagnosisService {
         ),
       );
 
-      // SOLUCIÓN DEFINITIVA: Se usa InlineDataPart (nombre oficial en la SDK)
-      // y se asegura el tipado List<Part> para evitar errores de casting.
+      // CORRECCIÓN TÉCNICA: Tipado List<Part> y uso de InlineDataPart para el build
       final List<Part> promptParts = [
         TextPart("""
           Actúa como un experto veterinario de élite. Analiza las imágenes de este $animalCategory.
@@ -68,7 +68,6 @@ class AiDiagnosisService {
             "foodRecommendation": "Guía nutricional"
           }
         """),
-        // CORRECCIÓN: InlineDataPart es el nombre correcto para pasar bytes en esta librería
         ...photos.map((bytes) => InlineDataPart('image/jpeg', bytes)),
       ];
 
