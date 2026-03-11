@@ -92,9 +92,11 @@ class NotificationService {
     );
 
     // 3. SEGUIMIENTO DE GESTACIÓN / PARTO
-    if (result.isPregnant && result.daysUntilDelivery > 0) {
+    // CORRECCIÓN: Se añade '?? 0' para evitar error de compilación en nulos
+    if (result.isPregnant && (result.daysUntilDelivery ?? 0) > 0) {
       // Notificación de advertencia 24 horas antes del parto estimado
-      int diasParaNotificar = result.daysUntilDelivery > 1 ? result.daysUntilDelivery - 1 : 1;
+      // CORRECCIÓN: Se usa '!' después de haber verificado que no es nulo con el check anterior
+      int diasParaNotificar = result.daysUntilDelivery! > 1 ? result.daysUntilDelivery! - 1 : 1;
 
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
