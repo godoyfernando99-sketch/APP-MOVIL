@@ -92,7 +92,8 @@ class PdfService {
                           fontSize: 14,
                           color: PdfColors.blue900)),
                   pw.SizedBox(height: 10),
-                  _buildResultRow("Estado de Salud:", result.healthStatus.toUpperCase(), isBold: result.isUrgent),
+                  // CORRECCIÓN: Se cambió 'result.isUrgent' por 'result.isHighRisk' (que es el nombre correcto en tu modelo)
+                  _buildResultRow("Estado de Salud:", result.healthStatus.toUpperCase(), isBold: result.isHighRisk),
                   if (result.isPregnant)
                     _buildResultRow("Gestación:", "CONFIRMADA (${result.gestationWeeks})"),
                   pw.Divider(color: PdfColors.blue200, thickness: 0.5),
