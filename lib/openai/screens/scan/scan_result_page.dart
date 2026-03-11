@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:scanneranimal/app/history/scan_models.dart';
 import 'package:scanneranimal/app/history/history_controller.dart';
-// IMPORTADO: Necesario para descontar los escaneos gratis
-import 'package:scanneranimal/app/auth/auth_controller.dart'; 
-import 'package:scanneranimal/widgets/farm_background_scaffold.dart';
-import 'package:scanneranimal/app_services/notification_service.dart';
+import 'package:scanneranimal/app/auth/auth_controller.dart';
 import 'package:scanneranimal/openai/services/pdf_service.dart';
+import 'package:scanneranimal/app_services/notification_service.dart';
 
 class ScanResultPage extends StatefulWidget {
-  const ScanResultPage({super.key, this.payload});
   final dynamic payload;
+  const ScanResultPage({super.key, this.payload});
 
   @override
   State<ScanResultPage> createState() => _ScanResultPageState();
@@ -18,80 +17,118 @@ class ScanResultPage extends StatefulWidget {
 
 class _ScanResultPageState extends State<ScanResultPage> {
   final TextEditingController _notesController = TextEditingController();
-  bool _showUrgentAlert = false; 
+  bool _showUrgentAlert = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.payload is ScanResult) {
-        final result = widget.payload as ScanResult;
-        if (result.isHighRisk == true || result.isUrgent == true) {
-          setState(() => _showUrgentAlert = true); 
-          NotificationService.programarAlertasSegunResultado(result);
-        }
-      }
-    });
+    if (widget.payload is ScanResult) {
+      final res = widget.payload as ScanResult;
+      if (res.isHighRisk) setState(() => _showUrgentAlert = true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.payload is! ScanResult) return const Scaffold(body: Center(child: Text("Error")));
-    final result = widget.payload as ScanResult;
+    final res = widget.payload as ScanResult;
+    final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(res.timestamp);
 
-    return FarmBackgroundScaffold(
-      title: 'INFORME VETERINARIO',
-      child: Stack(
+    return Scaffold(
+      appBar: AppBar(title: const Text("RESULTADOS DEL ANÁLISIS")),
+      body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildStatusHeader(result),
+                Text("Fecha: $dateStr", style: const TextStyle(fontWeight: FontWeight.bold)),
+                const Divider(),
+                _buildInfoItem("Tipo de Animal", res.animalType),
+                _buildInfoItem("Raza/Especie", res.breed ?? "No identificada"),
+                
+                if (res.isPregnant) ...[
+                  const SizedBox(height: 10),
+                  const Text("EMBARAZO DETECTADO", style: TextStyle(color: Colors.pink, fontWeight: FontWeight.bold)),
+                  _buildInfoItem("Semanas/Meses", "${res.gestationWeeks} semanas"),
+                  _buildInfoItem("Crías estimadas", res.offspringCount ?? "0"),
+                  _buildInfoItem("Días para el parto", "${res.daysUntilDelivery} días"),
+                ],
+
+                const SizedBox(height: 10),
+                const Text("INFORME MÉDICO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
+                  child: Text(res.healthStatus),
+                ),
+
+                _buildInfoItem("Alimento Sugerido", res.suggestedFoodName ?? "N/A"),
+                _buildInfoItem("Guía Nutricional", res.foodRecommendation ?? "N/A"),
+
                 const SizedBox(height: 15),
-                if (result.isPregnant) _buildPregnancyCard(result),
-                const SizedBox(height: 15),
-                _buildMedicationCard(result),
-                const SizedBox(height: 15),
-                _buildNotesField(),
-                const SizedBox(height: 30),
-                _buildActionButtons(result),
+                TextField(
+                  controller: _notesController,
+                  decoration: const InputDecoration(labelText: "MIS NOTAS Y COMENTARIOS", border: OutlineInputBorder()),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 25),
+                _buildActionButtons(res),
               ],
             ),
           ),
-          if (_showUrgentAlert) _buildProfessionalPopup(result.healthStatus),
+          if (_showUrgentAlert) _buildHighRiskPopup(res),
         ],
       ),
     );
   }
 
-  Widget _buildActionButtons(ScanResult result) {
+  Widget _buildInfoItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(ScanResult res) {
     return Column(
       children: [
+        ElevatedButton.icon(
+          onPressed: () {
+            NotificationService.programarAlertasSegunResultado(res);
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ SEGUIMIENTO ACTIVADO")));
+          },
+          icon: const Icon(Icons.notifications_active),
+          label: const Text("ACTIVAR SEGUIMIENTO VETERINARIO"),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, minimumSize: const Size(double.infinity, 50)),
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => PdfService.generateAndShare(res),
+                icon: const Icon(Icons.picture_as_pdf),
+                label: const Text("COMPARTIR PDF"),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
               child: ElevatedButton(
                 onPressed: () async {
-                  final finalResult = result.copyWith(notes: _notesController.text);
-                  
-                  // 1. Guardar en el historial local
+                  final finalResult = res.copyWith(notes: _notesController.text);
                   await context.read<HistoryController>().saveScan(finalResult);
-                  
-                  // 2. CORREGIDO: Descontar crédito de los 10 gratuitos en Firebase
                   await context.read<AuthController>().useFreeScan();
-
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("✅ Guardado exitosamente"))
-                    );
+                    // DIRECCIONA AL MENÚ PRINCIPAL Y LIMPIA RUTAS
                     Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
                   }
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white, 
-                  foregroundColor: Colors.black
-                ),
                 child: const Text("GUARDAR"),
               ),
             ),
@@ -101,83 +138,15 @@ class _ScanResultPageState extends State<ScanResultPage> {
     );
   }
 
-  Widget _buildProfessionalPopup(String statusText) {
+  Widget _buildHighRiskPopup(ScanResult res) {
     return Container(
       color: Colors.black87,
       alignment: Alignment.center,
-      padding: const EdgeInsets.all(20),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: Colors.redAccent, width: 2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 50),
-            const SizedBox(height: 15),
-            const Text("🚨 ALTO RIESGO DETECTADO", 
-              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 10),
-            Text(statusText.split('\n').first, 
-              textAlign: TextAlign.center, style: const TextStyle(color: Colors.white)),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => setState(() => _showUrgentAlert = false), 
-              child: const Text("ENTENDIDO")
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNotesField() {
-    return TextField(
-      controller: _notesController,
-      maxLines: 3,
-      style: const TextStyle(color: Colors.white),
-      decoration: const InputDecoration(
-        labelText: "NOTAS DE CAMPO", 
-        labelStyle: TextStyle(color: Colors.white70),
-        hintText: "Escribe observaciones...",
-        hintStyle: TextStyle(color: Colors.white30),
-      ),
-    );
-  }
-
-  Widget _buildMedicationCard(ScanResult res) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(15)),
-      child: Text(res.healthStatus, style: const TextStyle(color: Colors.white, fontSize: 13)),
-    );
-  }
-
-  Widget _buildStatusHeader(ScanResult r) {
-    return Text(r.healthStatus.split('\n').first.toUpperCase(), 
-      textAlign: TextAlign.center, 
-      style: TextStyle(
-        color: (r.isHighRisk) ? Colors.redAccent : Colors.white, 
-        fontSize: 20, 
-        fontWeight: FontWeight.bold
-      ));
-  }
-
-  Widget _buildPregnancyCard(ScanResult res) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: Colors.pinkAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.pets, color: Colors.pinkAccent, size: 18),
-          const SizedBox(width: 8),
-          Text("Gestación: ${res.offspringCount ?? '0'} crías", 
-            style: const TextStyle(color: Colors.pinkAccent, fontWeight: FontWeight.bold)),
+      child: AlertDialog(
+        title: const Text("🚨 ALERTA DE ALTO RIESGO", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        content: Text("Se ha detectado una condición grave.\n\n${res.healthStatus.split('\n\n').first}"),
+        actions: [
+          ElevatedButton(onPressed: () => setState(() => _showUrgentAlert = false), child: const Text("ENTENDIDO"))
         ],
       ),
     );
