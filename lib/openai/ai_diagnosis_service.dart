@@ -25,11 +25,12 @@ class AiDiagnosisService {
         TextPart("""
           Actúa como un experto veterinario de élite. Analiza las imágenes.
           Seguimiento Evolutivo activo: ${isFollowUp ? 'SÍ' : 'NO'}.
+          ID Animal detectado (si aplica): ${microchipId ?? 'N/A'}.
 
           DEBES RESPONDER ÚNICAMENTE EN JSON CON ESTA ESTRUCTURA EXACTA:
 
           {
-            "animalType": "Especie (Gato, Perro, etc)",
+            "animalType": "Especie (Perro, Gato, Vaca, Cabra, Mono, etc)",
             "breed": "Raza o especie exacta",
             "isSane": true/false,
             "healthStatus": {
@@ -47,13 +48,13 @@ class AiDiagnosisService {
               "applicationSite": "Lugar del cuerpo donde aplicar/inyectar",
               "careTips": "Cuidados para que no vuelva a suceder"
             },
-            "vaccines": "Si está sano, lista de vacunas necesarias por edad/especie",
+            "vaccines": "Esquema completo de vacunas según animal/edad y frecuencia de aplicación",
             "pregnancy": {
               "isPregnant": true/false,
               "weeks": "semanas",
               "days": "días",
               "months": "meses",
-              "offspringCount": "número de crías",
+              "offspringCount": "número de crías estimado",
               "totalDuration": "duración total embarazo especie",
               "daysUntilDelivery": 10
             },
@@ -65,7 +66,8 @@ class AiDiagnosisService {
 
           INSTRUCCIONES:
           - Si 'healthStatus.severity' es ALTA, 'healthStatus.isHighRisk' debe ser true.
-          - Si 'isSane' es true, omite 'healthStatus' y 'treatment', y llena 'vaccines' con detalle.
+          - Si 'isSane' es true, omite 'healthStatus' y 'treatment', pero en el JSON final incluye 'treatment' con campos vacíos (no nulos) para evitar errores.
+          - Si es positivo en embarazo, detalla semanas, días, meses y crías basándote en la captura.
         """),
         ...photos.map((bytes) => InlineDataPart('image/jpeg', bytes)),
       ];
@@ -74,21 +76,36 @@ class AiDiagnosisService {
       final data = jsonDecode(response.text!);
 
       // Construimos el bloque de texto para el historial combinando los campos
+      // MANTENIENDO TU ESTRUCTURA ORIGINAL DE REPORTE
       String report = "";
       if (data['isSane']) {
         report = "ESTADO: SANO\n\nVACUNAS RECOMENDADAS:\n${data['vaccines']}";
       } else {
-        report = "ENFERMEDAD: ${data['healthStatus']['conditionName']}\n"
-                 "CAUSA: ${data['healthStatus']['cause']}\n"
-                 "GRAVEDAD: ${data['healthStatus']['severity']}\n\n"
+        // CORRECCIÓN PARA EVITAR ERROR NULL: Se añade verificación de existencia de campos
+        final h = data['healthStatus'] ?? {};
+        final t = data['treatment'] ?? {};
+        
+        report = "ENFERMEDAD: ${h['conditionName'] ?? 'No detectada'}\n"
+                 "CAUSA: ${h['cause'] ?? 'N/A'}\n"
+                 "GRAVEDAD: ${h['severity'] ?? 'Baja'}\n\n"
                  "TRATAMIENTO:\n"
-                 "- Medicamento: ${data['treatment']['medicineName']}\n"
-                 "- Vía: ${data['treatment']['type']}\n"
-                 "- Dosis: ${data['treatment']['dosage']}\n"
-                 "- Frecuencia: ${data['treatment']['frequency']}\n"
-                 "- Duración: ${data['treatment']['duration']}\n"
-                 "- Aplicación: ${data['treatment']['applicationSite']}\n"
-                 "- Cuidados: ${data['treatment']['careTips']}";
+                 "- Medicamento: ${t['medicineName'] ?? 'N/A'}\n"
+                 "- Vía: ${t['type'] ?? 'N/A'}\n"
+                 "- Dosis: ${t['dosage'] ?? 'N/A'}\n"
+                 "- Frecuencia: ${t['frequency'] ?? 'N/A'}\n"
+                 "- Duración: ${t['duration'] ?? 'N/A'}\n"
+                 "- Aplicación: ${t['applicationSite'] ?? 'N/A'}\n"
+                 "- Cuidados: ${t['careTips'] ?? 'N/A'}";
+      }
+
+      // Añadimos información de embarazo si es detectado (Solo si es positivo)
+      if (data['pregnancy'] != null && data['pregnancy']['isPregnant'] == true) {
+        report += "\n\nDETALLES DE GESTACIÓN:\n"
+                  "- Estado: POSITIVO\n"
+                  "- Tiempo: ${data['pregnancy']['weeks']} sem, ${data['pregnancy']['days']} días, ${data['pregnancy']['months']} meses\n"
+                  "- Crías Estimadas: ${data['pregnancy']['offspringCount']}\n"
+                  "- Duración Total: ${data['pregnancy']['totalDuration']}\n"
+                  "- Días para el parto: ${data['pregnancy']['daysUntilDelivery']} días";
       }
 
       return ScanResult(
@@ -96,17 +113,17 @@ class AiDiagnosisService {
         animalType: data['animalType'] ?? animalCategory,
         breed: data['breed'],
         healthStatus: report,
-        // CORRECCIÓN: Se añade preventionTips para cumplir con el constructor de scan_models.dart
-        preventionTips: data['isSane'] ? [data['vaccines'].toString()] : [data['treatment']['careTips'].toString()],
+        // CORRECCIÓN: PREVENTION TIPS
+        preventionTips: data['isSane'] ? [data['vaccines'].toString()] : [data['treatment']['careTips']?.toString() ?? 'Sin notas'],
         isHighRisk: data['isSane'] ? false : (data['healthStatus']['isHighRisk'] ?? false),
         isPregnant: data['pregnancy']['isPregnant'] ?? false,
         offspringCount: data['pregnancy']['offspringCount']?.toString(),
-        gestationWeeks: data['pregnancy']['weeks']?.toString(),
+        gestationWeeks: "${data['pregnancy']['weeks']} sem / ${data['pregnancy']['days']} d",
         daysUntilDelivery: data['pregnancy']['daysUntilDelivery'] ?? 0,
         totalGestationDuration: data['pregnancy']['totalDuration'],
         suggestedFoodName: data['nutrition']['foodName'] ?? '',
         foodRecommendation: data['nutrition']['recommendation'],
-        rescanInterval: 3, // Seguimiento cada 3 días
+        rescanInterval: 3, 
         medicationDosage: data['isSane'] ? null : data['treatment']['dosage'],
         medicationRoute: data['isSane'] ? null : data['treatment']['type'],
         applicationSite: data['isSane'] ? null : data['treatment']['applicationSite'],
