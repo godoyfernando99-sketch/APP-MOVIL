@@ -141,7 +141,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       child: IndexedStack(
         index: _selectedIndex,
         children: [
-          MainMenuContent(onTabRequested: _onItemTapped), // Pasamos la función de cambio de pestaña
+          MainMenuContent(onTabRequested: _onItemTapped), 
           const HistoryPage(),       
           const MedicationsPage(),   
           const DiseasesPage(),      
@@ -161,6 +161,7 @@ class MainMenuContent extends StatelessWidget {
     final authController = context.watch<AuthController>();
     final user = authController.currentUser;
 
+    // CORRECCIÓN: Aseguramos que los nombres de los campos existan en tu AuthController/User model
     final bool isPro = user?.isPro ?? false; 
     final int scansAvailable = user?.scansRemaining ?? 0;
     final int maxScans = user?.maxScansByPlan ?? 10;
@@ -176,7 +177,7 @@ class MainMenuContent extends StatelessWidget {
           const SizedBox(height: 40),
           const Text("MODO DE ESCANEO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 2)),
           const SizedBox(height: 25),
-          
+
           _ScanButton(
             title: "Escaneo por Microchip",
             subtitle: "Detectar ID y proximidad",
@@ -184,9 +185,9 @@ class MainMenuContent extends StatelessWidget {
             color: Colors.blueAccent,
             onTap: () => _handleScanAccess(context, isPro, scansAvailable),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _ScanButton(
             title: "Escaneo Visual",
             subtitle: "Análisis completo por fotografía",
@@ -194,8 +195,9 @@ class MainMenuContent extends StatelessWidget {
             color: Colors.greenAccent,
             onTap: () => _handleScanAccess(context, isPro, scansAvailable),
           ),
-          
+
           const SizedBox(height: 40),
+          // CORRECCIÓN: Acceso estático a AppRoutes
           if (isPro) _SupportButton(onTap: () => context.push(AppRoutes.support)),
         ],
       ),
@@ -211,11 +213,12 @@ class MainMenuContent extends StatelessWidget {
           action: SnackBarAction(
             label: "VER PLANES",
             textColor: Colors.white,
-            onPressed: () => onTabRequested(4), // Redirige a la pestaña PRO
+            onPressed: () => onTabRequested(4), 
           ),
         ),
       );
     } else {
+      // CORRECCIÓN: Acceso estático a AppRoutes.scanVisual
       context.push(AppRoutes.scanVisual, extra: {'animalId': 'generic', 'mode': 'visual'});
     }
   }
