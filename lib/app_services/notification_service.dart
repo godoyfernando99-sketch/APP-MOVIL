@@ -37,11 +37,11 @@ class NotificationService {
           importance: NotificationImportance.High,
         ),
       ],
+      debug: false,
     );
   }
 
   static Future<void> programarAlertasSegunResultado(ScanResult result) async {
-    // 1. VERIFICACIÓN DE PERMISOS
     bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
     if (!isAllowed) {
       await AwesomeNotifications().requestPermissionToSendNotifications();
@@ -51,13 +51,13 @@ class NotificationService {
     final String animalName = result.animalType;
     final String localTimeZone = await AwesomeNotifications().getLocalTimeZoneIdentifier();
 
-    // 2. VIBRACIÓN SOS E INFORME URGENTE
-    if (result.isUrgent) {
+    // 1. VIBRACIÓN Y ALERTA URGENTE (SI ES ALTO RIESGO)
+    if (result.isHighRisk) {
       bool? hasVib = await Vibration.hasVibrator();
       if (hasVib == true) {
         Vibration.vibrate(
-          pattern: [500, 1000, 500, 1000, 500, 2000],
-          intensities: [128, 255, 128, 255, 128, 255],
+          pattern: [500, 1000, 500, 1000],
+          intensities: [128, 255, 128, 255],
         );
       }
 
@@ -65,72 +65,47 @@ class NotificationService {
         content: NotificationContent(
           id: 911,
           channelKey: 'emergency_channel',
-          title: '🚨 URGENCIA: $animalName',
-          body: 'Estado: ${result.healthStatus}. Requiere atención inmediata.',
+          title: '🚨 URGENCIA MÉDICA: $animalName',
+          body: 'Se detectó una condición grave que requiere atención inmediata.',
           notificationLayout: NotificationLayout.BigText,
           backgroundColor: Colors.red,
           wakeUpScreen: true,
-          category: NotificationCategory.Alarm,
         ),
       );
     }
 
-    // 3. RECORDATORIOS DE MEDICACIÓN (Dosis y Vía)
-    if (result.medicationRoute != null) {
-      for (int dia in result.medicationDays) {
-        // CORRECCIÓN: Usar Duration en lugar de int
-        int segundosCalculados = (dia * 24 * 3600).clamp(60, 9999999);
-        
-        await AwesomeNotifications().createNotification(
-          content: NotificationContent(
-            id: DateTime.now().millisecond + dia,
-            channelKey: 'treatment_channel',
-            title: '💊 Dosis para $animalName',
-            body: 'Aplicar ${result.medicationDosage} por vía ${result.medicationRoute} en ${result.applicationSite}.',
-          ),
-          schedule: NotificationInterval(
-            interval: Duration(seconds: segundosCalculados),
-            repeats: false,
-            timeZone: localTimeZone,
-            preciseAlarm: true, 
-          ),
-        );
-      }
-    }
-
-    // 4. CONTROL CADA 3 DÍAS
-    // CORRECCIÓN: Usar Duration
-    int intervaloSegundos = (result.rescanInterval * 24 * 3600).clamp(60, 9999999);
-    
+    // 2. RECORDATORIO DE RE-ESCANEO (CADA 3 DÍAS)
+    // Se usa un intervalo de 72 horas (3 días)
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: 333,
         channelKey: 'treatment_channel',
-        title: '📸 Control de 3 días',
-        body: 'Es hora de re-escanear a $animalName para evaluar mejoría.',
+        title: '📸 Control Evolutivo: $animalName',
+        body: 'Han pasado 3 días. Realiza un nuevo escaneo para verificar si el tratamiento está funcionando.',
       ),
       schedule: NotificationInterval(
-        interval: Duration(seconds: intervaloSegundos),
+        interval: const Duration(hours: 72),
         repeats: true,
         timeZone: localTimeZone,
         preciseAlarm: true,
       ),
     );
 
-    // 5. PARTO / GESTACIÓN
-    if (result.isPregnant && result.daysUntilDelivery != null) {
-      int diasAviso = result.daysUntilDelivery! > 1 ? result.daysUntilDelivery! - 1 : 1;
+    // 3. SEGUIMIENTO DE GESTACIÓN / PARTO
+    if (result.isPregnant && result.daysUntilDelivery > 0) {
+      // Notificación de advertencia 24 horas antes del parto estimado
+      int diasParaNotificar = result.daysUntilDelivery > 1 ? result.daysUntilDelivery - 1 : 1;
 
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
           id: 777,
           channelKey: 'gestation_channel',
-          title: '🐣 Aviso de Parto Próximo',
-          body: 'Aproximadamente 24h para el parto de $animalName (${result.offspringCount} crías).',
+          title: '🐣 Parto Próximo: $animalName',
+          body: 'Quedan aproximadamente 24h para el parto. Prepárate para recibir a las crías (${result.offspringCount ?? 'varias'}).',
           notificationLayout: NotificationLayout.BigText,
         ),
         schedule: NotificationInterval(
-          interval: Duration(seconds: diasAviso * 24 * 3600),
+          interval: Duration(days: diasParaNotificar),
           repeats: false,
           timeZone: localTimeZone,
           preciseAlarm: true,
@@ -139,5 +114,3 @@ class NotificationService {
     }
   }
 }
-
-// Build final verificado
