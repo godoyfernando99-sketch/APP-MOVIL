@@ -93,20 +93,26 @@ class AiDiagnosisService {
 
       return ScanResult(
         id: "scan_${DateTime.now().millisecondsSinceEpoch}",
-        animalType: data['animalType'],
+        animalType: data['animalType'] ?? animalCategory,
         breed: data['breed'],
         healthStatus: report,
-        isHighRisk: data['healthStatus']['isHighRisk'] ?? false,
+        // CORRECCIÓN: Se añade preventionTips para cumplir con el constructor de scan_models.dart
+        preventionTips: data['isSane'] ? [data['vaccines'].toString()] : [data['treatment']['careTips'].toString()],
+        isHighRisk: data['isSane'] ? false : (data['healthStatus']['isHighRisk'] ?? false),
         isPregnant: data['pregnancy']['isPregnant'] ?? false,
         offspringCount: data['pregnancy']['offspringCount']?.toString(),
         gestationWeeks: data['pregnancy']['weeks']?.toString(),
         daysUntilDelivery: data['pregnancy']['daysUntilDelivery'] ?? 0,
         totalGestationDuration: data['pregnancy']['totalDuration'],
-        suggestedFoodName: data['nutrition']['foodName'],
+        suggestedFoodName: data['nutrition']['foodName'] ?? '',
         foodRecommendation: data['nutrition']['recommendation'],
         rescanInterval: 3, // Seguimiento cada 3 días
+        medicationDosage: data['isSane'] ? null : data['treatment']['dosage'],
+        medicationRoute: data['isSane'] ? null : data['treatment']['type'],
+        applicationSite: data['isSane'] ? null : data['treatment']['applicationSite'],
         photos: photos,
         timestamp: DateTime.now(),
+        microchipId: microchipId,
       );
     } catch (e) {
       rethrow;
