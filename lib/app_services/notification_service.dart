@@ -75,7 +75,6 @@ class NotificationService {
     }
 
     // 2. RECORDATORIO DE RE-ESCANEO (CADA 3 DÍAS)
-    // Se usa un intervalo de 72 horas (3 días)
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: 333,
@@ -92,10 +91,9 @@ class NotificationService {
     );
 
     // 3. SEGUIMIENTO DE GESTACIÓN / PARTO
-    // CORRECCIÓN: Se añade '?? 0' para evitar error de compilación en nulos
+    // Se utiliza el campo daysUntilDelivery corregido para programar la alerta
     if (result.isPregnant && (result.daysUntilDelivery ?? 0) > 0) {
       // Notificación de advertencia 24 horas antes del parto estimado
-      // CORRECCIÓN: Se usa '!' después de haber verificado que no es nulo con el check anterior
       int diasParaNotificar = result.daysUntilDelivery! > 1 ? result.daysUntilDelivery! - 1 : 1;
 
       await AwesomeNotifications().createNotification(
@@ -103,7 +101,8 @@ class NotificationService {
           id: 777,
           channelKey: 'gestation_channel',
           title: '🐣 Parto Próximo: $animalName',
-          body: 'Quedan aproximadamente 24h para el parto. Prepárate para recibir a las crías (${result.offspringCount ?? 'varias'}).',
+          // CORRECCIÓN: Ahora el mensaje es dinámico con el tiempo de gestación actual y crías
+          body: 'Estado actual: ${result.gestationWeeks}. Quedan aprox. 24h para el parto. Prepárate para recibir a las crías (${result.offspringCount ?? 'varias'}).',
           notificationLayout: NotificationLayout.BigText,
         ),
         schedule: NotificationInterval(
