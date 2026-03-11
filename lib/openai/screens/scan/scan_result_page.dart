@@ -45,11 +45,11 @@ class _ScanResultPageState extends State<ScanResultPage> {
               children: [
                 Text("Fecha del Escaneo: $dateStr", style: const TextStyle(fontWeight: FontWeight.bold)),
                 const Divider(),
-                
+
                 // --- SECCIÓN: INFORMACIÓN BÁSICA ---
                 _buildInfoItem("Tipo de Animal", res.animalType),
                 _buildInfoItem("Raza/Especie", res.breed ?? "Mestizo"),
-                
+
                 // --- SECCIÓN: GESTACIÓN (Si aplica) ---
                 if (res.isPregnant) ...[
                   const SizedBox(height: 15),
@@ -63,7 +63,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 const SizedBox(height: 15),
                 const Text("🩺 INFORME VETERINARIO DETALLADO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 8),
-                
+
                 // --- SECCIÓN: SALUD Y TRATAMIENTO (Usa campos de ScanResult) ---
                 Container(
                   width: double.infinity,
@@ -76,7 +76,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
                       const Divider(color: Colors.grey),
                       const Text("PLAN DE ADMINISTRACIÓN:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                       const SizedBox(height: 5),
-                      
+
                       // CAMPOS SOLICITADOS APLICADOS
                       _buildMedicineDetail("Dosis recomendada", res.medicationDosage),
                       _buildMedicineDetail("Vía de administración", res.medicationRoute),
@@ -100,13 +100,13 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   ),
                   maxLines: 3,
                 ),
-                
+
                 const SizedBox(height: 25),
                 _buildActionButtons(res),
               ],
             ),
           ),
-          
+
           // Ventana emergente de ALERTA URGENTE
           if (_showUrgentAlert) _buildHighRiskPopup(res),
         ],
@@ -158,10 +158,10 @@ class _ScanResultPageState extends State<ScanResultPage> {
         const SizedBox(height: 12),
         Row(
           children: [
-            // BOTÓN PDF
+            // BOTÓN PDF - CORREGIDO PARA EVITAR "MEMBER NOT FOUND"
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => PdfService.generateAndShare(res),
+                onPressed: () => PdfService.generateAndSharePdf(res),
                 icon: const Icon(Icons.picture_as_pdf_rounded),
                 label: const Text("COMPARTIR PDF"),
               ),
