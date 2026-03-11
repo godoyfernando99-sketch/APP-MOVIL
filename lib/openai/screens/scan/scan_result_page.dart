@@ -174,12 +174,21 @@ class _ScanResultPageState extends State<ScanResultPage> {
             Expanded(
               child: ElevatedButton(
                 onPressed: () async {
+                  // Capturamos el Navigator antes del async para evitar problemas de contexto
+                  final navigator = Navigator.of(context);
+                  
                   final finalResult = res.copyWith(notes: _notesController.text);
+                  
+                  // Guardamos en historial
                   await context.read<HistoryController>().saveScan(finalResult);
+                  
+                  // Descontamos el escaneo
                   await context.read<AuthController>().useFreeScan();
+                  
                   if (mounted) {
-                    // Navegación limpia al Menú Principal
-                    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                    // CORRECCIÓN DE REDIRECCIÓN: Usamos popUntil para regresar a la raíz (Menú Principal)
+                    // Esto limpia la pila de navegación y asegura que el usuario llegue al inicio.
+                    navigator.popUntil((route) => route.isFirst);
                   }
                 },
                 child: const Text("GUARDAR Y SALIR"),
