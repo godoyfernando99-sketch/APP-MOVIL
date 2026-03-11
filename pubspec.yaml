@@ -3,7 +3,7 @@ description: "IA Veterinaria - Diagnóstico, Gestación y Seguimiento"
 publish_to: 'none'
 
 # ACTUALIZADO: Subimos a la 34 para coincidir con nuestras mejoras
-version: 1.0.35+35
+version: 1.0.36+36
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
