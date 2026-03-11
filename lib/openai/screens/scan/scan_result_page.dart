@@ -49,6 +49,9 @@ class _ScanResultPageState extends State<ScanResultPage> {
                 // --- SECCIÓN: INFORMACIÓN BÁSICA ---
                 _buildInfoItem("Tipo de Animal", res.animalType),
                 _buildInfoItem("Raza/Especie", res.breed ?? "Mestizo"),
+                // Muestra el ID del Microchip si existe
+                if (res.microchipId != null && res.microchipId!.isNotEmpty)
+                  _buildInfoItem("ID de Microchip", res.microchipId!),
 
                 // --- SECCIÓN: GESTACIÓN (Si aplica) ---
                 if (res.isPregnant) ...[
