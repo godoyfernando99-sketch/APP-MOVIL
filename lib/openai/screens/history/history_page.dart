@@ -15,7 +15,7 @@ class HistoryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // Usamos context.watch para reaccionar a cambios en el historial
     final historyController = context.watch<HistoryController>();
-    final items = historyController.history; // CORREGIDO: Usamos .history en lugar de .items
+    final items = historyController.history; 
 
     return FarmBackgroundScaffold(
       title: 'HISTORIAL DE REPORTES',
@@ -62,14 +62,15 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateLabel = DateFormat('dd MMM, yyyy').format(item.timestamp);
+    // CORRECCIÓN TÉCNICA: Usamos isHighRisk que es el nombre en el modelo
+    final bool showingUrgent = item.isHighRisk;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.6),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          // CORREGIDO: isUrgent ahora detecta HighRisk automáticamente por el modelo
-          color: item.isUrgent ? Colors.redAccent.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+          color: showingUrgent ? Colors.redAccent.withOpacity(0.3) : Colors.white.withOpacity(0.1),
           width: 1.5
         ),
       ),
@@ -89,9 +90,9 @@ class _HistoryCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.isUrgent ? "🚨 URGENTE: ${item.animalType.toUpperCase()}" : item.animalType.toUpperCase(),
+                        showingUrgent ? "🚨 URGENTE: ${item.animalType.toUpperCase()}" : item.animalType.toUpperCase(),
                         style: TextStyle(
-                          color: item.isUrgent ? Colors.redAccent : Colors.white, 
+                          color: showingUrgent ? Colors.redAccent : Colors.white, 
                           fontWeight: FontWeight.w900, 
                           fontSize: 14
                         ),
@@ -152,6 +153,7 @@ class HistoryDetailPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateLabel = DateFormat('dd MMMM, yyyy').format(item.timestamp);
+    final bool showingUrgent = item.isHighRisk;
 
     return Container(
       decoration: BoxDecoration(
@@ -194,8 +196,8 @@ class HistoryDetailPopup extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (item.isUrgent) _buildUrgentBox(),
-                    if (item.isUrgent) const SizedBox(height: 20),
+                    if (showingUrgent) _buildUrgentBox(),
+                    if (showingUrgent) const SizedBox(height: 20),
 
                     if (item.photos.isNotEmpty) _buildPhotoGallery(item.photos),
                     const SizedBox(height: 24),
@@ -204,9 +206,9 @@ class HistoryDetailPopup extends StatelessWidget {
                     _DetailRow(label: 'Fecha:', value: dateLabel),
                     _DetailRow(label: 'Animal:', value: item.animalType),
                     _DetailRow(label: 'Raza:', value: item.breed ?? 'Detectada por IA', isAccent: true),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     _buildSectionTitle("HALLAZGOS Y DIAGNÓSTICO"),
                     Text(item.healthStatus, 
                       style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4)),
@@ -222,7 +224,6 @@ class HistoryDetailPopup extends StatelessWidget {
                         border: Border.all(color: Colors.white10),
                       ),
                       child: Text(
-                        // CORREGIDO: Ya no es dynamic, usamos el campo del modelo
                         (item.notes == null || item.notes!.isEmpty) 
                             ? "Sin notas adicionales guardadas." 
                             : item.notes!,
@@ -240,7 +241,7 @@ class HistoryDetailPopup extends StatelessWidget {
                       style: const TextStyle(color: Colors.white54, fontSize: 12)),
 
                     const SizedBox(height: 30),
-                    
+
                     // Botón para cerrar
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context),
