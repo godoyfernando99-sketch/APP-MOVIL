@@ -24,6 +24,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
     super.initState();
     if (widget.payload is ScanResult) {
       final res = widget.payload as ScanResult;
+      // Activa la alerta si es de alto riesgo
       if (res.isHighRisk) setState(() => _showUrgentAlert = true);
     }
   }
@@ -42,44 +43,83 @@ class _ScanResultPageState extends State<ScanResultPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Fecha: $dateStr", style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text("Fecha del Escaneo: $dateStr", style: const TextStyle(fontWeight: FontWeight.bold)),
                 const Divider(),
-                _buildInfoItem("Tipo de Animal", res.animalType),
-                _buildInfoItem("Raza/Especie", res.breed ?? "No identificada"),
                 
+                // --- SECCIÓN: INFORMACIÓN BÁSICA ---
+                _buildInfoItem("Tipo de Animal", res.animalType),
+                _buildInfoItem("Raza/Especie", res.breed ?? "Mestizo"),
+                
+                // --- SECCIÓN: GESTACIÓN (Si aplica) ---
                 if (res.isPregnant) ...[
-                  const SizedBox(height: 10),
-                  const Text("EMBARAZO DETECTADO", style: TextStyle(color: Colors.pink, fontWeight: FontWeight.bold)),
-                  _buildInfoItem("Semanas/Meses", "${res.gestationWeeks} semanas"),
-                  _buildInfoItem("Crías estimadas", res.offspringCount ?? "0"),
-                  _buildInfoItem("Días para el parto", "${res.daysUntilDelivery} días"),
+                  const SizedBox(height: 15),
+                  const Text("📦 DETALLES DE GESTACIÓN", style: TextStyle(color: Colors.pink, fontWeight: FontWeight.bold)),
+                  _buildInfoItem("Estado", "Positivo"),
+                  _buildInfoItem("Tiempo", res.gestationWeeks ?? "N/A"),
+                  _buildInfoItem("Crías Estimadas", res.offspringCount ?? "Pendiente"),
+                  _buildInfoItem("Días para el Parto", "${res.daysUntilDelivery ?? 0} días"),
                 ],
 
-                const SizedBox(height: 10),
-                const Text("INFORME MÉDICO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 15),
+                const Text("🩺 INFORME VETERINARIO DETALLADO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 8),
+                
+                // --- SECCIÓN: SALUD Y TRATAMIENTO (Usa campos de ScanResult) ---
                 Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
-                  child: Text(res.healthStatus),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(res.healthStatus, style: const TextStyle(fontSize: 15)),
+                      const Divider(color: Colors.grey),
+                      const Text("PLAN DE ADMINISTRACIÓN:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(height: 5),
+                      
+                      // CAMPOS SOLICITADOS APLICADOS
+                      _buildMedicineDetail("Dosis recomendada", res.medicationDosage),
+                      _buildMedicineDetail("Vía de administración", res.medicationRoute),
+                      _buildMedicineDetail("Lugar de aplicación", res.applicationSite),
+                    ],
+                  ),
                 ),
-
-                _buildInfoItem("Alimento Sugerido", res.suggestedFoodName ?? "N/A"),
-                _buildInfoItem("Guía Nutricional", res.foodRecommendation ?? "N/A"),
 
                 const SizedBox(height: 15),
+                _buildInfoItem("Alimento Sugerido", res.suggestedFoodName),
+                if (res.foodRecommendation != null)
+                  _buildInfoItem("Guía Nutricional", res.foodRecommendation!),
+
+                const SizedBox(height: 20),
                 TextField(
                   controller: _notesController,
-                  decoration: const InputDecoration(labelText: "MIS NOTAS Y COMENTARIOS", border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: "MIS ANOTACIONES ADICIONALES",
+                    border: OutlineInputBorder(),
+                    hintText: "Ej: El animal presentó fiebre por la mañana..."
+                  ),
                   maxLines: 3,
                 ),
+                
                 const SizedBox(height: 25),
                 _buildActionButtons(res),
               ],
             ),
           ),
+          
+          // Ventana emergente de ALERTA URGENTE
           if (_showUrgentAlert) _buildHighRiskPopup(res),
         ],
       ),
+    );
+  }
+
+  // Widget para detalles de medicina (Dosis, Vía, Lugar)
+  Widget _buildMedicineDetail(String label, String? value) {
+    if (value == null || value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Text("• $label: $value", style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.w600)),
     );
   }
 
@@ -87,6 +127,7 @@ class _ScanResultPageState extends State<ScanResultPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
           Expanded(child: Text(value)),
@@ -98,26 +139,35 @@ class _ScanResultPageState extends State<ScanResultPage> {
   Widget _buildActionButtons(ScanResult res) {
     return Column(
       children: [
+        // BOTÓN DE SEGUIMIENTO VETERINARIO
         ElevatedButton.icon(
           onPressed: () {
             NotificationService.programarAlertasSegunResultado(res);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ SEGUIMIENTO ACTIVADO")));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("🔔 Seguimiento y recordatorios activados"))
+            );
           },
-          icon: const Icon(Icons.notifications_active),
+          icon: const Icon(Icons.alarm_on_rounded),
           label: const Text("ACTIVAR SEGUIMIENTO VETERINARIO"),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, minimumSize: const Size(double.infinity, 50)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orange,
+            minimumSize: const Size(double.infinity, 50),
+            foregroundColor: Colors.white
+          ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Row(
           children: [
+            // BOTÓN PDF
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () => PdfService.generateAndShare(res),
-                icon: const Icon(Icons.picture_as_pdf),
+                icon: const Icon(Icons.picture_as_pdf_rounded),
                 label: const Text("COMPARTIR PDF"),
               ),
             ),
             const SizedBox(width: 10),
+            // BOTÓN GUARDAR
             Expanded(
               child: ElevatedButton(
                 onPressed: () async {
@@ -125,11 +175,11 @@ class _ScanResultPageState extends State<ScanResultPage> {
                   await context.read<HistoryController>().saveScan(finalResult);
                   await context.read<AuthController>().useFreeScan();
                   if (mounted) {
-                    // DIRECCIONA AL MENÚ PRINCIPAL Y LIMPIA RUTAS
+                    // Navegación limpia al Menú Principal
                     Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
                   }
                 },
-                child: const Text("GUARDAR"),
+                child: const Text("GUARDAR Y SALIR"),
               ),
             ),
           ],
@@ -140,13 +190,27 @@ class _ScanResultPageState extends State<ScanResultPage> {
 
   Widget _buildHighRiskPopup(ScanResult res) {
     return Container(
-      color: Colors.black87,
+      color: Colors.black54,
       alignment: Alignment.center,
       child: AlertDialog(
-        title: const Text("🚨 ALERTA DE ALTO RIESGO", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-        content: Text("Se ha detectado una condición grave.\n\n${res.healthStatus.split('\n\n').first}"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 30),
+            SizedBox(width: 10),
+            Text("ALTO RIESGO", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          "Se han detectado signos de una afección grave (posible tumor o infección severa). Se recomienda acudir al veterinario de inmediato.",
+          style: TextStyle(fontSize: 16),
+        ),
         actions: [
-          ElevatedButton(onPressed: () => setState(() => _showUrgentAlert = false), child: const Text("ENTENDIDO"))
+          ElevatedButton(
+            onPressed: () => setState(() => _showUrgentAlert = false),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("HE LEÍDO LA ADVERTENCIA", style: TextStyle(color: Colors.white)),
+          )
         ],
       ),
     );
