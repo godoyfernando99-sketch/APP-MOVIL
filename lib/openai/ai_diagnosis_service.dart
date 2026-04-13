@@ -17,57 +17,63 @@ class AiDiagnosisService {
   }) async {
     try {
       final model = FirebaseVertexAI.instance.generativeModel(
-        model: 'gemini-2.5-flash-lite', 
+        model: 'gemini-2.0-flash-lite', // Se recomienda usar gemini-2.0-flash-lite o pro para visión
         generationConfig: GenerationConfig(responseMimeType: 'application/json'),
       );
 
       final List<Part> promptParts = [
         TextPart("""
-          Actúa como un experto veterinario de élite. Analiza las imágenes.
-          Seguimiento Evolutivo activo: ${isFollowUp ? 'SÍ' : 'NO'}.
-          ID Animal detectado (si aplica): ${microchipId ?? 'N/A'}.
+          INSTRUCCIÓN CRÍTICA DE VALIDACIÓN:
+          1. Analiza si la imagen contiene un animal (perro, gato, vaca, caballo, etc.). 
+          2. Si la imagen es de una persona, un objeto inanimado o un paisaje sin animales, DEBES responder ÚNICAMENTE con este JSON: 
+             {"error": "error no es un animal"}
+
+          INSTRUCCIONES DE DIAGNÓSTICO (Solo si hay un animal):
+          Actúa como un experto veterinario de élite. Analiza las imágenes buscando:
+          - Signos externos (piel, ojos, heridas).
+          - Signos internos e indicadores fisiológicos: Analiza posturas, inflamaciones o síntomas visibles que sugieran problemas en la GARGANTA (obstrucciones, tos), ESTÓMAGO (torsión, hinchazón, indigestión), CEREBRO (problemas neurológicos, desorientación) y otros órganos.
+          - Seguimiento Evolutivo activo: ${isFollowUp ? 'SÍ' : 'NO'}.
 
           DEBES RESPONDER ÚNICAMENTE EN JSON CON ESTA ESTRUCTURA EXACTA:
 
           {
-            "animalType": "Especie (Perro, Gato, Vaca, Cabra, Mono, etc)",
-            "breed": "Raza o especie exacta",
+            "animalType": "Especie detectada",
+            "breed": "Raza",
             "isSane": true/false,
             "healthStatus": {
-              "conditionName": "Nombre de la enfermedad o 'SANO'",
-              "cause": "Causa exacta (bacteria, virus, hongo, etc)",
+              "conditionName": "Nombre de la enfermedad (Externa o Interna como Gastritis, Obstrucción de garganta, etc) o 'SANO'",
+              "cause": "Causa exacta",
               "severity": "ALTA, MEDIA o BAJA",
               "isHighRisk": true/false
             },
             "treatment": {
-              "medicineName": "Nombre del producto/fármaco",
-              "type": "Oral, Inyección, Gotas o Pomada",
-              "dosage": "Cantidad exacta (ml, mg, número de gotas o pastillas)",
-              "frequency": "Cada cuántas horas",
-              "duration": "Días totales",
-              "applicationSite": "Lugar del cuerpo donde aplicar/inyectar",
-              "careTips": "Cuidados para que no vuelva a suceder"
+              "medicineName": "Nombre del fármaco",
+              "type": "Oral, Inyección, etc",
+              "dosage": "Cantidad exacta",
+              "frequency": "Frecuencia",
+              "duration": "Días",
+              "applicationSite": "Lugar de aplicación",
+              "careTips": "Cuidados preventivos"
             },
-            "vaccines": "Esquema completo de vacunas según animal/edad y frecuencia de aplicación",
+            "vaccines": "Esquema completo según especie",
             "pregnancy": {
               "isPregnant": true/false,
               "weeks": "semanas",
               "days": "días",
               "months": "meses",
-              "offspringCount": "número de crías estimado",
-              "totalDuration": "duración total embarazo especie",
+              "offspringCount": "número de crías",
+              "totalDuration": "duración total especie",
               "daysUntilDelivery": 10
             },
             "nutrition": {
-              "foodName": "Nombre del producto alimenticio sugerido",
-              "recommendation": "Guía nutricional según su estado"
+              "foodName": "Alimento sugerido",
+              "recommendation": "Guía nutricional"
             }
           }
 
-          INSTRUCCIONES:
-          - Si 'healthStatus.severity' es ALTA, 'healthStatus.isHighRisk' debe ser true.
-          - Si 'isSane' es true, omite 'healthStatus' y 'treatment', pero en el JSON final incluye 'treatment' con campos vacíos (no nulos) para evitar errores.
-          - Si es positivo en embarazo, detalla semanas, días, meses y crías basándote en la captura.
+          REGLAS:
+          - No ignores el diagnóstico de órganos internos si las señales visuales lo sugieren.
+          - Mantén la información de embarazo si es detectado tal cual se pidió.
         """),
         ...photos.map((bytes) => InlineDataPart('image/jpeg', bytes)),
       ];
@@ -75,17 +81,19 @@ class AiDiagnosisService {
       final response = await model.generateContent([Content.multi(promptParts)]);
       final data = jsonDecode(response.text!);
 
-      // Construimos el bloque de texto para el historial combinando los campos
-      // MANTENIENDO TU ESTRUCTURA ORIGINAL DE REPORTE
+      // VALIDACIÓN DE ERROR: Si la IA detecta que no es un animal
+      if (data.containsKey('error')) {
+        throw Exception("error no es un animal");
+      }
+
       String report = "";
       if (data['isSane']) {
         report = "ESTADO: SANO\n\nVACUNAS RECOMENDADAS:\n${data['vaccines']}";
       } else {
-        // CORRECCIÓN PARA EVITAR ERROR NULL: Se añade verificación de existencia de campos
         final h = data['healthStatus'] ?? {};
         final t = data['treatment'] ?? {};
-        
-        report = "ENFERMEDAD: ${h['conditionName'] ?? 'No detectada'}\n"
+
+        report = "ENFERMEDAD/SÍNTOMA: ${h['conditionName'] ?? 'No detectada'}\n"
                  "CAUSA: ${h['cause'] ?? 'N/A'}\n"
                  "GRAVEDAD: ${h['severity'] ?? 'Baja'}\n\n"
                  "TRATAMIENTO:\n"
@@ -98,7 +106,6 @@ class AiDiagnosisService {
                  "- Cuidados: ${t['careTips'] ?? 'N/A'}";
       }
 
-      // Añadimos información de embarazo si es detectado (Solo si es positivo)
       if (data['pregnancy'] != null && data['pregnancy']['isPregnant'] == true) {
         report += "\n\nDETALLES DE GESTACIÓN:\n"
                   "- Estado: POSITIVO\n"
@@ -113,7 +120,6 @@ class AiDiagnosisService {
         animalType: data['animalType'] ?? animalCategory,
         breed: data['breed'],
         healthStatus: report,
-        // CORRECCIÓN: PREVENTION TIPS
         preventionTips: data['isSane'] ? [data['vaccines'].toString()] : [data['treatment']['careTips']?.toString() ?? 'Sin notas'],
         isHighRisk: data['isSane'] ? false : (data['healthStatus']['isHighRisk'] ?? false),
         isPregnant: data['pregnancy']['isPregnant'] ?? false,
@@ -132,6 +138,7 @@ class AiDiagnosisService {
         microchipId: microchipId,
       );
     } catch (e) {
+      // Si el error es el mensaje personalizado, lo relanzamos para capturarlo en la UI
       rethrow;
     }
   }
