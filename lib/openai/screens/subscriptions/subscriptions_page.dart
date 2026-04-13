@@ -115,7 +115,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
                   _PlanCard(
                     name: 'Plan Básico',
-                    priceLabel: currency.formatUsd(5.99, locale),
+                    priceLabel: currency.formatUsd(0.99, locale),
                     accent: Colors.blue.shade400,
                     features: const [
                       '15 escaneos mensuales',
@@ -129,7 +129,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   const SizedBox(height: 16),
                   _PlanCard(
                     name: 'Plan Premium',
-                    priceLabel: currency.formatUsd(10.99, locale),
+                    priceLabel: currency.formatUsd(3.99, locale),
                     accent: Colors.purple.shade400,
                     features: const [
                       '30 escaneos mensuales',
@@ -143,7 +143,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   const SizedBox(height: 16),
                   _PlanCard(
                     name: 'Plan PRO',
-                    priceLabel: currency.formatUsd(13.99, locale),
+                    priceLabel: currency.formatUsd(5.99, locale),
                     accent: Colors.amber.shade400,
                     features: const [
                       'Escaneos ilimitados',
