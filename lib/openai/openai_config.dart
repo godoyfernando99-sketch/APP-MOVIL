@@ -10,7 +10,7 @@ class OpenAiConfig {
   static bool get isConfigured => apiKey.isNotEmpty && apiKey.startsWith('AIza');
 
   // Modo Real activo
-  static const bool useMock = verdadero;
+  static const bool useMock = False;
 
   // --- ACTUALIZACIÓN: Endpoint estable v1 ---
   static const String endpoint = 'https://generativelanguage.googleapis.com/v1';
